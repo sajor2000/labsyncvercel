@@ -1,0 +1,85 @@
+# LabManage - Medical Research Lab Management System
+
+## Overview
+
+LabManage is a comprehensive medical research lab management system designed to streamline the research workflow for laboratories like RICCC and Health Equity Labs. The system provides study lifecycle management, AI-powered standup meetings, real-time collaboration, and task tracking capabilities. It's built as a full-stack application with a React frontend and Express backend, utilizing PostgreSQL for data persistence and integrating with external services for file storage and AI processing.
+
+## User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+## System Architecture
+
+### Frontend Architecture
+- **Framework**: React 18 with TypeScript for type safety and modern development practices
+- **Routing**: Wouter for lightweight client-side routing
+- **State Management**: TanStack Query (React Query) for server state management and caching
+- **UI Components**: shadcn/ui component library built on Radix UI primitives for accessible, customizable components
+- **Styling**: Tailwind CSS with custom design system variables for consistent theming
+- **Build Tool**: Vite for fast development and optimized production builds
+- **Authentication**: Session-based authentication integrated with Replit's OIDC system
+
+### Backend Architecture
+- **Runtime**: Node.js with Express.js framework for API development
+- **Database ORM**: Drizzle ORM for type-safe database operations and schema management
+- **Authentication**: Passport.js with OpenID Connect strategy for Replit authentication
+- **Session Management**: Express sessions with PostgreSQL session store for persistence
+- **File Handling**: Multer for multipart form handling with memory storage
+- **WebSocket Support**: WebSocket server for real-time features like standup meetings
+
+### Database Design
+- **Primary Database**: PostgreSQL with Neon serverless connection pooling
+- **Schema Management**: Drizzle Kit for migrations and schema evolution
+- **Key Entities**: Users, Labs, Studies, Tasks, Standup Meetings, Action Items, and Sessions
+- **Enums**: Strongly typed enums for user roles, study statuses, funding types, and priority levels
+- **Relationships**: Proper foreign key relationships with indexes for performance
+
+### Authentication & Authorization
+- **Provider**: Replit OIDC integration for seamless authentication in the Replit environment
+- **Session Storage**: PostgreSQL-backed sessions with configurable TTL
+- **User Management**: Automatic user creation and profile management
+- **Authorization**: Role-based access control with user roles (PI, Research Coordinator, Data Analyst, etc.)
+
+### File Storage & AI Integration
+- **Cloud Storage**: Google Cloud Storage integration for file uploads and document management
+- **File Upload**: Uppy.js integration for robust file upload experience with drag-and-drop support
+- **AI Processing**: Placeholder architecture for AI-powered standup meeting transcription and analysis
+- **Audio Processing**: Framework ready for OpenAI Whisper integration for meeting transcription
+
+### Real-time Features
+- **WebSocket Connection**: Custom WebSocket implementation for live collaboration
+- **Meeting Management**: Real-time standup meeting participation and status updates
+- **Notifications**: Live notification system for task updates and meeting alerts
+
+### Development & Deployment
+- **Type Safety**: Full TypeScript implementation across frontend, backend, and shared schemas
+- **Development Server**: Vite dev server with HMR for rapid development
+- **Production Build**: Optimized builds with esbuild for backend and Vite for frontend
+- **Environment Configuration**: Environment-based configuration with development and production modes
+- **Error Handling**: Comprehensive error handling with user-friendly error reporting
+
+## External Dependencies
+
+### Core Infrastructure
+- **Database**: Neon PostgreSQL for serverless database hosting
+- **Authentication**: Replit OIDC system for user authentication and session management
+- **File Storage**: Google Cloud Storage for document and file management
+- **Session Store**: PostgreSQL-based session persistence
+
+### Development Tools
+- **Package Manager**: npm for dependency management
+- **Build System**: Vite for frontend bundling and esbuild for backend compilation
+- **Type Checking**: TypeScript compiler for static type analysis
+- **Schema Management**: Drizzle Kit for database migrations and schema management
+
+### UI & User Experience
+- **Component Library**: Radix UI primitives for accessible component foundations
+- **Icon System**: Font Awesome for comprehensive icon coverage
+- **Typography**: Google Fonts (Inter) for consistent typography
+- **File Upload**: Uppy.js ecosystem for advanced file upload capabilities
+
+### Planned Integrations
+- **AI Services**: OpenAI Whisper for audio transcription and OpenRouter/Claude for meeting analysis
+- **Notification System**: Framework ready for email/SMS notification integration
+- **Calendar Integration**: Architecture prepared for calendar system integration
+- **Export Systems**: Ready for document generation and data export functionality
