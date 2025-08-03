@@ -10,7 +10,7 @@ export function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-background text-foreground">
       {/* Sidebar for desktop */}
       <div className="hidden md:flex md:w-64 md:flex-col">
         <Sidebar />
@@ -23,7 +23,7 @@ export function Layout({ children }: LayoutProps) {
             className="fixed inset-0 bg-gray-600 bg-opacity-75"
             onClick={() => setSidebarOpen(false)}
           />
-          <div className="relative flex w-64 flex-col bg-white dark:bg-gray-900">
+          <div className="relative flex w-64 flex-col bg-background">
             <Sidebar />
           </div>
         </div>

@@ -6,13 +6,14 @@ import {
   CheckSquare, 
   BarChart3, 
   Settings, 
-  User,
+  User as UserIcon,
   LogOut,
   Building2,
   Mic,
   FileText
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import type { User } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -28,29 +29,29 @@ const navigationItems = [
 ];
 
 const userActions = [
-  { name: "Profile", href: "/profile", icon: User },
+  { name: "Profile", href: "/profile", icon: UserIcon },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar() {
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user } = useAuth() as { user?: User };
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col h-full bg-background border-r border-border">
       {/* Logo and Title */}
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-6 border-b border-border">
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-600 rounded-lg">
-            <FlaskConical className="h-6 w-6 text-white" />
+          <div className="p-2 bg-primary rounded-lg">
+            <FlaskConical className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">LabManage</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Research Hub</p>
+            <h1 className="text-xl font-bold text-foreground">LabManage</h1>
+            <p className="text-sm text-muted-foreground">Research Hub</p>
           </div>
         </div>
       </div>
@@ -68,8 +69,8 @@ export function Sidebar() {
                   className={cn(
                     "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
                     isActive
-                      ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      ? "bg-accent text-accent-foreground"
+                      : "text-foreground hover:bg-accent hover:text-accent-foreground"
                   )}
                   data-testid={`nav-${item.name.toLowerCase()}`}
                 >

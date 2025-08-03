@@ -28,11 +28,11 @@ export default function UpcomingStandups() {
       <CardContent>
         <div className="space-y-4">
           {mockStandups.map((standup) => (
-            <div key={standup.id} className="p-4 border rounded-lg">
+            <div key={standup.id} className="p-4 border border-border rounded-lg">
               <div className="flex items-start justify-between">
                 <div>
-                  <h4 className="font-medium">{standup.title}</h4>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                  <h4 className="font-medium text-foreground">{standup.title}</h4>
+                  <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-1" />
                       {new Date(standup.date).toLocaleDateString()}

@@ -45,14 +45,14 @@ export default function ActivityFeed() {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-900">
+                <p className="text-sm text-foreground">
                   <span className="font-medium">{activity.user}</span>
                   {" "}
-                  <span className="text-gray-600">{activity.action}</span>
+                  <span className="text-muted-foreground">{activity.action}</span>
                   {" "}
                   <span className="font-medium">{activity.target}</span>
                 </p>
-                <div className="flex items-center text-xs text-gray-500 mt-1">
+                <div className="flex items-center text-xs text-muted-foreground mt-1">
                   <Clock className="h-3 w-3 mr-1" />
                   {activity.time}
                 </div>

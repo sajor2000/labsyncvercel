@@ -28,11 +28,11 @@ const mockStudies = [
 ];
 
 const statusColors = {
-  ACTIVE: "bg-green-100 text-green-800",
-  RECRUITING: "bg-blue-100 text-blue-800",
-  ANALYZING: "bg-yellow-100 text-yellow-800",
-  COMPLETED: "bg-gray-100 text-gray-800",
-  PAUSED: "bg-red-100 text-red-800",
+  ACTIVE: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
+  RECRUITING: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
+  ANALYZING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400",
+  COMPLETED: "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
+  PAUSED: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400",
 };
 
 export default function RecentStudies() {
@@ -51,11 +51,11 @@ export default function RecentStudies() {
           {mockStudies.map((study) => (
             <div
               key={study.id}
-              className="p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+              className="p-4 border border-border rounded-lg hover:bg-muted transition-colors cursor-pointer"
               data-testid={`study-${study.id}`}
             >
               <div className="flex items-start justify-between mb-2">
-                <h4 className="font-medium text-gray-900 line-clamp-2">
+                <h4 className="font-medium text-foreground line-clamp-2">
                   {study.title}
                 </h4>
                 <Badge className={statusColors[study.status]} variant="secondary">
@@ -64,17 +64,17 @@ export default function RecentStudies() {
               </div>
               
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm text-gray-600">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>Progress</span>
                   <span>{study.progress}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-muted rounded-full h-2">
                   <div
-                    className="bg-blue-600 h-2 rounded-full transition-all"
+                    className="bg-primary h-2 rounded-full transition-all"
                     style={{ width: `${study.progress}%` }}
                   />
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Last updated: {new Date(study.lastUpdated).toLocaleDateString()}
                 </p>
               </div>
