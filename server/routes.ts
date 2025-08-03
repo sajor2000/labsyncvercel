@@ -58,6 +58,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard statistics route
+  app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Get statistics based on user's lab
+      const labs = await storage.getLabs();
+      const allStudies = [];
+      for (const lab of labs) {
+        const studies = await storage.getStudies(lab.id);
+        allStudies.push(...studies);
+      }
+      
+      const activeStudies = allStudies.filter(s => s.status === 'DATA_COLLECTION' || s.status === 'ANALYSIS');
+      const allTasks = [];
+      for (const study of allStudies) {
+        const tasks = await storage.getTasks(study.id);
+        allTasks.push(...tasks);
+      }
+      
+      const completedTasks = allTasks.filter(t => t.status === 'DONE');
+      const allStandups = await storage.getStandupMeetings("");
+      const upcomingStandups = allStandups.filter(s => new Date(s.meetingDate) >= new Date());
+      
+      const stats = {
+        activeStudies: activeStudies.length,
+        teamMembers: labs.length * 5, // Placeholder calculation
+        completedTasks: completedTasks.length,
+        upcomingStandups: upcomingStandups.length
+      };
+      
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard statistics" });
+    }
+  });
+
   // Study routes
   app.get('/api/studies', isAuthenticated, async (req, res) => {
     try {
@@ -142,14 +181,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/standups', isAuthenticated, async (req, res) => {
     try {
       const labId = req.query.labId as string;
-      if (!labId) {
-        return res.status(400).json({ message: "Lab ID is required" });
-      }
       const meetings = await storage.getStandupMeetings(labId);
       res.json(meetings);
     } catch (error) {
       console.error("Error fetching standup meetings:", error);
       res.status(500).json({ message: "Failed to fetch standup meetings" });
+    }
+  });
+
+  // Activity feed route
+  app.get('/api/activity', isAuthenticated, async (req, res) => {
+    try {
+      // Placeholder for activity - will implement later
+      const activities = [];
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching activity:", error);
+      res.status(500).json({ message: "Failed to fetch activity" });
     }
   });
 

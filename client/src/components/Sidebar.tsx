@@ -65,9 +65,9 @@ export function Sidebar() {
             
             return (
               <Link key={item.name} href={item.href}>
-                <a
+                <div
                   className={cn(
-                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
                     isActive
                       ? "bg-accent text-accent-foreground"
                       : "text-foreground hover:bg-accent hover:text-accent-foreground"
@@ -76,7 +76,7 @@ export function Sidebar() {
                 >
                   <Icon className="mr-3 h-5 w-5" />
                   {item.name}
-                </a>
+                </div>
               </Link>
             );
           })}
@@ -84,21 +84,21 @@ export function Sidebar() {
       </div>
 
       {/* User Section */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+      <div className="border-t border-border p-4">
         {/* User Info */}
         {user && (
           <div className="flex items-center space-x-3 mb-4">
-            <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
+            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium">
               {user.firstName?.[0] || user.email?.[0]?.toUpperCase() || "U"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+              <p className="text-sm font-medium text-foreground truncate">
                 {user.firstName && user.lastName 
                   ? `${user.firstName} ${user.lastName}`
                   : user.email
                 }
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 Research Member
               </p>
             </div>
@@ -111,20 +111,20 @@ export function Sidebar() {
             const Icon = action.icon;
             return (
               <Link key={action.name} href={action.href}>
-                <a
-                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                <div
+                  className="flex items-center px-3 py-2 text-sm font-medium text-foreground rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
                   data-testid={`user-${action.name.toLowerCase()}`}
                 >
                   <Icon className="mr-3 h-4 w-4" />
                   {action.name}
-                </a>
+                </div>
               </Link>
             );
           })}
           
           <Button
             variant="ghost"
-            className="w-full justify-start px-3 py-2 h-auto text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="w-full justify-start px-3 py-2 h-auto text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
             onClick={handleLogout}
             data-testid="button-logout"
           >
