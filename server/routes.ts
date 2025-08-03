@@ -193,11 +193,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/activity', isAuthenticated, async (req, res) => {
     try {
       // Placeholder for activity - will implement later
-      const activities = [];
+      const activities: any[] = [];
       res.json(activities);
     } catch (error) {
       console.error("Error fetching activity:", error);
       res.status(500).json({ message: "Failed to fetch activity" });
+    }
+  });
+
+  // Buckets routes
+  app.get('/api/buckets', isAuthenticated, async (req, res) => {
+    try {
+      const buckets = await storage.getBuckets();
+      res.json(buckets);
+    } catch (error) {
+      console.error("Error fetching buckets:", error);
+      res.status(500).json({ message: "Failed to fetch buckets" });
+    }
+  });
+
+  app.post('/api/buckets', isAuthenticated, async (req, res) => {
+    try {
+      const bucket = await storage.createBucket(req.body);
+      res.status(201).json(bucket);
+    } catch (error) {
+      console.error("Error creating bucket:", error);
+      res.status(500).json({ message: "Failed to create bucket" });
+    }
+  });
+
+  app.delete('/api/buckets/:id', isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteBucket(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting bucket:", error);
+      res.status(500).json({ message: "Failed to delete bucket" });
+    }
+  });
+
+  // Tasks routes
+  app.get('/api/tasks', isAuthenticated, async (req, res) => {
+    try {
+      const { studyId, assigneeId } = req.query;
+      const tasks = await storage.getTasks(studyId as string, assigneeId as string);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
+  app.post('/api/tasks', isAuthenticated, async (req, res) => {
+    try {
+      const task = await storage.createTask(req.body);
+      res.status(201).json(task);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ message: "Failed to create task" });
+    }
+  });
+
+  app.put('/api/tasks/:id', isAuthenticated, async (req, res) => {
+    try {
+      const task = await storage.updateTask(req.params.id, req.body);
+      res.json(task);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ message: "Failed to update task" });
     }
   });
 

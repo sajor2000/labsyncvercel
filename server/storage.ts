@@ -3,6 +3,7 @@ import {
   labs,
   studies,
   tasks,
+  buckets,
   standupMeetings,
   standupActionItems,
   type User,
@@ -13,6 +14,8 @@ import {
   type InsertStudy,
   type Task,
   type InsertTask,
+  type Bucket,
+  type InsertBucket,
   type StandupMeeting,
   type InsertStandupMeeting,
   type ActionItem,
@@ -51,6 +54,11 @@ export interface IStorage {
   getActionItems(assigneeId?: string, meetingId?: string): Promise<ActionItem[]>;
   createActionItem(item: InsertActionItem): Promise<ActionItem>;
   updateActionItem(id: string, item: Partial<ActionItem>): Promise<ActionItem>;
+  
+  // Bucket operations
+  getBuckets(labId?: string): Promise<Bucket[]>;
+  createBucket(bucket: InsertBucket): Promise<Bucket>;
+  deleteBucket(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -196,6 +204,27 @@ export class DatabaseStorage implements IStorage {
       .where(eq(standupActionItems.id, id))
       .returning();
     return updatedItem;
+  }
+
+  // Bucket operations
+  async getBuckets(labId?: string): Promise<Bucket[]> {
+    if (labId) {
+      return await db
+        .select()
+        .from(buckets)
+        .where(eq(buckets.labId, labId))
+        .orderBy(asc(buckets.name));
+    }
+    return await db.select().from(buckets).orderBy(asc(buckets.name));
+  }
+
+  async createBucket(bucket: InsertBucket): Promise<Bucket> {
+    const [newBucket] = await db.insert(buckets).values(bucket).returning();
+    return newBucket;
+  }
+
+  async deleteBucket(id: string): Promise<void> {
+    await db.delete(buckets).where(eq(buckets.id, id));
   }
 }
 

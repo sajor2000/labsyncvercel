@@ -10,7 +10,8 @@ import {
   LogOut,
   Building2,
   Mic,
-  FileText
+  FileText,
+  KanbanSquare
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
@@ -19,11 +20,11 @@ import { cn } from "@/lib/utils";
 
 const navigationItems = [
   { name: "Overview", href: "/", icon: BarChart3 },
-  { name: "Studies", href: "/studies", icon: FlaskConical },
   { name: "Labs", href: "/labs", icon: Building2 },
+  { name: "Buckets", href: "/buckets", icon: FolderOpen },
+  { name: "Studies", href: "/studies", icon: FlaskConical },
+  { name: "Task Board", href: "/kanban", icon: KanbanSquare },
   { name: "Standups", href: "/standups", icon: Mic },
-  { name: "Tasks", href: "/tasks", icon: CheckSquare },
-  { name: "Documents", href: "/documents", icon: FileText },
   { name: "Calendar", href: "/calendar", icon: Calendar },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
 ];

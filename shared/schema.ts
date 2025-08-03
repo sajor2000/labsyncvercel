@@ -348,6 +348,12 @@ export const insertStandupMeetingSchema = createInsertSchema(standupMeetings).om
   updatedAt: true,
 });
 
+export const insertBucketSchema = createInsertSchema(buckets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertActionItemSchema = createInsertSchema(standupActionItems).omit({
   id: true,
   createdAt: true,
@@ -359,6 +365,8 @@ export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Lab = typeof labs.$inferSelect;
 export type InsertLab = z.infer<typeof insertLabSchema>;
+export type Bucket = typeof buckets.$inferSelect;
+export type InsertBucket = z.infer<typeof insertBucketSchema>;
 export type Study = typeof studies.$inferSelect;
 export type InsertStudy = z.infer<typeof insertStudySchema>;
 export type Task = typeof tasks.$inferSelect;
