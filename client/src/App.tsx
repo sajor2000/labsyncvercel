@@ -13,6 +13,7 @@ import Labs from "@/pages/Labs";
 import Buckets from "@/pages/Buckets";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/Layout";
+import { LabProvider } from "@/components/LabProvider";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -22,13 +23,13 @@ function Router() {
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
-        <>
+        <LabProvider>
           <Route path="/" component={() => <Layout><Dashboard /></Layout>} />
           <Route path="/studies" component={() => <Layout><Studies /></Layout>} />
           <Route path="/kanban" component={() => <Layout><KanbanBoard /></Layout>} />
           <Route path="/labs" component={() => <Layout><Labs /></Layout>} />
           <Route path="/buckets" component={() => <Layout><Buckets /></Layout>} />
-        </>
+        </LabProvider>
       )}
       <Route component={NotFound} />
     </Switch>

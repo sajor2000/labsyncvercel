@@ -1,6 +1,7 @@
 import { Bell, Search, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LabSwitcher } from "@/components/LabSwitcher";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 
@@ -34,6 +35,9 @@ export function TopHeader({ onMenuClick }: TopHeaderProps) {
             data-testid="input-search"
           />
         </div>
+        
+        {/* Lab Switcher */}
+        <LabSwitcher />
       </div>
 
       {/* Right side - Notifications, Theme Toggle and User */}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useLabContext } from "@/hooks/useLabContext";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,7 @@ import type { Lab, Study, Bucket, Task } from "@shared/schema";
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { selectedLab, setAllLabs } = useLabContext();
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -35,6 +37,13 @@ export default function Dashboard() {
     enabled: isAuthenticated,
   });
 
+  // Update lab context when labs are loaded
+  useEffect(() => {
+    if (labs.length > 0) {
+      setAllLabs(labs);
+    }
+  }, [labs, setAllLabs]);
+
   const { data: studies = [] } = useQuery<Study[]>({
     queryKey: ['/api/studies'],
     enabled: isAuthenticated,
@@ -50,20 +59,27 @@ export default function Dashboard() {
     enabled: isAuthenticated,
   });
 
-  // Calculate statistics
-  const activeStudies = studies.filter(study => 
+  // Filter data by selected lab
+  const labStudies = selectedLab ? studies.filter(study => study.labId === selectedLab.id) : studies;
+  const labBuckets = selectedLab ? buckets.filter(bucket => bucket.labId === selectedLab.id) : buckets;
+  const labTasks = selectedLab ? tasks.filter(task => 
+    labStudies.some(study => study.id === task.studyId)
+  ) : tasks;
+
+  // Calculate statistics for selected lab
+  const activeStudies = labStudies.filter(study => 
     study.status !== 'PUBLISHED' && study.status !== 'CANCELLED'
   ).length;
 
-  const tasksInProgress = tasks.filter(task => 
+  const tasksInProgress = labTasks.filter(task => 
     task.status === 'IN_PROGRESS'
   ).length;
 
-  const completedTasks = tasks.filter(task => 
+  const completedTasks = labTasks.filter(task => 
     task.status === 'DONE'
   ).length;
 
-  const urgentTasks = tasks.filter(task => 
+  const urgentTasks = labTasks.filter(task => 
     task.priority === 'URGENT' && task.status !== 'DONE'
   ).length;
 
@@ -84,10 +100,13 @@ export default function Dashboard() {
       {/* Welcome Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">
-          Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!
+          Welcome back{(user as any)?.firstName ? `, ${(user as any).firstName}` : ''}!
         </h1>
         <p className="text-muted-foreground">
-          Here's an overview of your research activities
+          {selectedLab 
+            ? `Here's an overview of ${selectedLab.name} activities`
+            : "Here's an overview of your research activities"
+          }
         </p>
       </div>
 
@@ -99,7 +118,7 @@ export default function Dashboard() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{labs.length}</div>
+            <div className="text-2xl font-bold">{Array.isArray(labs) ? labs.length : 0}</div>
             <p className="text-xs text-muted-foreground">
               Research laboratories
             </p>
@@ -114,7 +133,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{activeStudies}</div>
             <p className="text-xs text-muted-foreground">
-              Out of {studies.length} total
+              Out of {labStudies.length} total
             </p>
           </CardContent>
         </Card>
@@ -125,7 +144,7 @@ export default function Dashboard() {
             <FolderOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{buckets.length}</div>
+            <div className="text-2xl font-bold">{labBuckets.length}</div>
             <p className="text-xs text-muted-foreground">
               Organized collections
             </p>
@@ -138,7 +157,7 @@ export default function Dashboard() {
             <CheckSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{completedTasks}/{tasks.length}</div>
+            <div className="text-2xl font-bold">{completedTasks}/{labTasks.length}</div>
             <p className="text-xs text-muted-foreground">
               Completed tasks
             </p>
@@ -164,7 +183,7 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {studies.length === 0 ? (
+            {labStudies.length === 0 ? (
               <div className="text-center py-8">
                 <FlaskConical className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-4">No studies yet</p>
@@ -177,7 +196,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {studies.slice(0, 5).map((study) => (
+                {labStudies.slice(0, 5).map((study) => (
                   <div key={study.id} className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex-1">
                       <h4 className="font-medium">{study.name}</h4>

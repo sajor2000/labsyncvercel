@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useLabContext } from "@/hooks/useLabContext";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -28,6 +29,7 @@ const statusColors = {
 export default function Studies() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { selectedLab: contextLab } = useLabContext();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLab, setSelectedLab] = useState("");
@@ -73,8 +75,10 @@ export default function Studies() {
     },
   });
 
-  // Filter studies
-  const filteredStudies = studies.filter(study => {
+  // Filter studies by selected lab context first, then by other filters
+  const labFilteredStudies = contextLab ? studies.filter(study => study.labId === contextLab.id) : studies;
+  
+  const filteredStudies = labFilteredStudies.filter(study => {
     const matchesSearch = study.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesLab = !selectedLab || study.labId === selectedLab;
     const matchesStatus = !selectedStatus || study.status === selectedStatus;

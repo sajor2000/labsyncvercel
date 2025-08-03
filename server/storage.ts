@@ -85,7 +85,33 @@ export class DatabaseStorage implements IStorage {
 
   // Lab operations
   async getLabs(): Promise<Lab[]> {
-    return await db.select().from(labs).orderBy(asc(labs.name));
+    const allLabs = await db.select().from(labs).orderBy(asc(labs.name));
+    
+    // If no labs exist, create sample labs
+    if (allLabs.length === 0) {
+      const sampleLabs = [
+        {
+          name: "RICCC Research Lab",
+          description: "Focused on cancer research and clinical trials",
+          piName: "Dr. Sarah Johnson",
+          color: "#3b82f6",
+        },
+        {
+          name: "Health Equity Labs", 
+          description: "Studying health disparities and social determinants",
+          piName: "Dr. Michael Chen",
+          color: "#10b981",
+        }
+      ];
+      
+      for (const labData of sampleLabs) {
+        await this.createLab(labData);
+      }
+      
+      return await db.select().from(labs).orderBy(asc(labs.name));
+    }
+    
+    return allLabs;
   }
 
   async createLab(lab: InsertLab): Promise<Lab> {
