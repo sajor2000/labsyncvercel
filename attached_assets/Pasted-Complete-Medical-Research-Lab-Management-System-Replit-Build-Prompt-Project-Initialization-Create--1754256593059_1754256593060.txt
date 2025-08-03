@@ -1,0 +1,1824 @@
+Complete Medical Research Lab Management System - Replit Build Prompt
+Project Initialization
+Create a new Replit project with the following structure:
+bashlab-management-system/
+├── package.json
+├── .env.example
+├── .env
+├── README.md
+├── client/
+│   ├── package.json
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   ├── utils/
+│   │   └── App.tsx
+│   └── tailwind.config.js
+├── server/
+│   ├── package.json
+│   ├── src/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── middleware/
+│   │   ├── models/
+│   │   └── index.ts
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   └── migrations/
+│   └── uploads/
+└── shared/
+    └── types/
+
+1. Root Package.json Configuration
+json{
+  "name": "lab-management-system",
+  "version": "1.0.0",
+  "description": "Medical Research Lab Management System for RICCC and Health Equity Labs",
+  "main": "server/src/index.ts",
+  "scripts": {
+    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "build": "npm run client:build && npm run server:build",
+    "start": "node server/dist/index.js",
+    "server:dev": "cd server && npm run dev",
+    "server:build": "cd server && npm run build",
+    "client:dev": "cd client && npm start",
+    "client:build": "cd client && npm run build",
+    "db:migrate": "cd server && npx prisma migrate dev",
+    "db:generate": "cd server && npx prisma generate",
+    "db:seed": "cd server && npx prisma db seed",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "devDependencies": {}
+}
+
+2. Environment Configuration
+Create .env.example:
+env# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/lab_management"
+
+# Authentication
+JWT_SECRET="your-super-secret-jwt-key-here"
+JWT_EXPIRES_IN="7d"
+
+# AI Services
+OPENAI_API_KEY="sk-your-openai-api-key"
+OPENROUTER_API_KEY="sk-or-your-openrouter-key"
+
+# Microsoft 365 Integration
+MICROSOFT_CLIENT_ID="your-microsoft-app-client-id"
+MICROSOFT_CLIENT_SECRET="your-microsoft-app-client-secret"
+MICROSOFT_TENANT_ID="your-tenant-id"
+
+# Email Configuration
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=587
+SMTP_USER="your-email@gmail.com"
+SMTP_PASS="your-app-password"
+
+# Application
+NODE_ENV="development"
+PORT=3001
+CLIENT_URL="http://localhost:3000"
+APP_URL="http://localhost:3001"
+
+# File Upload
+MAX_FILE_SIZE="50MB"
+UPLOAD_DIR="uploads"
+
+3. Server Package.json
+json{
+  "name": "lab-management-server",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.1",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.10.5",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "joi": "^17.12.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.7",
+    "prisma": "^5.7.1",
+    "socket.io": "^4.7.5",
+    "tsx": "^4.6.2",
+    "typescript": "^5.3.3",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "ts-node": "^10.9.2"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
+
+4. Database Schema (Prisma)
+Create server/prisma/schema.prisma:
+prisma// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      UserRole @default(RESEARCHER)
+  avatar    String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  labId     String?
+  lab       Lab?     @relation(fields: [labId], references: [id])
+  
+  // Relationships
+  createdStudies        Study[]               @relation("CreatedBy")
+  assignedStudies       StudyAssignment[]
+  standupMeetings       StandupMeeting[]      @relation("CreatedBy")
+  actionItems           StandupActionItem[]   @relation("AssignedTo")
+  statusChanges         StudyStatusHistory[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("users")
+}
+
+model Lab {
+  id          String @id @default(cuid())
+  name        String
+  description String?
+  piName      String?
+  color       String @default("#3b82f6")
+  
+  // Relationships
+  members          User[]
+  buckets          Bucket[]
+  studies          Study[]
+  standupMeetings  StandupMeeting[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("labs")
+}
+
+model Bucket {
+  id     String @id @default(cuid())
+  name   String
+  color  String @default("#3b82f6")
+  labId  String
+  lab    Lab    @relation(fields: [labId], references: [id])
+  
+  // Relationships
+  studies Study[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("buckets")
+}
+
+model Study {
+  id                    String      @id @default(cuid())
+  name                  String
+  oraNumber             String?     @map("ora_number")
+  status                StudyStatus @default(PLANNING)
+  studyType             String?     @map("study_type")
+  assignee              String?     // Comma-separated names for flexibility
+  funding               FundingType?
+  externalCollaborators String?     @map("external_collaborators")
+  notes                 String?
+  priority              Priority    @default(MEDIUM)
+  dueDate               DateTime?   @map("due_date")
+  
+  // Foreign Keys
+  bucketId  String
+  bucket    Bucket @relation(fields: [bucketId], references: [id])
+  labId     String
+  lab       Lab    @relation(fields: [labId], references: [id])
+  createdBy String
+  creator   User   @relation("CreatedBy", fields: [createdBy], references: [id])
+  
+  // Relationships
+  assignments      StudyAssignment[]
+  statusHistory    StudyStatusHistory[]
+  actionItems      StandupActionItem[]
+  studyUpdates     StudyStatusUpdate[]
+  tasks            Task[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("studies")
+}
+
+model StudyAssignment {
+  id           String @id @default(cuid())
+  studyId      String
+  study        Study  @relation(fields: [studyId], references: [id])
+  userId       String
+  user         User   @relation(fields: [userId], references: [id])
+  roleInStudy  String @default("Researcher")
+  
+  assignedAt DateTime @default(now())
+  
+  @@unique([studyId, userId])
+  @@map("study_assignments")
+}
+
+model StudyStatusHistory {
+  id        String      @id @default(cuid())
+  studyId   String
+  study     Study       @relation(fields: [studyId], references: [id])
+  oldStatus StudyStatus?
+  newStatus StudyStatus
+  notes     String?
+  changedBy String
+  changer   User        @relation(fields: [changedBy], references: [id])
+  
+  changedAt DateTime @default(now())
+  
+  @@map("study_status_history")
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  assigneeId  String?
+  studyId     String?
+  study       Study?     @relation(fields: [studyId], references: [id])
+  dueDate     DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("tasks")
+}
+
+model StandupMeeting {
+  id           String      @id @default(cuid())
+  labId        String
+  lab          Lab         @relation(fields: [labId], references: [id])
+  meetingDate  DateTime
+  startTime    DateTime
+  endTime      DateTime?
+  meetingType  MeetingType @default(DAILY_STANDUP)
+  recordingUrl String?
+  transcript   String?
+  aiSummary    Json?       // Structured AI analysis results
+  participants Json?       // Array of participant objects
+  
+  createdBy String
+  creator   User   @relation("CreatedBy", fields: [createdBy], references: [id])
+  
+  // Relationships
+  actionItems   StandupActionItem[]
+  studyUpdates  StudyStatusUpdate[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("standup_meetings")
+}
+
+model StandupActionItem {
+  id           String         @id @default(cuid())
+  meetingId    String
+  meeting      StandupMeeting @relation(fields: [meetingId], references: [id])
+  studyId      String?
+  study        Study?         @relation(fields: [studyId], references: [id])
+  assigneeId   String?
+  assignee     User?          @relation("AssignedTo", fields: [assigneeId], references: [id])
+  description  String
+  dueDate      DateTime?
+  priority     Priority       @default(MEDIUM)
+  status       ActionStatus   @default(OPEN)
+  createdFromAI Boolean       @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("standup_action_items")
+}
+
+model StudyStatusUpdate {
+  id          String         @id @default(cuid())
+  studyId     String
+  study       Study          @relation(fields: [studyId], references: [id])
+  meetingId   String
+  meeting     StandupMeeting @relation(fields: [meetingId], references: [id])
+  updateType  UpdateType
+  content     String
+  mentionedBy String?
+  
+  extractedAt DateTime @default(now())
+  
+  @@map("study_status_updates")
+}
+
+// Enums
+enum UserRole {
+  PI
+  RESEARCH_COORDINATOR
+  DATA_ANALYST
+  RESEARCHER
+  STUDENT
+  ADMIN
+}
+
+enum StudyStatus {
+  PLANNING
+  IRB_SUBMISSION
+  IRB_APPROVED
+  DATA_COLLECTION
+  ANALYSIS
+  MANUSCRIPT
+  UNDER_REVIEW
+  PUBLISHED
+  ON_HOLD
+  CANCELLED
+}
+
+enum FundingType {
+  NIH
+  NSF
+  INDUSTRY_SPONSORED
+  INTERNAL
+  FOUNDATION
+  OTHER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+  BLOCKED
+}
+
+enum MeetingType {
+  DAILY_STANDUP
+  WEEKLY_REVIEW
+  PROJECT_SYNC
+  STUDY_REVIEW
+}
+
+enum ActionStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+}
+
+enum UpdateType {
+  PROGRESS
+  BLOCKER
+  MILESTONE
+  STATUS_CHANGE
+  GENERAL
+}
+
+5. Server Implementation
+Create server/src/index.ts:
+typescriptimport express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import dotenv from 'dotenv';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import rateLimit from 'express-rate-limit';
+
+// Import routes
+import authRoutes from './routes/auth';
+import studyRoutes from './routes/studies';
+import labRoutes from './routes/labs';
+import standupRoutes from './routes/standups';
+import aiRoutes from './routes/ai';
+import userRoutes from './routes/users';
+
+// Import middleware
+import { errorHandler } from './middleware/errorHandler';
+import { authMiddleware } from './middleware/auth';
+
+dotenv.config();
+
+const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    credentials: true
+  }
+});
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+
+// Middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.CLIENT_URL || "http://localhost:3000",
+  credentials: true
+}));
+app.use(limiter);
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Socket.io for real-time features
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+  
+  socket.on('join_lab', (labId) => {
+    socket.join(`lab_${labId}`);
+  });
+  
+  socket.on('join_standup', (sessionId) => {
+    socket.join(`standup_${sessionId}`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+// Make io available to routes
+app.set('io', io);
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/studies', authMiddleware, studyRoutes);
+app.use('/api/labs', authMiddleware, labRoutes);
+app.use('/api/standups', authMiddleware, standupRoutes);
+app.use('/api/ai', authMiddleware, aiRoutes);
+app.use('/api/users', authMiddleware, userRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Error handling
+app.use(errorHandler);
+
+const PORT = process.env.PORT || 3001;
+
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📋 Lab Management System initialized`);
+});
+
+export { io };
+Create server/src/services/aiService.ts:
+typescriptimport fetch from 'node-fetch';
+
+export class WhisperService {
+  private apiKey: string;
+  
+  constructor() {
+    this.apiKey = process.env.OPENAI_API_KEY!;
+  }
+
+  async transcribeAudio(audioBuffer: Buffer, options: {
+    language?: string;
+    format?: string;
+  } = {}): Promise<{
+    transcript: string;
+    segments?: any[];
+    language?: string;
+    duration?: number;
+  }> {
+    const formData = new FormData();
+    formData.append('file', new Blob([audioBuffer]), 'audio.webm');
+    formData.append('model', 'whisper-1');
+    formData.append('language', options.language || 'en');
+    formData.append('response_format', 'verbose_json');
+
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error(`Whisper API error: ${response.statusText}`);
+    }
+
+    const result = await response.json() as any;
+    
+    return {
+      transcript: result.text,
+      segments: result.segments,
+      language: result.language,
+      duration: result.duration
+    };
+  }
+}
+
+export class OpenRouterService {
+  private apiKey: string;
+  private baseURL: string;
+
+  constructor() {
+    this.apiKey = process.env.OPENROUTER_API_KEY!;
+    this.baseURL = 'https://openrouter.ai/api/v1/chat/completions';
+  }
+
+  async generateMeetingNotes(
+    transcript: string, 
+    participants: string[], 
+    studyContext: any
+  ): Promise<{
+    meetingSummary: any;
+    actionItems: any[];
+    studyUpdates: any[];
+    followUpNeeded: any[];
+    nextMeetingTopics: string[];
+  }> {
+    const prompt = this.buildNotesPrompt(transcript, participants, studyContext);
+
+    const response = await fetch(this.baseURL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.APP_URL || 'http://localhost:3001',
+        'X-Title': 'Lab Management System'
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3-haiku',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an AI assistant specialized in analyzing medical research lab standup meetings. 
+                     Extract structured information from meeting transcripts including action items, 
+                     study updates, decisions, and key discussion points.`
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 2000,
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error: ${response.statusText}`);
+    }
+
+    const result = await response.json() as any;
+    return JSON.parse(result.choices[0].message.content);
+  }
+
+  private buildNotesPrompt(transcript: string, participants: string[], studyContext: any): string {
+    return `
+Analyze this medical research lab standup meeting transcript and extract structured information.
+
+MEETING CONTEXT:
+- Participants: ${participants.join(', ')}
+- Active Studies: ${studyContext.studies?.map((s: any) => s.name).join(', ') || 'None specified'}
+- Lab: ${studyContext.labName || 'Research Lab'}
+
+TRANSCRIPT:
+${transcript}
+
+Please extract and return a JSON object with the following structure:
+{
+  "meetingSummary": {
+    "keyPoints": ["list of main discussion points"],
+    "decisions": ["list of decisions made"],
+    "concerns": ["list of concerns or blockers mentioned"],
+    "achievements": ["list of accomplishments or milestones reached"]
+  },
+  "actionItems": [
+    {
+      "description": "specific action item description",
+      "assignee": "person responsible (if mentioned)",
+      "priority": "high|medium|low",
+      "dueDate": "suggested due date if mentioned (YYYY-MM-DD format)",
+      "relatedStudy": "study name if applicable"
+    }
+  ],
+  "studyUpdates": [
+    {
+      "studyName": "name of study discussed",
+      "updateType": "progress|blocker|milestone|status_change",
+      "content": "what was said about this study",
+      "mentionedBy": "person who provided the update",
+      "suggestedStatusChange": "new status if applicable"
+    }
+  ],
+  "followUpNeeded": [
+    {
+      "topic": "topic requiring follow-up",
+      "participants": ["people who should be involved"],
+      "urgency": "high|medium|low"
+    }
+  ],
+  "nextMeetingTopics": ["suggested topics for next meeting"]
+}
+
+Focus on:
+1. Medical research terminology and context
+2. Study phases (IRB, data collection, analysis, manuscript, publication)
+3. Research team roles and responsibilities
+4. Funding and collaboration mentions
+5. Timeline and deadline discussions
+`;
+  }
+}
+
+export class AIAgentService {
+  private whisperService: WhisperService;
+  private openRouterService: OpenRouterService;
+
+  constructor() {
+    this.whisperService = new WhisperService();
+    this.openRouterService = new OpenRouterService();
+  }
+
+  async processStandupRecording(
+    audioBuffer: Buffer,
+    meetingContext: {
+      meetingId: string;
+      participants: string[];
+      studyContext: any;
+    }
+  ) {
+    try {
+      // Step 1: Transcribe audio
+      const transcription = await this.whisperService.transcribeAudio(audioBuffer);
+
+      // Step 2: Generate AI notes
+      const aiNotes = await this.openRouterService.generateMeetingNotes(
+        transcription.transcript,
+        meetingContext.participants,
+        meetingContext.studyContext
+      );
+
+      return {
+        success: true,
+        transcription,
+        aiNotes,
+        processedAt: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('AI processing error:', error);
+      throw error;
+    }
+  }
+}
+Create server/src/routes/standups.ts:
+typescriptimport express from 'express';
+import multer from 'multer';
+import { PrismaClient } from '@prisma/client';
+import { AIAgentService } from '../services/aiService';
+import { Server } from 'socket.io';
+
+const router = express.Router();
+const prisma = new PrismaClient();
+const aiAgent = new AIAgentService();
+
+// Configure multer for audio uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('audio/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only audio files are allowed'));
+    }
+  }
+});
+
+// Create new standup meeting
+router.post('/', async (req, res) => {
+  try {
+    const { labId, meetingType, participants } = req.body;
+    const userId = (req as any).user.id;
+
+    const meeting = await prisma.standupMeeting.create({
+      data: {
+        labId,
+        meetingDate: new Date(),
+        startTime: new Date(),
+        meetingType: meetingType || 'DAILY_STANDUP',
+        participants: JSON.stringify(participants || []),
+        createdBy: userId
+      },
+      include: {
+        lab: true,
+        creator: {
+          select: { id: true, name: true, email: true }
+        }
+      }
+    });
+
+    res.json(meeting);
+  } catch (error) {
+    console.error('Error creating standup meeting:', error);
+    res.status(500).json({ error: 'Failed to create meeting' });
+  }
+});
+
+// Process standup recording
+router.post('/:id/process-recording', upload.single('audio'), async (req, res) => {
+  try {
+    const meetingId = req.params.id;
+    const audioFile = req.file;
+    
+    if (!audioFile) {
+      return res.status(400).json({ error: 'No audio file provided' });
+    }
+
+    // Get meeting context
+    const meeting = await prisma.standupMeeting.findUnique({
+      where: { id: meetingId },
+      include: {
+        lab: {
+          include: {
+            studies: {
+              select: { id: true, name: true, status: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!meeting) {
+      return res.status(404).json({ error: 'Meeting not found' });
+    }
+
+    const io = req.app.get('io') as Server;
+    
+    // Emit processing start event
+    io.to(`standup_${meetingId}`).emit('processing_started', {
+      meetingId,
+      status: 'processing'
+    });
+
+    // Process with AI
+    const result = await aiAgent.processStandupRecording(audioFile.buffer, {
+      meetingId,
+      participants: JSON.parse(meeting.participants as string || '[]'),
+      studyContext: {
+        labName: meeting.lab.name,
+        studies: meeting.lab.studies
+      }
+    });
+
+    // Update meeting with results
+    const updatedMeeting = await prisma.standupMeeting.update({
+      where: { id: meetingId },
+      data: {
+        transcript: result.transcription.transcript,
+        aiSummary: result.aiNotes,
+        endTime: new Date()
+      }
+    });
+
+    // Create action items
+    if (result.aiNotes.actionItems) {
+      for (const item of result.aiNotes.actionItems) {
+        await prisma.standupActionItem.create({
+          data: {
+            meetingId,
+            description: item.description,
+            priority: item.priority?.toUpperCase() || 'MEDIUM',
+            dueDate: item.dueDate ? new Date(item.dueDate) : null,
+            createdFromAI: true
+          }
+        });
+      }
+    }
+
+    // Create study updates
+    if (result.aiNotes.studyUpdates) {
+      for (const update of result.aiNotes.studyUpdates) {
+        const study = meeting.lab.studies.find(s => 
+          s.name.toLowerCase().includes(update.studyName.toLowerCase())
+        );
+        
+        if (study) {
+          await prisma.studyStatusUpdate.create({
+            data: {
+              studyId: study.id,
+              meetingId,
+              updateType: update.updateType?.toUpperCase() || 'GENERAL',
+              content: update.content,
+              mentionedBy: update.mentionedBy
+            }
+          });
+        }
+      }
+    }
+
+    // Emit completion event
+    io.to(`standup_${meetingId}`).emit('processing_completed', {
+      meetingId,
+      result: {
+        actionItemsCreated: result.aiNotes.actionItems?.length || 0,
+        studyUpdatesProcessed: result.aiNotes.studyUpdates?.length || 0,
+        transcript: result.transcription.transcript,
+        summary: result.aiNotes.meetingSummary
+      }
+    });
+
+    res.json({
+      success: true,
+      meeting: updatedMeeting,
+      result
+    });
+
+  } catch (error) {
+    console.error('Error processing recording:', error);
+    
+    const io = req.app.get('io') as Server;
+    io.to(`standup_${req.params.id}`).emit('processing_error', {
+      meetingId: req.params.id,
+      error: error instanceof Error ? error.message : 'Processing failed'
+    });
+    
+    res.status(500).json({ 
+      error: 'Failed to process recording',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get standup meetings for a lab
+router.get('/lab/:labId', async (req, res) => {
+  try {
+    const { labId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    const meetings = await prisma.standupMeeting.findMany({
+      where: { labId },
+      include: {
+        creator: {
+          select: { id: true, name: true, email: true }
+        },
+        actionItems: {
+          select: { id: true, description: true, status: true }
+        },
+        studyUpdates: {
+          select: { id: true, updateType: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (Number(page) - 1) * Number(limit),
+      take: Number(limit)
+    });
+
+    const total = await prisma.standupMeeting.count({
+      where: { labId }
+    });
+
+    res.json({
+      meetings,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching standup meetings:', error);
+    res.status(500).json({ error: 'Failed to fetch meetings' });
+  }
+});
+
+// Get meeting details
+router.get('/:id', async (req, res) => {
+  try {
+    const meeting = await prisma.standupMeeting.findUnique({
+      where: { id: req.params.id },
+      include: {
+        lab: true,
+        creator: {
+          select: { id: true, name: true, email: true }
+        },
+        actionItems: {
+          include: {
+            assignee: {
+              select: { id: true, name: true, email: true }
+            },
+            study: {
+              select: { id: true, name: true }
+            }
+          }
+        },
+        studyUpdates: {
+          include: {
+            study: {
+              select: { id: true, name: true, status: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!meeting) {
+      return res.status(404).json({ error: 'Meeting not found' });
+    }
+
+    res.json(meeting);
+  } catch (error) {
+    console.error('Error fetching meeting:', error);
+    res.status(500).json({ error: 'Failed to fetch meeting' });
+  }
+});
+
+export default router;
+
+6. Client Package.json
+json{
+  "name": "lab-management-client",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@headlessui/react": "^1.7.17",
+    "@heroicons/react": "^2.0.18",
+    "@tanstack/react-query": "^5.17.9",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "axios": "^1.6.2",
+    "chart.js": "^4.4.1",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "date-fns": "^3.0.6",
+    "framer-motion": "^10.16.16",
+    "react": "^18.2.0",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.48.2",
+    "react-hot-toast": "^2.4.1",
+    "react-router-dom": "^6.20.1",
+    "socket.io-client": "^4.7.5",
+    "typescript": "^5.3.3",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "vite": "^5.0.8"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "start": "vite"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
+
+7. Client Implementation
+Create client/src/App.tsx:
+tsximport React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
+
+// Import pages
+import Dashboard from './pages/Dashboard';
+import StudyManagement from './pages/StudyManagement';
+import StandupRecorder from './pages/StandupRecorder';
+import StandupHistory from './pages/StandupHistory';
+import TeamManagement from './pages/TeamManagement';
+import ProjectPlanning from './pages/ProjectPlanning';
+import Login from './pages/Login';
+
+// Import components
+import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Import stores
+import { useAuthStore } from './stores/authStore';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function App() {
+  const { isAuthenticated, isLoading } = useAuthStore();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <div className="App">
+          <Toaster position="top-right" />
+          
+          <Routes>
+            <Route 
+              path="/login" 
+              element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} 
+            />
+            
+            <Route path="/" element={<ProtectedRoute />}>
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Navigate to="/dashboard" />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="studies" element={<StudyManagement />} />
+                <Route path="standup" element={<StandupRecorder />} />
+                <Route path="standup/history" element={<StandupHistory />} />
+                <Route path="team" element={<TeamManagement />} />
+                <Route path="planning" element={<ProjectPlanning />} />
+              </Route>
+            </Route>
+          </Routes>
+        </div>
+      </Router>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
+Create client/src/pages/StandupRecorder.tsx:
+tsximport React, { useState, useRef, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  MicrophoneIcon, 
+  StopIcon, 
+  PauseIcon, 
+  PlayIcon,
+  DocumentTextIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon
+} from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
+
+// Import services and hooks
+import { useSocket } from '../hooks/useSocket';
+import { useStandupMutation } from '../hooks/useStandup';
+import { useLabStore } from '../stores/labStore';
+
+// Import components
+import TranscriptionPanel from '../components/standup/TranscriptionPanel';
+import AIInsightsPanel from '../components/standup/AIInsightsPanel';
+import ParticipantTracker from '../components/standup/ParticipantTracker';
+
+interface RecordingState {
+  isRecording: boolean;
+  isPaused: boolean;
+  duration: number;
+  audioChunks: Blob[];
+}
+
+interface TranscriptSegment {
+  id: string;
+  timestamp: number;
+  speaker: string;
+  text: string;
+  confidence: number;
+}
+
+interface AIInsights {
+  meetingSummary?: {
+    keyPoints: string[];
+    decisions: string[];
+    concerns: string[];
+    achievements: string[];
+  };
+  actionItems: Array<{
+    id: string;
+    description: string;
+    assignee?: string;
+    priority: 'low' | 'medium' | 'high';
+    dueDate?: string;
+    relatedStudy?: string;
+  }>;
+  studyUpdates: Array<{
+    id: string;
+    studyName: string;
+    updateType: string;
+    content: string;
+    mentionedBy?: string;
+  }>;
+}
+
+export default function StandupRecorder() {
+  const navigate = useNavigate();
+  const { selectedLab, studies } = useLabStore();
+  const socket = useSocket();
+  
+  // Recording state
+  const [recording, setRecording] = useState<RecordingState>({
+    isRecording: false,
+    isPaused: false,
+    duration: 0,
+    audioChunks: []
+  });
+  
+  // Meeting data
+  const [meetingId, setMeetingId] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<string[]>([]);
+  const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([]);
+  const [aiInsights, setAiInsights] = useState<AIInsights>({
+    actionItems: [],
+    studyUpdates: []
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Mutations
+  const createMeetingMutation = useStandupMutation.useCreateMeeting();
+  const processRecordingMutation = useStandupMutation.useProcessRecording();
+
+  // Initialize audio context and get permissions
+  useEffect(() => {
+    const initializeAudio = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 44100
+          } 
+        });
+        streamRef.current = stream;
+        
+        // Initialize audio context for visualization
+        audioContextRef.current = new AudioContext();
+        
+        toast.success('Microphone access granted');
+      } catch (error) {
+        console.error('Failed to get microphone access:', error);
+        toast.error('Microphone access required for recording');
+      }
+    };
+
+    initializeAudio();
+
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  // Socket event listeners
+  useEffect(() => {
+    if (!socket || !meetingId) return;
+
+    socket.emit('join_standup', meetingId);
+
+    socket.on('processing_started', (data) => {
+      setIsProcessing(true);
+      toast.loading('Processing recording with AI...', { id: 'processing' });
+    });
+
+    socket.on('processing_completed', (data) => {
+      setIsProcessing(false);
+      toast.success('Recording processed successfully!', { id: 'processing' });
+      setAiInsights(data.result);
+    });
+
+    socket.on('processing_error', (data) => {
+      setIsProcessing(false);
+      toast.error(`Processing failed: ${data.error}`, { id: 'processing' });
+    });
+
+    return () => {
+      socket.off('processing_started');
+      socket.off('processing_completed');
+      socket.off('processing_error');
+    };
+  }, [socket, meetingId]);
+
+  const startRecording = async () => {
+    try {
+      if (!streamRef.current) {
+        throw new Error('No audio stream available');
+      }
+
+      // Create new meeting
+      const meeting = await createMeetingMutation.mutateAsync({
+        labId: selectedLab?.id || '',
+        meetingType: 'DAILY_STANDUP',
+        participants: participants
+      });
+      
+      setMeetingId(meeting.id);
+
+      // Setup MediaRecorder
+      const mediaRecorder = new MediaRecorder(streamRef.current, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      mediaRecorderRef.current = mediaRecorder;
+      
+      const chunks: Blob[] = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        setRecording(prev => ({ ...prev, audioChunks: chunks }));
+      };
+
+      // Start recording
+      mediaRecorder.start(1000); // Collect data every second
+      
+      setRecording(prev => ({ 
+        ...prev, 
+        isRecording: true, 
+        isPaused: false,
+        audioChunks: []
+      }));
+
+      // Start duration timer
+      intervalRef.current = setInterval(() => {
+        setRecording(prev => ({ 
+          ...prev, 
+          duration: prev.duration + 1 
+        }));
+      }, 1000);
+
+      toast.success('Recording started');
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      toast.error('Failed to start recording');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && recording.isRecording) {
+      mediaRecorderRef.current.stop();
+      
+      setRecording(prev => ({ 
+        ...prev, 
+        isRecording: false, 
+        isPaused: false 
+      }));
+
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+
+      toast.success('Recording stopped');
+    }
+  };
+
+  const pauseRecording = () => {
+    if (mediaRecorderRef.current && recording.isRecording) {
+      if (recording.isPaused) {
+        mediaRecorderRef.current.resume();
+        setRecording(prev => ({ ...prev, isPaused: false }));
+        toast.success('Recording resumed');
+      } else {
+        mediaRecorderRef.current.pause();
+        setRecording(prev => ({ ...prev, isPaused: true }));
+        toast.success('Recording paused');
+      }
+    }
+  };
+
+  const processRecording = async () => {
+    if (!meetingId || recording.audioChunks.length === 0) {
+      toast.error('No recording to process');
+      return;
+    }
+
+    try {
+      const audioBlob = new Blob(recording.audioChunks, { type: 'audio/webm' });
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'standup_recording.webm');
+
+      await processRecordingMutation.mutateAsync({
+        meetingId,
+        audioData: formData
+      });
+
+    } catch (error) {
+      console.error('Failed to process recording:', error);
+      toast.error('Failed to process recording');
+    }
+  };
+
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const endMeeting = () => {
+    if (recording.isRecording) {
+      stopRecording();
+    }
+    
+    // Navigate to meeting summary or history
+    navigate('/standup/history');
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* Header */}
+      <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-2xl font-bold">Standup Recording</h1>
+            <div className="text-sm text-gray-400">
+              {selectedLab?.name} • {new Date().toLocaleDateString()}
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            {recording.isRecording && (
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-red-400 font-mono">
+                  {formatDuration(recording.duration)}
+                </span>
+              </div>
+            )}
+            
+            <div className="flex space-x-2">
+              {!recording.isRecording ? (
+                <button
+                  onClick={startRecording}
+                  disabled={!streamRef.current}
+                  className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50"
+                >
+                  <MicrophoneIcon className="w-5 h-5" />
+                  <span>Start Recording</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={pauseRecording}
+                    className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg flex items-center space-x-2"
+                  >
+                    {recording.isPaused ? (
+                      <>
+                        <PlayIcon className="w-5 h-5" />
+                        <span>Resume</span>
+                      </>
+                    ) : (
+                      <>
+                        <PauseIcon className="w-5 h-5" />
+                        <span>Pause</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  <button
+                    onClick={stopRecording}
+                    className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg flex items-center space-x-2"
+                  >
+                    <StopIcon className="w-5 h-5" />
+                    <span>Stop</span>
+                  </button>
+                </>
+              )}
+              
+              {recording.audioChunks.length > 0 && (
+                <button
+                  onClick={processRecording}
+                  disabled={isProcessing}
+                  className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50"
+                >
+                  <DocumentTextIcon className="w-5 h-5" />
+                  <span>Process with AI</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex h-[calc(100vh-80px)]">
+        {/* Left Panel - Transcription */}
+        <div className="w-3/5 border-r border-gray-700">
+          <TranscriptionPanel
+            segments={transcriptSegments}
+            isRecording={recording.isRecording}
+            isProcessing={isProcessing}
+          />
+        </div>
+
+        {/* Right Panel - AI Insights */}
+        <div className="w-2/5">
+          <AIInsightsPanel
+            insights={aiInsights}
+            isProcessing={isProcessing}
+            studies={studies}
+          />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="bg-gray-800 border-t border-gray-700 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <ParticipantTracker
+            participants={participants}
+            onParticipantsChange={setParticipants}
+          />
+          
+          <div className="flex space-x-4">
+            <button
+              onClick={() => navigate('/standup/history')}
+              className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg"
+            >
+              View History
+            </button>
+            
+            <button
+              onClick={endMeeting}
+              className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-medium"
+            >
+              End Meeting
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+8. Database Seed Data
+Create server/prisma/seed.ts:
+typescriptimport { PrismaClient, UserRole, StudyStatus, FundingType, Priority } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🌱 Seeding database...');
+
+  // Create labs
+  const riccLab = await prisma.lab.create({
+    data: {
+      name: 'Rush Interdisciplinary Consortium for Critical Care Trials and Data Science (RICCC)',
+      description: 'Critical care clinical trials and data science research',
+      piName: 'Dr. Principal Investigator',
+      color: '#1e40af'
+    }
+  });
+
+  const equityLab = await prisma.lab.create({
+    data: {
+      name: 'Rush Health Equity Data Analytics Studio',
+      description: 'Health equity research and data analytics',
+      piName: 'Dr. Principal Investigator',
+      color: '#ea580c'
+    }
+  });
+
+  // Create users
+  const hashedPassword = await bcrypt.hash('password123', 10);
+  
+  const piUser = await prisma.user.create({
+    data: {
+      email: 'pi@rush.edu',
+      name: 'Dr. Principal Investigator',
+      password: hashedPassword,
+      role: UserRole.PI,
+      labId: riccLab.id
+    }
+  });
+
+  const coordinator = await prisma.user.create({
+    data: {
+      email: 'coordinator@rush.edu',
+      name: 'Research Coordinator',
+      password: hashedPassword,
+      role: UserRole.RESEARCH_COORDINATOR,
+      labId: riccLab.id
+    }
+  });
+
+  const analyst = await prisma.user.create({
+    data: {
+      email: 'analyst@rush.edu',
+      name: 'Data Analyst',
+      password: hashedPassword,
+      role: UserRole.DATA_ANALYST,
+      labId: equityLab.id
+    }
+  });
+
+  // Create buckets
+  const abbottBucket = await prisma.bucket.create({
+    data: {
+      name: 'Abbott',
+      color: '#0891b2',
+      labId: riccLab.id
+    }
+  });
+
+  const wisconsinBucket = await prisma.bucket.create({
+    data: {
+      name: 'Wisconsin R01',
+      color: '#dc2626',
+      labId: equityLab.id
+    }
+  });
+
+  // Create studies
+  await prisma.study.create({
+    data: {
+      name: 'Abbott prostate cancer study',
+      status: StudyStatus.ANALYSIS,
+      studyType: 'retrospective EHR data analysis',
+      assignee: 'JC, Mia, Nag, Cherise, Abbott team',
+      funding: FundingType.INDUSTRY_SPONSORED,
+      externalCollaborators: 'Abbott Laboratories',
+      priority: Priority.HIGH,
+      bucketId: abbottBucket.id,
+      labId: riccLab.id,
+      createdBy: piUser.id
+    }
+  });
+
+  await prisma.study.create({
+    data: {
+      name: 'Abbott GSD/TSH studies',
+      status: StudyStatus.ANALYSIS,
+      studyType: 'retrospective EHR data analysis',
+      assignee: 'Research Team',
+      funding: FundingType.INDUSTRY_SPONSORED,
+      externalCollaborators: 'Abbott Laboratories',
+      priority: Priority.MEDIUM,
+      bucketId: abbottBucket.id,
+      labId: riccLab.id,
+      createdBy: piUser.id
+    }
+  });
+
+  await prisma.study.create({
+    data: {
+      name: 'SMART AI Trial',
+      status: StudyStatus.ANALYSIS,
+      studyType: 'quasi-RCT (pre-post design) non-inferiority trial',
+      assignee: 'JC, Vaishvik, Mia',
+      funding: FundingType.NIH,
+      externalCollaborators: 'University of Wisconsin-Madison',
+      priority: Priority.HIGH,
+      bucketId: wisconsinBucket.id,
+      labId: equityLab.id,
+      createdBy: piUser.id
+    }
+  });
+
+  await prisma.study.create({
+    data: {
+      name: 'SMART AI Qualitative Study',
+      status: StudyStatus.MANUSCRIPT,
+      studyType: 'qualitative interview study',
+      assignee: 'Qualitative Research Team',
+      funding: FundingType.NIH,
+      externalCollaborators: 'University of Wisconsin-Madison',
+      priority: Priority.MEDIUM,
+      bucketId: wisconsinBucket.id,
+      labId: equityLab.id,
+      createdBy: piUser.id
+    }
+  });
+
+  console.log('✅ Database seeded successfully!');
+  console.log('👤 Default login: pi@rush.edu / password123');
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Seeding failed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+
+9. Replit Configuration
+Create .replit:
+[run]
+main = "run.sh"
+
+[env]
+NODE_ENV = "development"
+
+[packager]
+language = "nodejs"
+
+[packager.features]
+packageSearch = true
+guessImports = true
+
+[languages.javascript]
+pattern = "**/{*.js,*.jsx,*.ts,*.tsx}"
+syntax = "javascript"
+
+[languages.javascript.languageServer]
+start = "typescript-language-server --stdio"
+
+[deployment]
+build = "npm run build"
+run = "npm start"
+
+[nix]
+channel = "stable-23.05"
+Create run.sh:
+bash#!/bin/bash
+
+# Install dependencies
+echo "📦 Installing dependencies..."
+npm run install:all
+
+# Setup database
+echo "🗄️ Setting up database..."
+cd server
+npx prisma generate
+npx prisma migrate dev --name init
+npx prisma db seed
+cd ..
+
+# Start development servers
+echo "🚀 Starting development servers..."
+npm run dev
+Create client/vite.config.ts:
+typescriptimport { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 3000,
+    host: '0.0.0.0',
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/socket.io': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        ws: true,
+      }
+    }
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true
+  }
+})
+
+10. Getting Started Instructions
+Add to README.md:
+markdown# Medical Research Lab Management System
+
+A comprehensive lab management system for RICCC and Health Equity Data Analytics Studio with AI-powered standup recording and notes generation.
+
+## Features
+
+- 📊 **Study Management**: Kanban-style study tracking with custom buckets
+- 🎙️ **AI Standup Recording**: Automated transcription with Whisper + OpenRouter notes
+- 👥 **Team Management**: Role-based access and workload tracking  
+- 📋 **Project Planning**: Sprint planning and milestone tracking
+- 🔗 **Microsoft 365 Integration**: OneDrive and Teams connectivity
+
+## Quick Start
+
+1. **Set Environment Variables**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys and database URL
+
+Run Setup:
+bashchmod +x run.sh
+./run.sh
+
+Access Application:
+
+Frontend: http://localhost:3000
+API: http://localhost:3001
+Default login: pi@rush.edu / password123
+
+
+
+API Keys Required
+
+OPENAI_API_KEY: For Whisper transcription
+OPENROUTER_API_KEY: For AI notes generation
+DATABASE_URL: PostgreSQL connection string
+MICROSOFT_CLIENT_ID: For Office 365 integration
+
+Development
+bash# Install dependencies
+npm run install:all
+
+# Run database migrations  
+npm run db:migrate
+
+# Start development servers
+npm run dev
+
+# Build for production
+npm run build
+Architecture
+
+Frontend: React + TypeScript + Tailwind CSS
+Backend: Node.js + Express + Prisma ORM
+Database: PostgreSQL
+Real-time: Socket.io
+AI: OpenAI Whisper + OpenRouter
+
+
+---
+
+This complete prompt provides everything needed to build the medical research lab management system in Replit, including the AI-powered standup recording feature with OpenAI Whisper and OpenRouter integration. The system mirrors your Airtable workflow while adding advanced features for research lab management.
