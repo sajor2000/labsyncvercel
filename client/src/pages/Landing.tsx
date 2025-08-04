@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { LabToggleHeader } from "@/components/LabToggleHeader";
 
 export default function Landing() {
   return (

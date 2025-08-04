@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { LabToggleDemo } from "@/components/LabToggleDemo";
+import { LabToggleHeader } from "@/components/LabToggleHeader";
 import { CreateSampleDataButton } from "@/components/CreateSampleDataButton";
 import { useToast } from "@/hooks/use-toast";
 import { useLabContext } from "@/hooks/useLabContext";
@@ -99,6 +100,13 @@ export default function Dashboard() {
 
   return (
     <main className="flex-1 overflow-y-auto p-6">
+      {/* Lab Toggle Header */}
+      {labs.length > 1 && (
+        <div className="mb-8">
+          <LabToggleHeader />
+        </div>
+      )}
+
       {/* Welcome Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -114,13 +122,6 @@ export default function Dashboard() {
           }
         </p>
       </div>
-
-      {/* Lab Toggle Demo */}
-      {labs.length > 1 && (
-        <div className="mb-8">
-          <LabToggleDemo />
-        </div>
-      )}
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
