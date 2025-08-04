@@ -190,7 +190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/create-sample-data", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      await createSampleData(storage, userId);
+      await createSampleData(storage);
       res.json({ message: "Sample data created successfully" });
     } catch (error) {
       console.error("Error creating sample data:", error);

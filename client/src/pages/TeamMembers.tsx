@@ -50,13 +50,15 @@ const roleOptions = [
 
 export default function TeamMembers() {
   const { isAuthenticated, isLoading } = useAuth();
-  const { currentLab } = useLabContext();
+  const { selectedLab } = useLabContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
 
   // Fetch team members
   const { data: allMembers = [], isLoading: membersLoading } = useQuery<TeamMember[]>({
@@ -79,7 +81,7 @@ export default function TeamMembers() {
   });
 
   // Filter members by current lab context
-  const labMembers = currentLab ? allMembers.filter(member => member.labId === currentLab.id) : allMembers;
+  const labMembers = selectedLab ? allMembers.filter(member => member.labId === selectedLab.id) : allMembers;
 
   // Filter members based on search and filters
   const filteredMembers = labMembers.filter(member => {
@@ -101,9 +103,23 @@ export default function TeamMembers() {
       name: "",
       initials: "",
       email: "",
-      role: "",
+      role: "PI" as const,
       avatarUrl: "",
-      labId: currentLab?.id || "",
+      labId: selectedLab?.id || "",
+      isActive: true,
+    },
+  });
+
+  // Edit member form
+  const editMemberForm = useForm<CreateTeamMemberFormData>({
+    resolver: zodResolver(createTeamMemberFormSchema),
+    defaultValues: {
+      name: "",
+      initials: "",
+      email: "",
+      role: "PI" as const,
+      avatarUrl: "",
+      labId: selectedLab?.id || "",
       isActive: true,
     },
   });
@@ -113,7 +129,7 @@ export default function TeamMembers() {
     mutationFn: async (data: CreateTeamMemberFormData) => {
       const memberData = {
         ...data,
-        labId: currentLab?.id || "",
+        labId: selectedLab?.id || "",
       };
       return apiRequest('/api/team-members', 'POST', memberData);
     },
@@ -178,8 +194,95 @@ export default function TeamMembers() {
     },
   });
 
+  // Update member mutation
+  const updateMemberMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<CreateTeamMemberFormData> }) => {
+      return apiRequest(`/api/team-members/${id}`, 'PUT', data);
+    },
+    onSuccess: () => {
+      toast({ title: "Team member updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
+      setIsEditDialogOpen(false);
+      setEditingMember(null);
+      editMemberForm.reset();
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      console.error("Error updating team member:", error);
+      toast({ 
+        title: "Error updating member", 
+        description: "Please try again.", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Delete member mutation
+  const deleteMemberMutation = useMutation({
+    mutationFn: async (memberId: string) => {
+      return apiRequest(`/api/team-members/${memberId}`, 'DELETE');
+    },
+    onSuccess: () => {
+      toast({ title: "Team member deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      console.error("Error deleting team member:", error);
+      toast({ 
+        title: "Error deleting member", 
+        description: "Please try again.", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const onSubmit = (data: CreateTeamMemberFormData) => {
     createMemberMutation.mutate(data);
+  };
+
+  const onEditSubmit = (data: CreateTeamMemberFormData) => {
+    if (editingMember) {
+      updateMemberMutation.mutate({ id: editingMember.id, data });
+    }
+  };
+
+  const handleEdit = (member: TeamMember) => {
+    setEditingMember(member);
+    editMemberForm.reset({
+      name: member.name,
+      initials: member.initials || "",
+      email: member.email || "",
+      role: member.role,
+      avatarUrl: member.avatarUrl || "",
+      labId: member.labId,
+      isActive: member.isActive,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDelete = (memberId: string) => {
+    deleteMemberMutation.mutate(memberId);
   };
 
   if (isLoading || membersLoading) {
@@ -194,7 +297,7 @@ export default function TeamMembers() {
     return null;
   }
 
-  if (!currentLab) {
+  if (!selectedLab) {
     return (
       <main className="flex-1 overflow-y-auto p-6">
         <div className="text-center py-12">
@@ -216,7 +319,7 @@ export default function TeamMembers() {
             Team Members
           </h1>
           <p className="text-muted-foreground">
-            Manage lab personnel and their assignments in {currentLab.name}
+            Manage lab personnel and their assignments in {selectedLab.name}
           </p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -230,7 +333,7 @@ export default function TeamMembers() {
             <DialogHeader>
               <DialogTitle>Add New Team Member</DialogTitle>
               <DialogDescription>
-                Add a new team member to {currentLab.name} lab.
+                Add a new team member to {selectedLab.name} lab.
               </DialogDescription>
             </DialogHeader>
             <Form {...createMemberForm}>
@@ -256,7 +359,7 @@ export default function TeamMembers() {
                       <FormItem>
                         <FormLabel>Initials</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="e.g., JS" maxLength={10} data-testid="input-member-initials" />
+                          <Input {...field} value={field.value || ""} placeholder="e.g., JS" maxLength={10} data-testid="input-member-initials" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -316,6 +419,105 @@ export default function TeamMembers() {
                 <DialogFooter>
                   <Button type="submit" disabled={createMemberMutation.isPending} data-testid="button-submit-member">
                     {createMemberMutation.isPending ? "Creating..." : "Create Member"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Member Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Team Member</DialogTitle>
+              <DialogDescription>
+                Update team member information for {selectedLab.name} lab.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...editMemberForm}>
+              <form onSubmit={editMemberForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={editMemberForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-edit-member-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editMemberForm.control}
+                    name="initials"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Initials</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} placeholder="e.g., JS" maxLength={10} data-testid="input-edit-member-initials" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={editMemberForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} type="email" data-testid="input-edit-member-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editMemberForm.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-edit-member-role">
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {roleOptions.map((role) => (
+                            <SelectItem key={role.value} value={role.value}>
+                              {role.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editMemberForm.control}
+                  name="avatarUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Avatar URL (optional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} placeholder="https://example.com/avatar.png" data-testid="input-edit-member-avatar" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button type="submit" disabled={updateMemberMutation.isPending} data-testid="button-submit-edit-member">
+                    {updateMemberMutation.isPending ? "Updating..." : "Update Member"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -401,7 +603,7 @@ export default function TeamMembers() {
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between pt-2">
+                <div className="flex gap-2 pt-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -424,9 +626,25 @@ export default function TeamMembers() {
                       </>
                     )}
                   </Button>
-                  <Button variant="outline" size="sm" data-testid={`button-edit-${member.id}`}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleEdit(member)}
+                    data-testid={`button-edit-${member.id}`}
+                  >
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleDelete(member.id)}
+                    disabled={deleteMemberMutation.isPending}
+                    data-testid={`button-delete-${member.id}`}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
                   </Button>
                 </div>
               </CardContent>
