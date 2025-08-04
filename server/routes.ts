@@ -119,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/upload/avatar", isAuthenticated, async (req, res) => {
     try {
       console.log("Avatar upload URL requested by user:", (req.user as any)?.claims?.sub);
-      const { ObjectStorageService } = require("./objectStorage");
+      const { ObjectStorageService } = await import("./objectStorage");
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getAvatarUploadURL();
       console.log("Generated upload URL:", uploadURL);
@@ -135,7 +135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { avatarUrl } = req.body;
       
-      const { ObjectStorageService } = require("./objectStorage");
+      const { ObjectStorageService } = await import("./objectStorage");
       const objectStorageService = new ObjectStorageService();
       const normalizedPath = objectStorageService.normalizeObjectEntityPath(avatarUrl);
       
@@ -149,7 +149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
     try {
-      const { ObjectStorageService } = require("./objectStorage");
+      const { ObjectStorageService } = await import("./objectStorage");
       const objectStorageService = new ObjectStorageService();
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       objectStorageService.downloadObject(objectFile, res);
