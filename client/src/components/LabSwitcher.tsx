@@ -18,7 +18,10 @@ export function LabSwitcher() {
       <div className="flex items-center w-[200px] px-3 py-2 rounded-md border bg-muted/50">
         <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
         <span className="truncate text-sm text-muted-foreground">
-          {selectedLab?.name || "No lab"}
+          {selectedLab?.name 
+            ? selectedLab.name.match(/\(([^)]+)\)$/)?.[1] || selectedLab.name
+            : "No lab"
+          }
         </span>
       </div>
     );
@@ -38,7 +41,10 @@ export function LabSwitcher() {
         />
         <Building2 className="mr-2 h-4 w-4" />
         <span className="truncate">
-          {selectedLab?.name || "Select lab..."}
+          {selectedLab?.name 
+            ? selectedLab.name.match(/\(([^)]+)\)$/)?.[1] || selectedLab.name
+            : "Select lab..."
+          }
         </span>
       </div>
       <ArrowLeftRight className="ml-2 h-4 w-4 shrink-0 opacity-70" />
