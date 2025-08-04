@@ -413,7 +413,7 @@ export default function TeamMembers() {
                       <FormControl>
                         <div className="flex items-center gap-3">
                           <TeamMemberAvatarUpload
-                            currentAvatarUrl={field.value}
+                            currentAvatarUrl={field.value || undefined}
                             userName={createMemberForm.watch('name') || 'New Member'}
                             size="lg"
                             showUploadButton={true}
@@ -533,7 +533,7 @@ export default function TeamMembers() {
                       <FormControl>
                         <div className="flex items-center gap-3">
                           <TeamMemberAvatarUpload
-                            currentAvatarUrl={field.value}
+                            currentAvatarUrl={field.value || undefined}
                             userName={editMemberForm.watch('name') || 'Team Member'}
                             size="lg"
                             showUploadButton={true}
