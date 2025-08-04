@@ -55,9 +55,9 @@ export function LabToggleHeader() {
                 <span>Lab {currentIndex + 1} of {allLabs.length}</span>
               </div>
               <Badge variant="outline" className="bg-background/50">
-                {selectedLab?.name === "Rush Health Equity Data Analytics Studio" 
+                {selectedLab?.name?.includes("RHEDAS") 
                   ? "Health Equity Research" 
-                  : "Cancer Research"}
+                  : "Critical Care Research"}
               </Badge>
             </div>
 

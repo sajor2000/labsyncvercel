@@ -73,7 +73,7 @@ export function LabToggleDemo() {
               Expected Data:
             </span>
             <Badge variant="outline">
-              {selectedLab?.name === "Rush Health Equity Data Analytics Studio" 
+              {selectedLab?.name?.includes("RHEDAS") 
                 ? "Abbott & Wisconsin R01" 
                 : "RICCC Projects"}
             </Badge>
@@ -84,7 +84,7 @@ export function LabToggleDemo() {
               Studies:
             </span>
             <Badge variant="outline">
-              {selectedLab?.name === "Rush Health Equity Data Analytics Studio" 
+              {selectedLab?.name?.includes("RHEDAS") 
                 ? "COVID-19, Diabetes, etc." 
                 : "Cancer, Genomics, etc."}
             </Badge>

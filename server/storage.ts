@@ -140,13 +140,13 @@ export class DatabaseStorage implements IStorage {
     if (allLabs.length === 0) {
       const sampleLabs = [
         {
-          name: "RICCC Research Lab",
+          name: "Rush Interdisciplinary Consortium for Critical Care Trials and Data Science (RICCC)",
           description: "Focused on cancer research and clinical trials",
           piName: "Dr. Sarah Johnson",
           color: "#3b82f6",
         },
         {
-          name: "Rush Health Equity Data Analytics Studio", 
+          name: "Rush Health Equity Data Analytics Studio (RHEDAS)", 
           description: "Studying health disparities and social determinants",
           piName: "Dr. Michael Chen",
           color: "#10b981",
