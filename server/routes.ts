@@ -124,6 +124,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team member routes
+  app.get("/api/team-members", isAuthenticated, async (req, res) => {
+    try {
+      const members = await storage.getTeamMembers();
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+      res.status(500).json({ message: "Failed to fetch team members" });
+    }
+  });
+
+  app.post("/api/team-members", isAuthenticated, async (req, res) => {
+    try {
+      const member = await storage.createTeamMember(req.body);
+      res.json(member);
+    } catch (error) {
+      console.error("Error creating team member:", error);
+      res.status(500).json({ message: "Failed to create team member" });
+    }
+  });
+
+  app.put("/api/team-members/:id", isAuthenticated, async (req, res) => {
+    try {
+      const member = await storage.updateTeamMember(req.params.id, req.body);
+      res.json(member);
+    } catch (error) {
+      console.error("Error updating team member:", error);
+      res.status(500).json({ message: "Failed to update team member" });
+    }
+  });
+
+  app.delete("/api/team-members/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteTeamMember(req.params.id);
+      res.json({ message: "Team member deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting team member:", error);
+      res.status(500).json({ message: "Failed to delete team member" });
+    }
+  });
+
+  // Team member assignment routes
+  app.get("/api/team-member-assignments", isAuthenticated, async (req, res) => {
+    try {
+      const assignments = await storage.getTeamMemberAssignments();
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching team member assignments:", error);
+      res.status(500).json({ message: "Failed to fetch team member assignments" });
+    }
+  });
+
+  app.post("/api/team-member-assignments", isAuthenticated, async (req, res) => {
+    try {
+      const assignment = await storage.createTeamMemberAssignment(req.body);
+      res.json(assignment);
+    } catch (error) {
+      console.error("Error creating team member assignment:", error);
+      res.status(500).json({ message: "Failed to create team member assignment" });
+    }
+  });
+
   // Sample data route
   app.post("/api/create-sample-data", isAuthenticated, async (req: any, res) => {
     try {

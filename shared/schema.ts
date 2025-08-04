@@ -218,6 +218,34 @@ export const studyStatusUpdates = pgTable("study_status_updates", {
   extractedAt: timestamp("extracted_at").defaultNow(),
 });
 
+// Team Members table for lab personnel management
+export const teamMembers = pgTable("team_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  email: varchar("email").unique(),
+  role: varchar("role").notNull(), // PI, Research Coordinator, Data Analyst, etc.
+  department: varchar("department"),
+  labId: varchar("lab_id").references(() => labs.id),
+  isActive: boolean("is_active").default(true),
+  phoneNumber: varchar("phone_number"),
+  expertise: text("expertise").array(),
+  bio: text("bio"),
+  avatarUrl: varchar("avatar_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Team Member Assignments - linking members to studies, tasks, buckets
+export const teamMemberAssignments = pgTable("team_member_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  memberId: varchar("member_id").references(() => teamMembers.id),
+  studyId: varchar("study_id").references(() => studies.id),
+  taskId: varchar("task_id").references(() => tasks.id),
+  bucketId: varchar("bucket_id").references(() => buckets.id),
+  assignmentType: varchar("assignment_type").notNull(), // lead, collaborator, reviewer
+  assignedAt: timestamp("assigned_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   lab: one(labs, {
@@ -237,6 +265,7 @@ export const labsRelations = relations(labs, ({ many }) => ({
   buckets: many(buckets),
   studies: many(studies),
   standupMeetings: many(standupMeetings),
+  teamMembers: many(teamMembers),
 }));
 
 export const bucketsRelations = relations(buckets, ({ one, many }) => ({
@@ -360,6 +389,45 @@ export const insertActionItemSchema = createInsertSchema(standupActionItems).omi
   updatedAt: true,
 });
 
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTeamMemberAssignmentSchema = createInsertSchema(teamMemberAssignments).omit({
+  id: true,
+  assignedAt: true,
+});
+
+// Team member relations
+export const teamMembersRelations = relations(teamMembers, ({ one, many }) => ({
+  lab: one(labs, {
+    fields: [teamMembers.labId],
+    references: [labs.id],
+  }),
+  assignments: many(teamMemberAssignments),
+}));
+
+export const teamMemberAssignmentsRelations = relations(teamMemberAssignments, ({ one }) => ({
+  member: one(teamMembers, {
+    fields: [teamMemberAssignments.memberId],
+    references: [teamMembers.id],
+  }),
+  study: one(studies, {
+    fields: [teamMemberAssignments.studyId],
+    references: [studies.id],
+  }),
+  task: one(tasks, {
+    fields: [teamMemberAssignments.taskId],
+    references: [tasks.id],
+  }),
+  bucket: one(buckets, {
+    fields: [teamMemberAssignments.bucketId],
+    references: [buckets.id],
+  }),
+}));
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -375,3 +443,7 @@ export type StandupMeeting = typeof standupMeetings.$inferSelect;
 export type InsertStandupMeeting = z.infer<typeof insertStandupMeetingSchema>;
 export type ActionItem = typeof standupActionItems.$inferSelect;
 export type InsertActionItem = z.infer<typeof insertActionItemSchema>;
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
+export type TeamMemberAssignment = typeof teamMemberAssignments.$inferSelect;
+export type InsertTeamMemberAssignment = z.infer<typeof insertTeamMemberAssignmentSchema>;

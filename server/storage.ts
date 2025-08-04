@@ -6,6 +6,8 @@ import {
   buckets,
   standupMeetings,
   standupActionItems,
+  teamMembers,
+  teamMemberAssignments,
   type User,
   type UpsertUser,
   type Lab,
@@ -20,6 +22,10 @@ import {
   type InsertStandupMeeting,
   type ActionItem,
   type InsertActionItem,
+  type TeamMember,
+  type InsertTeamMember,
+  type TeamMemberAssignment,
+  type InsertTeamMemberAssignment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -53,6 +59,17 @@ export interface IStorage {
   // Action item operations
   getActionItems(assigneeId?: string, meetingId?: string): Promise<ActionItem[]>;
   createActionItem(item: InsertActionItem): Promise<ActionItem>;
+  
+  // Team member operations
+  getTeamMembers(): Promise<TeamMember[]>;
+  createTeamMember(member: InsertTeamMember): Promise<TeamMember>;
+  updateTeamMember(id: string, updates: Partial<InsertTeamMember>): Promise<TeamMember>;
+  deleteTeamMember(id: string): Promise<void>;
+  
+  // Team member assignment operations
+  getTeamMemberAssignments(): Promise<TeamMemberAssignment[]>;
+  createTeamMemberAssignment(assignment: InsertTeamMemberAssignment): Promise<TeamMemberAssignment>;
+  deleteTeamMemberAssignment(id: string): Promise<void>;
   updateActionItem(id: string, item: Partial<ActionItem>): Promise<ActionItem>;
   
   // Bucket operations
@@ -251,6 +268,43 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBucket(id: string): Promise<void> {
     await db.delete(buckets).where(eq(buckets.id, id));
+  }
+
+  // Team member operations
+  async getTeamMembers(): Promise<TeamMember[]> {
+    return await db.select().from(teamMembers).orderBy(asc(teamMembers.name));
+  }
+
+  async createTeamMember(member: InsertTeamMember): Promise<TeamMember> {
+    const [newMember] = await db.insert(teamMembers).values(member).returning();
+    return newMember;
+  }
+
+  async updateTeamMember(id: string, updates: Partial<InsertTeamMember>): Promise<TeamMember> {
+    const [updatedMember] = await db
+      .update(teamMembers)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(teamMembers.id, id))
+      .returning();
+    return updatedMember;
+  }
+
+  async deleteTeamMember(id: string): Promise<void> {
+    await db.delete(teamMembers).where(eq(teamMembers.id, id));
+  }
+
+  // Team member assignment operations
+  async getTeamMemberAssignments(): Promise<TeamMemberAssignment[]> {
+    return await db.select().from(teamMemberAssignments).orderBy(desc(teamMemberAssignments.assignedAt));
+  }
+
+  async createTeamMemberAssignment(assignment: InsertTeamMemberAssignment): Promise<TeamMemberAssignment> {
+    const [newAssignment] = await db.insert(teamMemberAssignments).values(assignment).returning();
+    return newAssignment;
+  }
+
+  async deleteTeamMemberAssignment(id: string): Promise<void> {
+    await db.delete(teamMemberAssignments).where(eq(teamMemberAssignments.id, id));
   }
 }
 
