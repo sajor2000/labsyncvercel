@@ -102,6 +102,35 @@ export const teamMemberRoleEnum = pgEnum("team_member_role", [
   "regulatory_coordinator"
 ]);
 
+export const ideaCategoryEnum = pgEnum("idea_category", [
+  "RESEARCH_PROPOSAL",
+  "METHODOLOGY",
+  "COLLABORATION",
+  "FUNDING_OPPORTUNITY",
+  "TOOL_OR_PLATFORM",
+  "GENERAL"
+]);
+
+export const ideaStatusEnum = pgEnum("idea_status", [
+  "BRAINSTORMING",
+  "UNDER_REVIEW",
+  "APPROVED",
+  "IN_DEVELOPMENT",
+  "COMPLETED",
+  "ON_HOLD",
+  "REJECTED"
+]);
+
+export const deadlineTypeEnum = pgEnum("deadline_type", [
+  "GRANT_APPLICATION",
+  "PAPER_SUBMISSION",
+  "ABSTRACT_SUBMISSION",
+  "IRB_SUBMISSION",
+  "CONFERENCE_DEADLINE",
+  "MILESTONE",
+  "OTHER"
+]);
+
 // User storage table (required for Replit Auth)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -252,6 +281,42 @@ export const teamMemberAssignments = pgTable("team_member_assignments", {
   assignedAt: timestamp("assigned_at").defaultNow(),
 });
 
+// Ideas Board - for lab brainstorming and innovation tracking
+export const ideas = pgTable("ideas", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  category: ideaCategoryEnum("category").default("GENERAL"),
+  status: ideaStatusEnum("status").default("BRAINSTORMING"),
+  priority: priorityEnum("priority").default("MEDIUM"),
+  tags: text("tags").array(),
+  proposedBy: varchar("proposed_by").references(() => teamMembers.id),
+  labId: varchar("lab_id").notNull().references(() => labs.id),
+  estimatedEffort: varchar("estimated_effort"), // Small, Medium, Large
+  potentialImpact: varchar("potential_impact"), // Low, Medium, High
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Deadlines - for grant, paper, and submission tracking
+export const deadlines = pgTable("deadlines", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  type: deadlineTypeEnum("type").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  priority: priorityEnum("priority").default("MEDIUM"),
+  status: varchar("status").default("PENDING"), // PENDING, IN_PROGRESS, COMPLETED, MISSED
+  assignedTo: varchar("assigned_to").references(() => teamMembers.id),
+  labId: varchar("lab_id").notNull().references(() => labs.id),
+  relatedStudyId: varchar("related_study_id").references(() => studies.id),
+  submissionUrl: varchar("submission_url"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => teamMembers.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   lab: one(labs, {
@@ -272,6 +337,8 @@ export const labsRelations = relations(labs, ({ many }) => ({
   studies: many(studies),
   standupMeetings: many(standupMeetings),
   teamMembers: many(teamMembers),
+  ideas: many(ideas),
+  deadlines: many(deadlines),
 }));
 
 export const bucketsRelations = relations(buckets, ({ one, many }) => ({
@@ -406,6 +473,18 @@ export const insertTeamMemberAssignmentSchema = createInsertSchema(teamMemberAss
   assignedAt: true,
 });
 
+export const insertIdeaSchema = createInsertSchema(ideas).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDeadlineSchema = createInsertSchema(deadlines).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Team member relations
 export const teamMembersRelations = relations(teamMembers, ({ one, many }) => ({
   lab: one(labs, {
@@ -434,6 +513,38 @@ export const teamMemberAssignmentsRelations = relations(teamMemberAssignments, (
   }),
 }));
 
+// Ideas relations
+export const ideasRelations = relations(ideas, ({ one }) => ({
+  lab: one(labs, {
+    fields: [ideas.labId],
+    references: [labs.id],
+  }),
+  proposer: one(teamMembers, {
+    fields: [ideas.proposedBy],
+    references: [teamMembers.id],
+  }),
+}));
+
+// Deadlines relations
+export const deadlinesRelations = relations(deadlines, ({ one }) => ({
+  lab: one(labs, {
+    fields: [deadlines.labId],
+    references: [labs.id],
+  }),
+  assignee: one(teamMembers, {
+    fields: [deadlines.assignedTo],
+    references: [teamMembers.id],
+  }),
+  relatedStudy: one(studies, {
+    fields: [deadlines.relatedStudyId],
+    references: [studies.id],
+  }),
+  creator: one(teamMembers, {
+    fields: [deadlines.createdBy],
+    references: [teamMembers.id],
+  }),
+}));
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -453,3 +564,7 @@ export type TeamMember = typeof teamMembers.$inferSelect;
 export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 export type TeamMemberAssignment = typeof teamMemberAssignments.$inferSelect;
 export type InsertTeamMemberAssignment = z.infer<typeof insertTeamMemberAssignmentSchema>;
+export type Idea = typeof ideas.$inferSelect;
+export type InsertIdea = z.infer<typeof insertIdeaSchema>;
+export type Deadline = typeof deadlines.$inferSelect;
+export type InsertDeadline = z.infer<typeof insertDeadlineSchema>;

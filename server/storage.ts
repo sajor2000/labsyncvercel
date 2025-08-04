@@ -8,6 +8,8 @@ import {
   standupActionItems,
   teamMembers,
   teamMemberAssignments,
+  ideas,
+  deadlines,
   type User,
   type UpsertUser,
   type Lab,
@@ -26,6 +28,10 @@ import {
   type InsertTeamMember,
   type TeamMemberAssignment,
   type InsertTeamMemberAssignment,
+  type Idea,
+  type InsertIdea,
+  type Deadline,
+  type InsertDeadline,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -76,6 +82,18 @@ export interface IStorage {
   getBuckets(labId?: string): Promise<Bucket[]>;
   createBucket(bucket: InsertBucket): Promise<Bucket>;
   deleteBucket(id: string): Promise<void>;
+  
+  // Ideas operations
+  getIdeas(labId?: string): Promise<Idea[]>;
+  createIdea(idea: InsertIdea): Promise<Idea>;
+  updateIdea(id: string, updates: Partial<InsertIdea>): Promise<Idea>;
+  deleteIdea(id: string): Promise<void>;
+  
+  // Deadlines operations
+  getDeadlines(labId?: string): Promise<Deadline[]>;
+  createDeadline(deadline: InsertDeadline): Promise<Deadline>;
+  updateDeadline(id: string, updates: Partial<InsertDeadline>): Promise<Deadline>;
+  deleteDeadline(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -305,6 +323,66 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTeamMemberAssignment(id: string): Promise<void> {
     await db.delete(teamMemberAssignments).where(eq(teamMemberAssignments.id, id));
+  }
+
+  // Ideas operations
+  async getIdeas(labId?: string): Promise<Idea[]> {
+    if (labId) {
+      return await db
+        .select()
+        .from(ideas)
+        .where(eq(ideas.labId, labId))
+        .orderBy(desc(ideas.createdAt));
+    }
+    return await db.select().from(ideas).orderBy(desc(ideas.createdAt));
+  }
+
+  async createIdea(idea: InsertIdea): Promise<Idea> {
+    const [newIdea] = await db.insert(ideas).values(idea).returning();
+    return newIdea;
+  }
+
+  async updateIdea(id: string, updates: Partial<InsertIdea>): Promise<Idea> {
+    const [updatedIdea] = await db
+      .update(ideas)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(ideas.id, id))
+      .returning();
+    return updatedIdea;
+  }
+
+  async deleteIdea(id: string): Promise<void> {
+    await db.delete(ideas).where(eq(ideas.id, id));
+  }
+
+  // Deadlines operations
+  async getDeadlines(labId?: string): Promise<Deadline[]> {
+    if (labId) {
+      return await db
+        .select()
+        .from(deadlines)
+        .where(eq(deadlines.labId, labId))
+        .orderBy(asc(deadlines.dueDate));
+    }
+    return await db.select().from(deadlines).orderBy(asc(deadlines.dueDate));
+  }
+
+  async createDeadline(deadline: InsertDeadline): Promise<Deadline> {
+    const [newDeadline] = await db.insert(deadlines).values(deadline).returning();
+    return newDeadline;
+  }
+
+  async updateDeadline(id: string, updates: Partial<InsertDeadline>): Promise<Deadline> {
+    const [updatedDeadline] = await db
+      .update(deadlines)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(deadlines.id, id))
+      .returning();
+    return updatedDeadline;
+  }
+
+  async deleteDeadline(id: string): Promise<void> {
+    await db.delete(deadlines).where(eq(deadlines.id, id));
   }
 }
 

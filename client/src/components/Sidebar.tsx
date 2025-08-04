@@ -13,7 +13,9 @@ import {
   FileText,
   KanbanSquare,
   LayoutGrid,
-  Users
+  Users,
+  Lightbulb,
+  Clock
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
@@ -27,6 +29,8 @@ const navigationItems = [
   { name: "Studies", href: "/studies", icon: FlaskConical },
   { name: "Stacked by Bucket", href: "/stacked", icon: LayoutGrid },
   { name: "Task Board", href: "/kanban", icon: KanbanSquare },
+  { name: "Ideas Board", href: "/ideas", icon: Lightbulb },
+  { name: "Deadlines", href: "/deadlines", icon: Clock },
   { name: "Team Members", href: "/team-members", icon: Users },
   { name: "Standups", href: "/standups", icon: Mic },
   { name: "Calendar", href: "/calendar", icon: Calendar },

@@ -13,6 +13,8 @@ import Labs from "@/pages/Labs";
 import Buckets from "@/pages/Buckets";
 import StackedView from "@/pages/StackedView";
 import TeamMembers from "@/pages/TeamMembers";
+import Ideas from "@/pages/Ideas";
+import Deadlines from "@/pages/Deadlines";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/Layout";
 import { LabProvider } from "@/components/LabProvider";
@@ -31,6 +33,8 @@ function Router() {
           <Route path="/kanban" component={() => <Layout><KanbanBoard /></Layout>} />
           <Route path="/stacked" component={() => <Layout><StackedView /></Layout>} />
           <Route path="/team-members" component={() => <Layout><TeamMembers /></Layout>} />
+          <Route path="/ideas" component={() => <Layout><Ideas /></Layout>} />
+          <Route path="/deadlines" component={() => <Layout><Deadlines /></Layout>} />
           <Route path="/labs" component={() => <Layout><Labs /></Layout>} />
           <Route path="/buckets" component={() => <Layout><Buckets /></Layout>} />
         </LabProvider>

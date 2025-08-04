@@ -186,6 +186,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Ideas routes
+  app.get("/api/ideas", isAuthenticated, async (req, res) => {
+    try {
+      const labId = req.query.labId as string;
+      const ideas = await storage.getIdeas(labId);
+      res.json(ideas);
+    } catch (error) {
+      console.error("Error fetching ideas:", error);
+      res.status(500).json({ message: "Failed to fetch ideas" });
+    }
+  });
+
+  app.post("/api/ideas", isAuthenticated, async (req, res) => {
+    try {
+      const idea = await storage.createIdea(req.body);
+      res.json(idea);
+    } catch (error) {
+      console.error("Error creating idea:", error);
+      res.status(500).json({ message: "Failed to create idea" });
+    }
+  });
+
+  app.put("/api/ideas/:id", isAuthenticated, async (req, res) => {
+    try {
+      const idea = await storage.updateIdea(req.params.id, req.body);
+      res.json(idea);
+    } catch (error) {
+      console.error("Error updating idea:", error);
+      res.status(500).json({ message: "Failed to update idea" });
+    }
+  });
+
+  app.delete("/api/ideas/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteIdea(req.params.id);
+      res.json({ message: "Idea deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting idea:", error);
+      res.status(500).json({ message: "Failed to delete idea" });
+    }
+  });
+
+  // Deadlines routes
+  app.get("/api/deadlines", isAuthenticated, async (req, res) => {
+    try {
+      const labId = req.query.labId as string;
+      const deadlines = await storage.getDeadlines(labId);
+      res.json(deadlines);
+    } catch (error) {
+      console.error("Error fetching deadlines:", error);
+      res.status(500).json({ message: "Failed to fetch deadlines" });
+    }
+  });
+
+  app.post("/api/deadlines", isAuthenticated, async (req, res) => {
+    try {
+      const deadline = await storage.createDeadline(req.body);
+      res.json(deadline);
+    } catch (error) {
+      console.error("Error creating deadline:", error);
+      res.status(500).json({ message: "Failed to create deadline" });
+    }
+  });
+
+  app.put("/api/deadlines/:id", isAuthenticated, async (req, res) => {
+    try {
+      const deadline = await storage.updateDeadline(req.params.id, req.body);
+      res.json(deadline);
+    } catch (error) {
+      console.error("Error updating deadline:", error);
+      res.status(500).json({ message: "Failed to update deadline" });
+    }
+  });
+
+  app.delete("/api/deadlines/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteDeadline(req.params.id);
+      res.json({ message: "Deadline deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting deadline:", error);
+      res.status(500).json({ message: "Failed to delete deadline" });
+    }
+  });
+
   // Sample data route
   app.post("/api/create-sample-data", isAuthenticated, async (req: any, res) => {
     try {
