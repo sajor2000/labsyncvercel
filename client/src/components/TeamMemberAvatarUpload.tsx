@@ -35,7 +35,10 @@ export function TeamMemberAvatarUpload({
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
 
     console.log('File selected:', file.name, file.type, file.size);
 
@@ -113,7 +116,12 @@ export function TeamMemberAvatarUpload({
 
   const handleCameraClick = () => {
     console.log('Camera button clicked');
-    fileInputRef.current?.click();
+    if (!fileInputRef.current) {
+      console.error('File input ref is null');
+      return;
+    }
+    console.log('Triggering file input click');
+    fileInputRef.current.click();
   };
 
   const getInitials = (name?: string) => {
