@@ -122,10 +122,10 @@ export function Sidebar() {
         {user && (
           <div className="flex items-center space-x-3 mb-4">
             <AvatarUpload
-              currentAvatarUrl={user?.profileImageUrl}
+              currentAvatarUrl={user?.profileImageUrl || undefined}
               userName={user.firstName && user.lastName 
                 ? `${user.firstName} ${user.lastName}`
-                : user.email
+                : user.email || undefined
               }
               userId={user?.id}
               size="sm"

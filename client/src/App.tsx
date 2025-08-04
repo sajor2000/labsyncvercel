@@ -15,6 +15,11 @@ import StackedView from "@/pages/StackedView";
 import TeamMembers from "@/pages/TeamMembers";
 import Ideas from "@/pages/Ideas";
 import Deadlines from "@/pages/Deadlines";
+import Standups from "@/pages/Standups";
+import Calendar from "@/pages/Calendar";
+import Analytics from "@/pages/Analytics";
+import Profile from "@/pages/Profile";
+import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/Layout";
 import { LabProvider } from "@/components/LabProvider";
@@ -37,6 +42,11 @@ function Router() {
           <Route path="/deadlines" component={() => <Layout><Deadlines /></Layout>} />
           <Route path="/labs" component={() => <Layout><Labs /></Layout>} />
           <Route path="/buckets" component={() => <Layout><Buckets /></Layout>} />
+          <Route path="/standups" component={() => <Layout><Standups /></Layout>} />
+          <Route path="/calendar" component={() => <Layout><Calendar /></Layout>} />
+          <Route path="/analytics" component={() => <Layout><Analytics /></Layout>} />
+          <Route path="/profile" component={() => <Layout><Profile /></Layout>} />
+          <Route path="/settings" component={() => <Layout><Settings /></Layout>} />
         </LabProvider>
       )}
       <Route component={NotFound} />

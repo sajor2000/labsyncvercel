@@ -339,6 +339,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Standups routes
+  app.get("/api/standups", isAuthenticated, async (req, res) => {
+    try {
+      const labId = req.query.labId as string;
+      const standups = await storage.getStandups(labId);
+      res.json(standups);
+    } catch (error) {
+      console.error("Error fetching standups:", error);
+      res.status(500).json({ message: "Failed to fetch standups" });
+    }
+  });
+
+  app.post("/api/standups", isAuthenticated, async (req, res) => {
+    try {
+      const standup = await storage.createStandup(req.body);
+      res.json(standup);
+    } catch (error) {
+      console.error("Error creating standup:", error);
+      res.status(500).json({ message: "Failed to create standup" });
+    }
+  });
+
+  app.put("/api/standups/:id", isAuthenticated, async (req, res) => {
+    try {
+      const standup = await storage.updateStandup(req.params.id, req.body);
+      res.json(standup);
+    } catch (error) {
+      console.error("Error updating standup:", error);
+      res.status(500).json({ message: "Failed to update standup" });
+    }
+  });
+
+  app.delete("/api/standups/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteStandup(req.params.id);
+      res.json({ message: "Standup deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting standup:", error);
+      res.status(500).json({ message: "Failed to delete standup" });
+    }
+  });
+
+  // User profile and settings routes
+  app.put("/api/auth/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const updatedUser = await storage.updateUserProfile(userId, req.body);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  app.get("/api/auth/settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const settings = await storage.getUserSettings(userId);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching user settings:", error);
+      res.status(500).json({ message: "Failed to fetch settings" });
+    }
+  });
+
+  app.put("/api/auth/settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const settings = await storage.updateUserSettings(userId, req.body);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating user settings:", error);
+      res.status(500).json({ message: "Failed to update settings" });
+    }
+  });
+
+  app.post("/api/auth/export-data", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      // Mock implementation - in real app would generate and email data export
+      res.json({ message: "Data export initiated" });
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      res.status(500).json({ message: "Failed to export data" });
+    }
+  });
+
+  app.delete("/api/auth/delete-account", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deleteUser(userId);
+      res.json({ message: "Account deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      res.status(500).json({ message: "Failed to delete account" });
+    }
+  });
+
   // Sample data route
   app.post("/api/create-sample-data", isAuthenticated, async (req: any, res) => {
     try {

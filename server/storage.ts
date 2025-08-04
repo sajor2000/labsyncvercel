@@ -96,6 +96,18 @@ export interface IStorage {
   createDeadline(deadline: InsertDeadline): Promise<Deadline>;
   updateDeadline(id: string, updates: Partial<InsertDeadline>): Promise<Deadline>;
   deleteDeadline(id: string): Promise<void>;
+
+  // Standups operations (for new endpoint compatibility)
+  getStandups(labId?: string): Promise<StandupMeeting[]>;
+  createStandup(standup: InsertStandupMeeting): Promise<StandupMeeting>;
+  updateStandup(id: string, updates: Partial<StandupMeeting>): Promise<StandupMeeting>;
+  deleteStandup(id: string): Promise<void>;
+
+  // User profile and settings operations
+  updateUserProfile(id: string, profile: Partial<User>): Promise<User>;
+  getUserSettings(id: string): Promise<any>;
+  updateUserSettings(id: string, settings: any): Promise<any>;
+  deleteUser(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -406,6 +418,79 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDeadline(id: string): Promise<void> {
     await db.delete(deadlines).where(eq(deadlines.id, id));
+  }
+
+  // Standups operations (for new endpoint compatibility)
+  async getStandups(labId?: string): Promise<StandupMeeting[]> {
+    if (labId) {
+      return await db
+        .select()
+        .from(standupMeetings)
+        .where(eq(standupMeetings.labId, labId))
+        .orderBy(desc(standupMeetings.scheduledDate));
+    }
+    return await db.select().from(standupMeetings).orderBy(desc(standupMeetings.scheduledDate));
+  }
+
+  async createStandup(standup: InsertStandupMeeting): Promise<StandupMeeting> {
+    const [newStandup] = await db.insert(standupMeetings).values(standup).returning();
+    return newStandup;
+  }
+
+  async updateStandup(id: string, updates: Partial<StandupMeeting>): Promise<StandupMeeting> {
+    const [updatedStandup] = await db
+      .update(standupMeetings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(standupMeetings.id, id))
+      .returning();
+    return updatedStandup;
+  }
+
+  async deleteStandup(id: string): Promise<void> {
+    await db.delete(standupMeetings).where(eq(standupMeetings.id, id));
+  }
+
+  // User profile and settings operations
+  async updateUserProfile(id: string, profile: Partial<User>): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ ...profile, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  async getUserSettings(id: string): Promise<any> {
+    // Mock implementation - in real app would have separate settings table
+    return {
+      notifications: {
+        email: true,
+        inApp: true,
+        deadlines: true,
+        standups: true,
+        taskAssignments: true,
+      },
+      preferences: {
+        theme: "dark",
+        language: "en",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        defaultLabView: "overview",
+      },
+      privacy: {
+        profileVisibility: "team",
+        activityTracking: true,
+        dataExport: true,
+      },
+    };
+  }
+
+  async updateUserSettings(id: string, settings: any): Promise<any> {
+    // Mock implementation - in real app would update settings table
+    return settings;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
   }
 }
 
