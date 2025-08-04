@@ -144,7 +144,7 @@ export default function StackedView() {
     const matchesSearch = study.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          study.studyType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          study.assignees?.some((assignee: string) => assignee.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesStatus = !selectedStatus || study.status === selectedStatus;
+    const matchesStatus = !selectedStatus || selectedStatus === "ALL" || study.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
 
@@ -320,7 +320,7 @@ export default function StackedView() {
                             </FormControl>
                             <SelectContent>
                               {buckets.filter(bucket => bucket.id && bucket.id.trim() !== "").map((bucket) => (
-                                <SelectItem key={bucket.id} value={bucket.id}>
+                                <SelectItem key={bucket.id} value={bucket.id!}>
                                   <div className="flex items-center gap-2">
                                     <div 
                                       className="w-3 h-3 rounded-full" 
@@ -470,7 +470,7 @@ export default function StackedView() {
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Statuses</SelectItem>
+            <SelectItem value="ALL">All Statuses</SelectItem>
             {Object.entries(statusLabels).map(([value, label]) => (
               <SelectItem key={value} value={value}>
                 {label}

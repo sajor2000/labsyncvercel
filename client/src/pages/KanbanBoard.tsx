@@ -189,8 +189,8 @@ export default function KanbanBoard() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All Buckets</SelectItem>
-              {buckets.map((bucket) => (
-                <SelectItem key={bucket.id} value={bucket.id}>
+              {buckets.filter(bucket => bucket.id && bucket.id.trim() !== "").map((bucket) => (
+                <SelectItem key={bucket.id} value={bucket.id!}>
                   <div className="flex items-center gap-2">
                     <div 
                       className="w-2 h-2 rounded-full" 
@@ -213,8 +213,8 @@ export default function KanbanBoard() {
               <SelectValue placeholder="Select Project/Study" />
             </SelectTrigger>
             <SelectContent>
-              {bucketStudies.map((study) => (
-                <SelectItem key={study.id} value={study.id}>
+              {bucketStudies.filter(study => study.id && study.id.trim() !== "").map((study) => (
+                <SelectItem key={study.id} value={study.id!}>
                   {study.name}
                 </SelectItem>
               ))}

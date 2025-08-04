@@ -302,8 +302,8 @@ export default function Buckets() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All Labs</SelectItem>
-            {labs.map((lab) => (
-              <SelectItem key={lab.id} value={lab.id}>
+            {labs.filter(lab => lab.id && lab.id.trim() !== "").map((lab) => (
+              <SelectItem key={lab.id} value={lab.id!}>
                 {lab.name}
               </SelectItem>
             ))}
