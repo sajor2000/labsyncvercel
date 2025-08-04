@@ -1,8 +1,8 @@
-# LabManage - Medical Research Lab Management System
+# Lab Manager - Medical Research Lab Management System
 
 ## Overview
 
-LabManage is a comprehensive medical research lab management system designed to streamline the research workflow for laboratories like Rush Interdisciplinary Consortium for Critical Care Trials and Data Science (RICCC) and Rush Health Equity Data Analytics Studio (RHEDAS). The system provides study lifecycle management, AI-powered standup meetings, real-time collaboration, and task tracking capabilities. It's built as a full-stack application with a React frontend and Express backend, utilizing PostgreSQL for data persistence and integrating with external services for file storage and AI processing.
+Lab Manager is a comprehensive medical research lab management system designed to streamline the research workflow for laboratories like Rush Interdisciplinary Consortium for Critical Care Trials and Data Science (RICCC) and Rush Health Equity Data Analytics Studio (RHEDAS). The system provides study lifecycle management, AI-powered standup meetings, real-time collaboration, and task tracking capabilities. It's built as a full-stack application with a React frontend and Express backend, utilizing PostgreSQL for data persistence and integrating with external services for file storage and AI processing.
 
 ## User Preferences
 

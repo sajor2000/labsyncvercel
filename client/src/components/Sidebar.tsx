@@ -78,7 +78,7 @@ export function Sidebar() {
             <FlaskConical className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">LabManage</h1>
+            <h1 className="text-xl font-bold text-foreground">Lab Manager</h1>
             <p className="text-sm text-muted-foreground">Research Hub</p>
           </div>
         </div>
