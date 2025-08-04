@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useLabContext } from "@/hooks/useLabContext";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MoreHorizontal, User, Calendar, Flag } from "lucide-react";
+import { Plus, MoreHorizontal, User, Calendar, Flag, Folder, ArrowRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Task, Study, Lab, Bucket } from "@shared/schema";
@@ -30,8 +31,9 @@ const priorityColors = {
 export default function KanbanBoard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { selectedLab: contextLab } = useLabContext();
   const queryClient = useQueryClient();
-  const [selectedLab, setSelectedLab] = useState("");
+  const [selectedBucket, setSelectedBucket] = useState("");
   const [selectedStudy, setSelectedStudy] = useState("");
 
   // Redirect if not authenticated
@@ -49,16 +51,20 @@ export default function KanbanBoard() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Fetch data
-  const { data: labs = [] } = useQuery<Lab[]>({
-    queryKey: ['/api/labs'],
-    enabled: isAuthenticated,
+  // Fetch data filtered by lab context
+  const { data: buckets = [] } = useQuery<Bucket[]>({
+    queryKey: ['/api/buckets'],
+    enabled: isAuthenticated && !!contextLab,
   });
 
-  const { data: studies = [] } = useQuery<Study[]>({
+  const { data: allStudies = [] } = useQuery<Study[]>({
     queryKey: ['/api/studies'],
     enabled: isAuthenticated,
   });
+
+  // Filter studies by lab context and selected bucket
+  const labStudies = contextLab ? allStudies.filter(study => study.labId === contextLab.id) : allStudies;
+  const bucketStudies = selectedBucket ? labStudies.filter(study => study.bucketId === selectedBucket) : labStudies;
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ['/api/tasks', selectedStudy],
@@ -82,10 +88,7 @@ export default function KanbanBoard() {
   // Update task status
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, status }: { taskId: string; status: string }) => {
-      return apiRequest(`/api/tasks/${taskId}`, {
-        method: 'PUT',
-        body: { status },
-      });
+      return apiRequest(`/api/tasks/${taskId}`, "PUT", { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
@@ -137,53 +140,112 @@ export default function KanbanBoard() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Task Board</h1>
-          <p className="text-muted-foreground">Manage tasks across your research projects</p>
+          <h1 className="text-2xl font-bold text-foreground">Project Task Board</h1>
+          <p className="text-muted-foreground">
+            {contextLab 
+              ? `Manage subtasks for projects in ${contextLab.name}`
+              : "Manage subtasks for your research projects"
+            }
+          </p>
+          {/* Hierarchy Breadcrumb */}
+          {(selectedBucket || selectedStudy) && (
+            <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+              <span>Path:</span>
+              {selectedBucket && (
+                <>
+                  <Folder className="h-3 w-3" />
+                  <span>{buckets.find(b => b.id === selectedBucket)?.name}</span>
+                  <ArrowRight className="h-3 w-3" />
+                </>
+              )}
+              {selectedStudy && (
+                <>
+                  <span>{bucketStudies.find(s => s.id === selectedStudy)?.name}</span>
+                  <ArrowRight className="h-3 w-3" />
+                  <span>Subtasks</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
-        <Button data-testid="button-create-task">
+        <Button 
+          data-testid="button-create-task"
+          disabled={!selectedStudy}
+        >
           <Plus className="h-4 w-4 mr-2" />
-          New Task
+          New Subtask
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* Filters - Following Bucket → Project/Study → Subtasks hierarchy */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <Select value={selectedLab} onValueChange={setSelectedLab}>
-          <SelectTrigger className="w-[200px]" data-testid="select-lab">
-            <SelectValue placeholder="Select Lab" />
-          </SelectTrigger>
-          <SelectContent>
-            {labs.map((lab) => (
-              <SelectItem key={lab.id} value={lab.id}>
-                {lab.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            1. Select Bucket
+          </label>
+          <Select value={selectedBucket} onValueChange={setSelectedBucket}>
+            <SelectTrigger className="w-[200px]" data-testid="select-bucket">
+              <SelectValue placeholder="All Buckets" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Buckets</SelectItem>
+              {buckets.map((bucket) => (
+                <SelectItem key={bucket.id} value={bucket.id}>
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-2 h-2 rounded-full" 
+                      style={{ backgroundColor: bucket.color || '#3b82f6' }}
+                    />
+                    {bucket.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         
-        <Select value={selectedStudy} onValueChange={setSelectedStudy}>
-          <SelectTrigger className="w-[250px]" data-testid="select-study">
-            <SelectValue placeholder="Select Study" />
-          </SelectTrigger>
-          <SelectContent>
-            {studies
-              .filter(study => !selectedLab || study.labId === selectedLab)
-              .map((study) => (
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            2. Select Project/Study
+          </label>
+          <Select value={selectedStudy} onValueChange={setSelectedStudy}>
+            <SelectTrigger className="w-[250px]" data-testid="select-study">
+              <SelectValue placeholder="Select Project/Study" />
+            </SelectTrigger>
+            <SelectContent>
+              {bucketStudies.map((study) => (
                 <SelectItem key={study.id} value={study.id}>
                   {study.name}
                 </SelectItem>
               ))}
-          </SelectContent>
-        </Select>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Kanban Board */}
       {!selectedStudy ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="text-center">
-              <h3 className="text-lg font-medium text-foreground mb-2">Select a study to view tasks</h3>
-              <p className="text-muted-foreground">Choose a lab and study from the filters above</p>
+            <div className="text-center space-y-4">
+              <div className="flex items-center justify-center space-x-2 text-4xl mb-4">
+                <Folder className="h-8 w-8 text-muted-foreground" />
+                <ArrowRight className="h-6 w-6 text-muted-foreground" />
+                <span className="text-2xl">📊</span>
+                <ArrowRight className="h-6 w-6 text-muted-foreground" />
+                <span className="text-2xl">✅</span>
+              </div>
+              <h3 className="text-lg font-medium text-foreground mb-2">
+                Select a Project/Study to view subtasks
+              </h3>
+              <p className="text-muted-foreground">
+                Follow the hierarchy: Choose a bucket, then select a project/study to manage its subtasks
+              </p>
+              {buckets.length === 0 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  No buckets found. Create buckets first to organize your projects.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

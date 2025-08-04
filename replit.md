@@ -7,6 +7,8 @@ LabManage is a comprehensive medical research lab management system designed to 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+UI/UX Structure: Bucket → Project/Study → Subtasks hierarchy for organization and Kanban board workflow.
+Lab Management: Support for multiple separate research labs with toggle functionality.
 
 ## System Architecture
 
@@ -30,7 +32,8 @@ Preferred communication style: Simple, everyday language.
 ### Database Design
 - **Primary Database**: PostgreSQL with Neon serverless connection pooling
 - **Schema Management**: Drizzle Kit for migrations and schema evolution
-- **Key Entities**: Users, Labs, Studies, Tasks, Standup Meetings, Action Items, and Sessions
+- **Key Entities**: Users, Labs, Buckets, Studies, Tasks, Standup Meetings, Action Items, and Sessions
+- **Hierarchy Structure**: Labs → Buckets → Studies/Projects → Tasks/Subtasks relationship
 - **Enums**: Strongly typed enums for user roles, study statuses, funding types, and priority levels
 - **Relationships**: Proper foreign key relationships with indexes for performance
 
@@ -50,6 +53,7 @@ Preferred communication style: Simple, everyday language.
 - **WebSocket Connection**: Custom WebSocket implementation for live collaboration
 - **Meeting Management**: Real-time standup meeting participation and status updates
 - **Notifications**: Live notification system for task updates and meeting alerts
+- **Lab Context Switching**: Real-time lab switching with automatic data filtering across all pages
 
 ### Development & Deployment
 - **Type Safety**: Full TypeScript implementation across frontend, backend, and shared schemas
