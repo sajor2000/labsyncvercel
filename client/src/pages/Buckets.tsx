@@ -7,18 +7,20 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Folder, FlaskConical, Settings, Eye, Edit, Trash2 } from "lucide-react";
+import { Plus, Folder, FlaskConical, Settings, Eye, Edit, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useLabContext } from "@/hooks/useLabContext";
-import type { Bucket, Lab, Study } from "@shared/schema";
+import type { Bucket, Lab, Study, TeamMember } from "@shared/schema";
 
 // Form schema for bucket creation
 const bucketFormSchema = z.object({
@@ -26,7 +28,23 @@ const bucketFormSchema = z.object({
   color: z.string().optional(),
 });
 
+// Form schema for study creation
+const studyFormSchema = z.object({
+  name: z.string().min(1, "Study name is required"),
+  oraNumber: z.string().optional(),
+  status: z.string().default("PLANNING"),
+  studyType: z.string().optional(),
+  assignees: z.array(z.string()).optional(),
+  funding: z.string().optional(),
+  externalCollaborators: z.string().optional(),
+  notes: z.string().optional(),
+  priority: z.string().default("MEDIUM"),
+  dueDate: z.string().optional(),
+  bucketId: z.string().min(1, "Bucket is required"),
+});
+
 type BucketFormValues = z.infer<typeof bucketFormSchema>;
+type StudyFormValues = z.infer<typeof studyFormSchema>;
 
 export default function Buckets() {
   const { toast } = useToast();
@@ -36,6 +54,8 @@ export default function Buckets() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLab, setSelectedLab] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isStudyCreateOpen, setIsStudyCreateOpen] = useState(false);
+  const [selectedBucketForStudy, setSelectedBucketForStudy] = useState<string | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -133,6 +153,11 @@ export default function Buckets() {
     enabled: isAuthenticated && !!currentLab,
   });
 
+  const { data: teamMembers = [] } = useQuery<TeamMember[]>({
+    queryKey: ['/api/team-members', currentLab?.id],
+    enabled: isAuthenticated && !!currentLab,
+  });
+
   // Delete bucket mutation
   const deleteBucketMutation = useMutation({
     mutationFn: async (bucketId: string) => {
@@ -171,6 +196,67 @@ export default function Buckets() {
     return matchesSearch;
   });
 
+  // Form for study creation
+  const studyForm = useForm<StudyFormValues>({
+    resolver: zodResolver(studyFormSchema),
+    defaultValues: {
+      name: "",
+      oraNumber: "",
+      status: "PLANNING",
+      studyType: "",
+      assignees: [],
+      funding: "",
+      externalCollaborators: "",
+      notes: "",
+      priority: "MEDIUM",
+      dueDate: "",
+      bucketId: "",
+    },
+  });
+
+  // Create study mutation
+  const createStudyMutation = useMutation({
+    mutationFn: async (data: StudyFormValues) => {
+      if (!currentLab) {
+        throw new Error("No lab selected");
+      }
+      const studyData = {
+        ...data,
+        labId: currentLab.id,
+        assignees: data.assignees?.filter(Boolean) || [],
+      };
+      return apiRequest('POST', '/api/studies', studyData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/studies', currentLab?.id] });
+      setIsStudyCreateOpen(false);
+      setSelectedBucketForStudy(null);
+      studyForm.reset();
+      toast({
+        title: "Success",
+        description: "Study created successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create study",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Helper functions
   const getStudiesCount = (bucketId: string) => {
     return allStudies.filter(study => study.bucketId === bucketId).length;
@@ -178,6 +264,16 @@ export default function Buckets() {
 
   const onSubmit = (data: BucketFormValues) => {
     createBucketMutation.mutate(data);
+  };
+
+  const onStudySubmit = (data: StudyFormValues) => {
+    createStudyMutation.mutate(data);
+  };
+
+  const openStudyCreateDialog = (bucketId: string) => {
+    setSelectedBucketForStudy(bucketId);
+    studyForm.setValue('bucketId', bucketId);
+    setIsStudyCreateOpen(true);
   };
 
   const getLabName = (labId: string) => {
@@ -279,6 +375,243 @@ export default function Buckets() {
                   </Button>
                   <Button type="submit" disabled={createBucketMutation.isPending}>
                     {createBucketMutation.isPending ? "Creating..." : "Create Bucket"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Study Creation Dialog */}
+        <Dialog open={isStudyCreateOpen} onOpenChange={setIsStudyCreateOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create New Study</DialogTitle>
+              <DialogDescription>
+                Add a new research study to this bucket
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...studyForm}>
+              <form onSubmit={studyForm.handleSubmit(onStudySubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={studyForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Study Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter study name..." {...field} data-testid="input-study-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={studyForm.control}
+                    name="oraNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>ORA Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., ORA-2024-001" {...field} data-testid="input-ora-number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={studyForm.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-study-status">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="PLANNING">Planning</SelectItem>
+                            <SelectItem value="IRB_SUBMISSION">IRB Submission</SelectItem>
+                            <SelectItem value="IRB_APPROVED">IRB Approved</SelectItem>
+                            <SelectItem value="DATA_COLLECTION">Data Collection</SelectItem>
+                            <SelectItem value="ANALYSIS">Analysis</SelectItem>
+                            <SelectItem value="MANUSCRIPT">Manuscript</SelectItem>
+                            <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
+                            <SelectItem value="PUBLISHED">Published</SelectItem>
+                            <SelectItem value="ON_HOLD">On Hold</SelectItem>
+                            <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={studyForm.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Priority</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-study-priority">
+                              <SelectValue placeholder="Select priority" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="LOW">Low</SelectItem>
+                            <SelectItem value="MEDIUM">Medium</SelectItem>
+                            <SelectItem value="HIGH">High</SelectItem>
+                            <SelectItem value="URGENT">Urgent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={studyForm.control}
+                    name="studyType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Study Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-study-type">
+                              <SelectValue placeholder="Select study type..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="retrospective EHR data analysis">Retrospective EHR Data Analysis</SelectItem>
+                            <SelectItem value="prospective cohort study">Prospective Cohort Study</SelectItem>
+                            <SelectItem value="randomized controlled trial">Randomized Controlled Trial</SelectItem>
+                            <SelectItem value="case-control study">Case-Control Study</SelectItem>
+                            <SelectItem value="cross-sectional survey study">Cross-Sectional Survey Study</SelectItem>
+                            <SelectItem value="longitudinal cohort study">Longitudinal Cohort Study</SelectItem>
+                            <SelectItem value="quasi-RCT (pre-post design) non-inferiority trial">Quasi-RCT (Pre-Post Design) Non-Inferiority Trial</SelectItem>
+                            <SelectItem value="qualitative interview study">Qualitative Interview Study</SelectItem>
+                            <SelectItem value="systematic review">Systematic Review</SelectItem>
+                            <SelectItem value="meta-analysis">Meta-Analysis</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={studyForm.control}
+                    name="dueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Due Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={`w-full pl-3 text-left font-normal ${!field.value && "text-muted-foreground"}`}
+                                data-testid="button-study-due-date"
+                              >
+                                {field.value ? (
+                                  new Date(field.value).toLocaleDateString()
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value ? new Date(field.value) : undefined}
+                              onSelect={(date) => field.onChange(date?.toISOString().split('T')[0])}
+                              disabled={(date) =>
+                                date < new Date("1900-01-01")
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={studyForm.control}
+                  name="funding"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Funding Source</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., NIH, NSF, Internal..." {...field} data-testid="input-funding" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={studyForm.control}
+                  name="externalCollaborators"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>External Collaborators</FormLabel>
+                      <FormControl>
+                        <Input placeholder="List external collaborators..." {...field} data-testid="input-external-collaborators" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={studyForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Add any additional notes about the study..." 
+                          className="min-h-[80px]"
+                          {...field} 
+                          data-testid="textarea-study-notes"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => {
+                      setIsStudyCreateOpen(false);
+                      setSelectedBucketForStudy(null);
+                      studyForm.reset();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createStudyMutation.isPending}>
+                    {createStudyMutation.isPending ? "Creating..." : "Create Study"}
                   </Button>
                 </div>
               </form>
@@ -418,7 +751,13 @@ export default function Buckets() {
                       <Eye className="h-3 w-3 mr-1" />
                       View
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1" data-testid={`button-add-study-${bucket.id}`}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1" 
+                      onClick={() => openStudyCreateDialog(bucket.id)}
+                      data-testid={`button-add-study-${bucket.id}`}
+                    >
                       <Plus className="h-3 w-3 mr-1" />
                       Add Study
                     </Button>
