@@ -159,14 +159,15 @@ export default function StackedView() {
     resolver: zodResolver(insertStudySchema.omit({ id: true, createdAt: true, updatedAt: true })),
     defaultValues: {
       name: "",
-      status: "PLANNING",
-      funding: "OTHER",
-      priority: "MEDIUM",
+      status: "PLANNING" as const,
+      funding: "OTHER" as const,
+      priority: "MEDIUM" as const,
       assignees: [],
       labId: contextLab?.id || "",
       bucketId: "",
       studyType: "",
       externalCollaborators: "",
+      notes: "",
       createdBy: "",
     },
   });
@@ -311,7 +312,7 @@ export default function StackedView() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Bucket</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
                             <FormControl>
                               <SelectTrigger data-testid="select-bucket">
                                 <SelectValue placeholder="Select bucket" />
@@ -319,7 +320,7 @@ export default function StackedView() {
                             </FormControl>
                             <SelectContent>
                               {buckets.map((bucket) => (
-                                <SelectItem key={bucket.id} value={bucket.id}>
+                                <SelectItem key={bucket.id} value={bucket.id || "none"}>
                                   <div className="flex items-center gap-2">
                                     <div 
                                       className="w-3 h-3 rounded-full" 
@@ -561,9 +562,9 @@ export default function StackedView() {
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground font-medium">Status</p>
                       <Badge 
-                        className={`${statusColors[study.status] || 'bg-gray-500'} text-white border-0`}
+                        className={`${statusColors[study.status || 'PLANNING'] || 'bg-gray-500'} text-white border-0`}
                       >
-                        {statusLabels[study.status] || study.status}
+                        {statusLabels[study.status || 'PLANNING'] || study.status}
                       </Badge>
                     </div>
 
@@ -588,9 +589,9 @@ export default function StackedView() {
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground font-medium">Funding</p>
                         <Badge 
-                          className={`${fundingColors[study.funding] || 'bg-gray-600'} text-white border-0`}
+                          className={`${fundingColors[study.funding || 'OTHER'] || 'bg-gray-600'} text-white border-0`}
                         >
-                          {study.funding === 'INDUSTRY_SPONSORED' ? 'Industry-sponsored' : study.funding}
+                          {study.funding === 'INDUSTRY_SPONSORED' ? 'Industry-sponsored' : (study.funding || 'Other')}
                         </Badge>
                       </div>
                     )}
