@@ -1,11 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Camera, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ObjectUploader } from "@/components/ObjectUploader";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { UploadResult } from "@uppy/core";
 
 interface TeamMemberAvatarUploadProps {
   currentAvatarUrl?: string;
@@ -33,71 +31,89 @@ export function TeamMemberAvatarUpload({
 }: TeamMemberAvatarUploadProps) {
   const { toast } = useToast();
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleGetUploadParameters = async () => {
-    try {
-      const response = await apiRequest('POST', '/api/upload/avatar') as any;
-      console.log('Got upload URL:', response.uploadURL);
-      return {
-        method: 'PUT' as const,
-        url: response.uploadURL,
-      };
-    } catch (error) {
-      console.error('Failed to get upload URL:', error);
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    console.log('File selected:', file.name, file.type, file.size);
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
       toast({
         title: "Error",
-        description: "Failed to get upload URL",
+        description: "Please select an image file",
         variant: "destructive",
       });
-      throw error;
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5242880) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      // Get upload URL
+      console.log('Getting upload URL...');
+      const response = await apiRequest('POST', '/api/upload/avatar') as any;
+      console.log('Got upload URL:', response.uploadURL);
+
+      // Upload file directly to the presigned URL
+      console.log('Uploading file...');
+      const uploadResponse = await fetch(response.uploadURL, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.status}`);
+      }
+
+      console.log('Upload successful');
+
+      // Extract file ID from upload URL
+      const urlParts = response.uploadURL.split('/');
+      const fileId = urlParts[urlParts.length - 1].split('?')[0];
+      const normalizedPath = `/objects/avatars/${fileId}`;
+      
+      console.log('Normalized path:', normalizedPath);
+
+      if (onAvatarChange) {
+        onAvatarChange(normalizedPath);
+      }
+
+      toast({
+        title: "Success",
+        description: "Avatar uploaded successfully",
+      });
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload avatar",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
-  const handleUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-    setUploadingAvatar(true);
-    console.log('Full upload result:', result);
-    if (result.successful && result.successful.length > 0) {
-      const uploadedFile = result.successful[0];
-      console.log('Uploaded file object:', uploadedFile);
-      
-      // Try different possible properties for the upload URL
-      const avatarUrl = (uploadedFile as any).uploadURL || 
-                       (uploadedFile as any).response?.uploadURL ||
-                       (uploadedFile as any).response?.location ||
-                       (uploadedFile as any).response?.Location ||
-                       (uploadedFile as any).meta?.uploadURL;
-      
-      console.log('Found avatarUrl:', avatarUrl);
-      
-      if (avatarUrl && onAvatarChange) {
-        // Extract the file ID from the uploaded URL
-        const urlParts = avatarUrl.split('/');
-        const fileId = urlParts[urlParts.length - 1].split('?')[0]; // Remove query params
-        const normalizedPath = `/objects/avatars/${fileId}`;
-        console.log('Normalized path:', normalizedPath);
-        onAvatarChange(normalizedPath);
-        setUploadingAvatar(false);
-        toast({
-          title: "Success",
-          description: "Avatar uploaded successfully",
-        });
-      } else {
-        console.error('No upload URL found in result');
-        setUploadingAvatar(false);
-        toast({
-          title: "Error",
-          description: "Upload completed but no URL found",
-          variant: "destructive",
-        });
-      }
-    } else {
-      setUploadingAvatar(false);
-      toast({
-        title: "Error", 
-        description: "Upload failed",
-        variant: "destructive",
-      });
-    }
+  const handleCameraClick = () => {
+    console.log('Camera button clicked');
+    fileInputRef.current?.click();
   };
 
   const getInitials = (name?: string) => {
@@ -125,16 +141,20 @@ export function TeamMemberAvatarUpload({
 
       {showUploadButton && (
         <div className="absolute -bottom-1 -right-1">
-          <ObjectUploader
-            maxNumberOfFiles={1}
-            maxFileSize={5242880} // 5MB
-            allowedFileTypes={['.jpg', '.jpeg', '.png']}
-            onGetUploadParameters={handleGetUploadParameters}
-            onComplete={handleUploadComplete}
-            buttonClassName="h-6 w-6 rounded-full p-0 bg-primary hover:bg-primary/90 border-2 border-background"
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button
+            onClick={handleCameraClick}
+            className="h-6 w-6 rounded-full p-0 bg-primary hover:bg-primary/90 border-2 border-background"
+            disabled={uploadingAvatar}
           >
             <Camera className="h-3 w-3 text-primary-foreground" />
-          </ObjectUploader>
+          </Button>
         </div>
       )}
 
