@@ -63,6 +63,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/buckets/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteBucket(req.params.id);
+      res.json({ message: "Bucket deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting bucket:", error);
+      res.status(500).json({ message: "Failed to delete bucket" });
+    }
+  });
+
   // Study routes
   app.get("/api/studies", isAuthenticated, async (req, res) => {
     try {

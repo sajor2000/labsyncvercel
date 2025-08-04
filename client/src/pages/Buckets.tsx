@@ -164,7 +164,10 @@ export default function Buckets() {
       return apiRequest('DELETE', `/api/buckets/${bucketId}`);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
       queryClient.invalidateQueries({ queryKey: ['/api/buckets', currentLab?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/studies', currentLab?.id] });
       toast({
         title: "Success",
         description: "Bucket deleted successfully",
