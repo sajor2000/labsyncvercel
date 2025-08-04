@@ -8,10 +8,17 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Filter, Search, Eye } from "lucide-react";
+import { Plus, Filter, Search, Eye, Edit, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Study, Lab, Bucket } from "@shared/schema";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import type { Study, Lab, Bucket, TeamMember } from "@shared/schema";
 
 const statusColors = {
   PLANNING: "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
@@ -26,6 +33,23 @@ const statusColors = {
   CANCELLED: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400",
 };
 
+// Form schema for study creation/editing
+const studyFormSchema = z.object({
+  name: z.string().min(1, "Study name is required"),
+  oraNumber: z.string().optional(),
+  status: z.string().default("PLANNING"),
+  studyType: z.string().optional(),
+  assignees: z.array(z.string()).optional(),
+  funding: z.string().optional(),
+  externalCollaborators: z.string().optional(),
+  notes: z.string().optional(),
+  priority: z.string().default("MEDIUM"),
+  dueDate: z.string().optional(),
+  bucketId: z.string().min(1, "Bucket is required"),
+});
+
+type StudyFormValues = z.infer<typeof studyFormSchema>;
+
 export default function Studies() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -34,6 +58,8 @@ export default function Studies() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLab, setSelectedLab] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingStudy, setEditingStudy] = useState<Study | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -75,6 +101,173 @@ export default function Studies() {
     },
   });
 
+  const { data: buckets = [], isLoading: bucketsLoading } = useQuery<Bucket[]>({
+    queryKey: ['/api/buckets'],
+    enabled: isAuthenticated,
+  });
+
+  const { data: teamMembers = [], isLoading: teamMembersLoading } = useQuery<TeamMember[]>({
+    queryKey: ['/api/team-members'],
+    enabled: isAuthenticated,
+  });
+
+  // Form for study creation/editing
+  const form = useForm<StudyFormValues>({
+    resolver: zodResolver(studyFormSchema),
+    defaultValues: {
+      name: "",
+      oraNumber: "",
+      status: "PLANNING",
+      studyType: "",
+      assignees: [],
+      funding: "",
+      externalCollaborators: "",
+      notes: "",
+      priority: "MEDIUM",
+      dueDate: "",
+      bucketId: "",
+    },
+  });
+
+  // Create study mutation
+  const createStudyMutation = useMutation({
+    mutationFn: async (data: StudyFormValues) => {
+      const studyData = {
+        ...data,
+        labId: contextLab?.id || "",
+        assignees: data.assignees || [],
+      };
+      return apiRequest('POST', '/api/studies', studyData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
+      setIsCreateOpen(false);
+      setEditingStudy(null);
+      form.reset();
+      toast({
+        title: "Success",
+        description: editingStudy ? "Study updated successfully" : "Study created successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: editingStudy ? "Failed to update study" : "Failed to create study",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update study mutation
+  const updateStudyMutation = useMutation({
+    mutationFn: async (data: StudyFormValues) => {
+      if (!editingStudy) throw new Error("No study to update");
+      const studyData = {
+        ...data,
+        assignees: data.assignees || [],
+      };
+      return apiRequest('PUT', `/api/studies/${editingStudy.id}`, studyData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
+      setIsCreateOpen(false);
+      setEditingStudy(null);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Study updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update study",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete study mutation
+  const deleteStudyMutation = useMutation({
+    mutationFn: async (studyId: string) => {
+      return apiRequest('DELETE', `/api/studies/${studyId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
+      toast({
+        title: "Success",
+        description: "Study deleted successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete study",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Helper functions
+  const onSubmit = (data: StudyFormValues) => {
+    if (editingStudy) {
+      updateStudyMutation.mutate(data);
+    } else {
+      createStudyMutation.mutate(data);
+    }
+  };
+
+  const openEditDialog = (study: Study) => {
+    setEditingStudy(study);
+    form.reset({
+      name: study.name || "",
+      oraNumber: study.oraNumber || "",
+      status: study.status || "PLANNING",
+      studyType: study.studyType || "",
+      assignees: study.assignees || [],
+      funding: study.funding || "",
+      externalCollaborators: study.externalCollaborators || "",
+      notes: study.notes || "",
+      priority: study.priority || "MEDIUM",
+      dueDate: study.dueDate ? new Date(study.dueDate).toISOString().split('T')[0] : "",
+      bucketId: study.bucketId || "",
+    });
+    setIsCreateOpen(true);
+  };
+
   // Filter studies by selected lab context first, then by other filters
   const labFilteredStudies = contextLab ? studies.filter(study => study.labId === contextLab.id) : studies;
   
@@ -105,10 +298,246 @@ export default function Studies() {
           <h1 className="text-2xl font-bold text-foreground">Studies</h1>
           <p className="text-muted-foreground">Manage your research studies</p>
         </div>
-        <Button data-testid="button-create-study">
-          <Plus className="h-4 w-4 mr-2" />
-          New Study
-        </Button>
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-create-study">
+              <Plus className="h-4 w-4 mr-2" />
+              New Study
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingStudy ? "Edit Study" : "Create New Study"}</DialogTitle>
+              <DialogDescription>
+                {editingStudy ? "Update the study details" : "Add a new research study to your lab"}
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Study Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter study name..." {...field} data-testid="input-study-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="oraNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>ORA Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., ORA-2024-001" {...field} data-testid="input-ora-number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-study-status">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="PLANNING">Planning</SelectItem>
+                            <SelectItem value="IRB_SUBMISSION">IRB Submission</SelectItem>
+                            <SelectItem value="IRB_APPROVED">IRB Approved</SelectItem>
+                            <SelectItem value="DATA_COLLECTION">Data Collection</SelectItem>
+                            <SelectItem value="ANALYSIS">Analysis</SelectItem>
+                            <SelectItem value="MANUSCRIPT">Manuscript</SelectItem>
+                            <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
+                            <SelectItem value="PUBLISHED">Published</SelectItem>
+                            <SelectItem value="ON_HOLD">On Hold</SelectItem>
+                            <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Priority</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-study-priority">
+                              <SelectValue placeholder="Select priority" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="LOW">Low</SelectItem>
+                            <SelectItem value="MEDIUM">Medium</SelectItem>
+                            <SelectItem value="HIGH">High</SelectItem>
+                            <SelectItem value="URGENT">Urgent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="bucketId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bucket</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-study-bucket">
+                              <SelectValue placeholder="Select bucket" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {buckets.map((bucket) => (
+                              <SelectItem key={bucket.id} value={bucket.id}>
+                                {bucket.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="funding"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Funding Source</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-study-funding">
+                              <SelectValue placeholder="Select funding" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="NIH">NIH</SelectItem>
+                            <SelectItem value="NSF">NSF</SelectItem>
+                            <SelectItem value="INDUSTRY_SPONSORED">Industry Sponsored</SelectItem>
+                            <SelectItem value="INTERNAL">Internal</SelectItem>
+                            <SelectItem value="FOUNDATION">Foundation</SelectItem>
+                            <SelectItem value="OTHER">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="studyType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Study Type</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., Retrospective, Prospective..." {...field} data-testid="input-study-type" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="dueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Due Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} data-testid="input-study-due-date" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="externalCollaborators"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>External Collaborators</FormLabel>
+                      <FormControl>
+                        <Input placeholder="List external collaborators..." {...field} data-testid="input-external-collaborators" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Add any additional notes about the study..." 
+                          className="min-h-[80px]"
+                          {...field} 
+                          data-testid="textarea-study-notes"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => {
+                      setIsCreateOpen(false);
+                      setEditingStudy(null);
+                      form.reset();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createStudyMutation.isPending || updateStudyMutation.isPending}>
+                    {(createStudyMutation.isPending || updateStudyMutation.isPending) 
+                      ? "Saving..." 
+                      : editingStudy ? "Update Study" : "Create Study"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filters */}
@@ -185,7 +614,10 @@ export default function Studies() {
                   : "Create your first study to get started"
                 }
               </p>
-              <Button data-testid="button-create-first-study">
+              <Button 
+                onClick={() => setIsCreateOpen(true)}
+                data-testid="button-create-first-study"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Study
               </Button>
@@ -225,9 +657,53 @@ export default function Studies() {
                     <span className="text-xs text-muted-foreground">
                       Updated: {study.updatedAt ? new Date(study.updatedAt).toLocaleDateString() : 'Unknown'}
                     </span>
-                    <Button variant="ghost" size="sm" data-testid={`button-view-study-${study.id}`}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    <div className="flex space-x-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => openEditDialog(study)}
+                        data-testid={`button-edit-study-${study.id}`}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => openEditDialog(study)}
+                        data-testid={`button-view-study-${study.id}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-destructive hover:text-destructive"
+                            data-testid={`button-delete-study-${study.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Study</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{study.name}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => deleteStudyMutation.mutate(study.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </div>
               </CardContent>

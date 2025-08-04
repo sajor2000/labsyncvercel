@@ -93,6 +93,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/studies/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteStudy(req.params.id);
+      res.json({ message: "Study deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting study:", error);
+      res.status(500).json({ message: "Failed to delete study" });
+    }
+  });
+
   // Task routes
   app.get("/api/tasks", isAuthenticated, async (req, res) => {
     try {
