@@ -8,13 +8,15 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Filter, Search, Eye, Edit, Trash2 } from "lucide-react";
+import { Plus, Filter, Search, Eye, Edit, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -460,9 +462,25 @@ export default function Studies() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Study Type</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Retrospective, Prospective..." {...field} data-testid="input-study-type" />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-study-type">
+                              <SelectValue placeholder="Select study type..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="retrospective EHR data analysis">Retrospective EHR Data Analysis</SelectItem>
+                            <SelectItem value="prospective cohort study">Prospective Cohort Study</SelectItem>
+                            <SelectItem value="randomized controlled trial">Randomized Controlled Trial</SelectItem>
+                            <SelectItem value="case-control study">Case-Control Study</SelectItem>
+                            <SelectItem value="cross-sectional survey study">Cross-Sectional Survey Study</SelectItem>
+                            <SelectItem value="longitudinal cohort study">Longitudinal Cohort Study</SelectItem>
+                            <SelectItem value="quasi-RCT (pre-post design) non-inferiority trial">Quasi-RCT (Pre-Post Design) Non-Inferiority Trial</SelectItem>
+                            <SelectItem value="qualitative interview study">Qualitative Interview Study</SelectItem>
+                            <SelectItem value="systematic review">Systematic Review</SelectItem>
+                            <SelectItem value="meta-analysis">Meta-Analysis</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -474,9 +492,35 @@ export default function Studies() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Due Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} data-testid="input-study-due-date" />
-                        </FormControl>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={`w-full pl-3 text-left font-normal ${!field.value && "text-muted-foreground"}`}
+                                data-testid="button-study-due-date"
+                              >
+                                {field.value ? (
+                                  new Date(field.value).toLocaleDateString()
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value ? new Date(field.value) : undefined}
+                              onSelect={(date) => field.onChange(date?.toISOString().split('T')[0])}
+                              disabled={(date) =>
+                                date < new Date("1900-01-01")
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
                     )}
