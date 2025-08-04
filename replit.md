@@ -9,6 +9,7 @@ LabManage is a comprehensive medical research lab management system designed to 
 Preferred communication style: Simple, everyday language.
 UI/UX Structure: Bucket → Project/Study → Subtasks hierarchy for organization and Kanban board workflow.
 Lab Management: Support for multiple separate research labs with toggle functionality.
+Color Scheme: Slack-inspired dark theme with professional color palette (purple primary, green accent, neutral grays).
 
 ## System Architecture
 
@@ -59,8 +60,15 @@ Lab Management: Support for multiple separate research labs with toggle function
 - **File Upload**: Comprehensive avatar upload system supporting JPG and PNG images
 - **Circular Images**: All avatars display as circular profile pictures with proper object-fit styling
 - **Object Storage**: Google Cloud Storage integration for secure file storage and serving
-- **Upload Interface**: User-friendly camera button overlay for easy avatar changes
+- **Upload Interface**: User-friendly camera button overlay with green accent color for easy avatar changes
 - **Cross-Page Integration**: Avatar display and upload functionality across Sidebar, headers, and user profiles
+- **Styling**: Fixed container sizing and image constraints to prevent overlapping issues
+
+### Theme & Styling
+- **Color Palette**: Slack-inspired professional theme with purple primary (#8B5FE6), green accent (#22C55E), and neutral grays
+- **Dark Mode**: Default dark theme with proper contrast ratios and accessibility considerations
+- **Scrollbars**: Custom Slack-style scrollbar design for better visual consistency
+- **Focus States**: Enhanced accessibility with proper focus indicators
 
 ### Development & Deployment
 - **Type Safety**: Full TypeScript implementation across frontend, backend, and shared schemas

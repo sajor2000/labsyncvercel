@@ -192,10 +192,10 @@ export function AvatarUpload({
           />
           <Button
             onClick={handleCameraClick}
-            className="h-6 w-6 rounded-full p-0 bg-primary hover:bg-primary/90 border-2 border-background shadow-md"
+            className="h-6 w-6 rounded-full p-0 bg-accent hover:bg-accent/90 border-2 border-background shadow-md"
             disabled={uploadingAvatar}
           >
-            <Camera className="h-3 w-3 text-primary-foreground" />
+            <Camera className="h-3 w-3 text-accent-foreground" />
           </Button>
         </div>
       )}
