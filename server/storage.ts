@@ -168,6 +168,11 @@ export class DatabaseStorage implements IStorage {
     return newLab;
   }
 
+  async getLabById(id: string): Promise<Lab | undefined> {
+    const [lab] = await db.select().from(labs).where(eq(labs.id, id));
+    return lab;
+  }
+
   async getLabMembers(labId: string): Promise<User[]> {
     return await db.select().from(users).where(eq(users.labId, labId));
   }

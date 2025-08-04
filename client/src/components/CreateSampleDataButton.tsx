@@ -17,9 +17,7 @@ export function CreateSampleDataButton() {
       return apiRequest('/api/create-sample-data', 'POST', {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      queryClient.invalidateQueries();
       toast({
         title: "Success",
         description: "Sample data created successfully! You now have Abbott and Wisconsin R01 buckets with example studies.",

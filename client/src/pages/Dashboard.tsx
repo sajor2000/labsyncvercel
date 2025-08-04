@@ -45,13 +45,13 @@ export default function Dashboard() {
   }, [labs, setAllLabs]);
 
   const { data: studies = [] } = useQuery<Study[]>({
-    queryKey: ['/api/studies'],
-    enabled: isAuthenticated,
+    queryKey: ['/api/studies', selectedLab?.id],
+    enabled: isAuthenticated && !!selectedLab,
   });
 
   const { data: buckets = [] } = useQuery<Bucket[]>({
-    queryKey: ['/api/buckets'],
-    enabled: isAuthenticated,
+    queryKey: ['/api/buckets', selectedLab?.id],
+    enabled: isAuthenticated && !!selectedLab,
   });
 
   const { data: tasks = [] } = useQuery<Task[]>({
@@ -59,12 +59,12 @@ export default function Dashboard() {
     enabled: isAuthenticated,
   });
 
-  // Filter data by selected lab
-  const labStudies = selectedLab ? studies.filter(study => study.labId === selectedLab.id) : studies;
-  const labBuckets = selectedLab ? buckets.filter(bucket => bucket.labId === selectedLab.id) : buckets;
-  const labTasks = selectedLab ? tasks.filter(task => 
+  // Data is already filtered by lab on backend
+  const labStudies = studies;
+  const labBuckets = buckets;
+  const labTasks = tasks.filter(task => 
     labStudies.some(study => study.id === task.studyId)
-  ) : tasks;
+  );
 
   // Calculate statistics for selected lab
   const activeStudies = labStudies.filter(study => 

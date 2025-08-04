@@ -28,13 +28,8 @@ export function useLabContextValue(): LabContextType {
   const setSelectedLabWithInvalidation = (lab: Lab | null) => {
     setSelectedLab(lab);
     if (lab) {
-      // Invalidate queries when lab changes to force refetch with new lab ID
-      queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/deadlines'] });
+      // Invalidate all queries to force refetch with new lab ID
+      queryClient.invalidateQueries();
     }
   };
 

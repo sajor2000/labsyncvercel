@@ -99,7 +99,7 @@ export default function StackedView() {
 
   // Fetch data
   const { data: buckets = [], isLoading: bucketsLoading } = useQuery<Bucket[]>({
-    queryKey: ['/api/buckets'],
+    queryKey: ['/api/buckets', contextLab?.id],
     enabled: isAuthenticated && !!contextLab,
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -118,8 +118,8 @@ export default function StackedView() {
   });
 
   const { data: allStudies = [], isLoading: studiesLoading } = useQuery<Study[]>({
-    queryKey: ['/api/studies'],
-    enabled: isAuthenticated,
+    queryKey: ['/api/studies', contextLab?.id],
+    enabled: isAuthenticated && !!contextLab,
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error as Error)) {
         toast({
@@ -136,8 +136,8 @@ export default function StackedView() {
     },
   });
 
-  // Filter studies by lab context
-  const labStudies = contextLab ? allStudies.filter(study => study.labId === contextLab.id) : allStudies;
+  // Studies are already filtered by lab context on backend
+  const labStudies = allStudies;
 
   // Filter studies by search and status
   const filteredStudies = labStudies.filter(study => {

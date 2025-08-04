@@ -59,8 +59,8 @@ export default function Buckets() {
   });
 
   const { data: buckets = [], isLoading: bucketsLoading, error: bucketsError } = useQuery<Bucket[]>({
-    queryKey: ['/api/buckets'],
-    enabled: isAuthenticated,
+    queryKey: ['/api/buckets', currentLab?.id],
+    enabled: isAuthenticated && !!currentLab,
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error as Error)) {
         toast({
@@ -99,7 +99,7 @@ export default function Buckets() {
       return apiRequest('POST', '/api/buckets', bucketData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/buckets', currentLab?.id] });
       setIsCreateOpen(false);
       form.reset();
       toast({
@@ -129,8 +129,8 @@ export default function Buckets() {
 
   // Get studies count for each bucket
   const { data: allStudies = [] } = useQuery<Study[]>({
-    queryKey: ['/api/studies'],
-    enabled: isAuthenticated,
+    queryKey: ['/api/studies', currentLab?.id],
+    enabled: isAuthenticated && !!currentLab,
   });
 
   // Delete bucket mutation
@@ -139,7 +139,7 @@ export default function Buckets() {
       return apiRequest('DELETE', `/api/buckets/${bucketId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/buckets', currentLab?.id] });
       toast({
         title: "Success",
         description: "Bucket deleted successfully",
@@ -165,11 +165,10 @@ export default function Buckets() {
     },
   });
 
-  // Filter buckets
+  // Filter buckets - buckets are already filtered by lab on backend
   const filteredBuckets = buckets.filter(bucket => {
     const matchesSearch = bucket.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLab = !selectedLab || bucket.labId === selectedLab;
-    return matchesSearch && matchesLab;
+    return matchesSearch;
   });
 
   // Helper functions

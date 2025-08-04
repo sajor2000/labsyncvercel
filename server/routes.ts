@@ -44,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bucket routes
   app.get("/api/buckets", isAuthenticated, async (req, res) => {
     try {
-      const labId = req.query.labId as string;
+      const labId = req.query.labId as string | undefined;
       const buckets = await storage.getBuckets(labId);
       res.json(buckets);
     } catch (error) {
@@ -66,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Study routes
   app.get("/api/studies", isAuthenticated, async (req, res) => {
     try {
-      const labId = req.query.labId as string;
+      const labId = req.query.labId as string | undefined;
       const studies = await storage.getStudies(labId);
       res.json(studies);
     } catch (error) {
@@ -331,7 +331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/create-sample-data", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      await createSampleData(storage);
+      await createSampleData();
       res.json({ message: "Sample data created successfully" });
     } catch (error) {
       console.error("Error creating sample data:", error);

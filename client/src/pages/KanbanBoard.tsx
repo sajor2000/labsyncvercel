@@ -53,17 +53,17 @@ export default function KanbanBoard() {
 
   // Fetch data filtered by lab context
   const { data: buckets = [] } = useQuery<Bucket[]>({
-    queryKey: ['/api/buckets'],
+    queryKey: ['/api/buckets', contextLab?.id],
     enabled: isAuthenticated && !!contextLab,
   });
 
   const { data: allStudies = [] } = useQuery<Study[]>({
-    queryKey: ['/api/studies'],
-    enabled: isAuthenticated,
+    queryKey: ['/api/studies', contextLab?.id],
+    enabled: isAuthenticated && !!contextLab,
   });
 
-  // Filter studies by lab context and selected bucket
-  const labStudies = contextLab ? allStudies.filter(study => study.labId === contextLab.id) : allStudies;
+  // Studies are already filtered by lab context on backend
+  const labStudies = allStudies;
   const bucketStudies = selectedBucket && selectedBucket !== "ALL" ? labStudies.filter(study => study.bucketId === selectedBucket) : labStudies;
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
