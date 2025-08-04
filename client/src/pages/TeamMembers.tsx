@@ -34,24 +34,18 @@ import { insertTeamMemberSchema, type TeamMember, type InsertTeamMember, type La
 import { z } from "zod";
 
 // Create form schema
-const createTeamMemberFormSchema = insertTeamMemberSchema.extend({
-  expertise: z.string().optional(),
-});
+const createTeamMemberFormSchema = insertTeamMemberSchema;
 
 type CreateTeamMemberFormData = z.infer<typeof createTeamMemberFormSchema>;
 
 // Role options for team members
 const roleOptions = [
-  "Principal Investigator",
-  "Research Coordinator", 
-  "Data Analyst",
-  "Biostatistician",
-  "Research Assistant",
-  "Laboratory Technician",
-  "Project Manager",
-  "Graduate Student",
-  "Postdoctoral Fellow",
-  "Clinical Research Coordinator"
+  { value: "PI", label: "PI" },
+  { value: "data_scientist", label: "Data Scientist" },
+  { value: "intern", label: "Intern" },
+  { value: "resident", label: "Resident" },
+  { value: "fellow", label: "Fellow" },
+  { value: "regulatory_coordinator", label: "Regulatory Coordinator" }
 ];
 
 export default function TeamMembers() {
@@ -89,9 +83,10 @@ export default function TeamMembers() {
 
   // Filter members based on search and filters
   const filteredMembers = labMembers.filter(member => {
+    const roleLabel = roleOptions.find(opt => opt.value === member.role)?.label || member.role;
     const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.role.toLowerCase().includes(searchTerm.toLowerCase());
+                         roleLabel.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = !selectedRole || selectedRole === "ALL" || member.role === selectedRole;
     const matchesStatus = !selectedStatus || selectedStatus === "ALL" || 
                          (selectedStatus === "ACTIVE" && member.isActive) ||
@@ -104,12 +99,10 @@ export default function TeamMembers() {
     resolver: zodResolver(createTeamMemberFormSchema),
     defaultValues: {
       name: "",
+      initials: "",
       email: "",
       role: "",
-      department: "",
-      phoneNumber: "",
-      expertise: "",
-      bio: "",
+      avatarUrl: "",
       labId: currentLab?.id || "",
       isActive: true,
     },
@@ -118,10 +111,8 @@ export default function TeamMembers() {
   // Create member mutation
   const createMemberMutation = useMutation({
     mutationFn: async (data: CreateTeamMemberFormData) => {
-      const { expertise, ...rest } = data;
       const memberData = {
-        ...rest,
-        expertise: expertise ? expertise.split(',').map(e => e.trim()) : [],
+        ...data,
         labId: currentLab?.id || "",
       };
       return apiRequest('/api/team-members', 'POST', memberData);
@@ -260,51 +251,12 @@ export default function TeamMembers() {
                   />
                   <FormField
                     control={createMemberForm.control}
-                    name="email"
+                    name="initials"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>Initials</FormLabel>
                         <FormControl>
-                          <Input type="email" {...field} value={field.value || ""} data-testid="input-member-email" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={createMemberForm.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Role</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ""}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-member-role">
-                              <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {roleOptions.map((role) => (
-                              <SelectItem key={role} value={role}>
-                                {role}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={createMemberForm.control}
-                    name="department"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Department</FormLabel>
-                        <FormControl>
-                          <Input {...field} value={field.value || ""} data-testid="input-member-department" />
+                          <Input {...field} placeholder="e.g., JS" maxLength={10} data-testid="input-member-initials" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -313,12 +265,12 @@ export default function TeamMembers() {
                 </div>
                 <FormField
                   control={createMemberForm.control}
-                  name="phoneNumber"
+                  name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
+                      <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input {...field} value={field.value || ""} data-testid="input-member-phone" />
+                        <Input type="email" {...field} value={field.value || ""} data-testid="input-member-email" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -326,25 +278,36 @@ export default function TeamMembers() {
                 />
                 <FormField
                   control={createMemberForm.control}
-                  name="expertise"
+                  name="role"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Expertise (comma-separated)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Data Analysis, Clinical Research, Statistics" {...field} data-testid="input-member-expertise" />
-                      </FormControl>
+                      <FormLabel>Role</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-member-role">
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {roleOptions.map((role) => (
+                            <SelectItem key={role.value} value={role.value}>
+                              {role.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={createMemberForm.control}
-                  name="bio"
+                  name="avatarUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Bio</FormLabel>
+                      <FormLabel>Avatar URL (optional)</FormLabel>
                       <FormControl>
-                        <Textarea {...field} value={field.value || ""} data-testid="textarea-member-bio" />
+                        <Input {...field} value={field.value || ""} placeholder="https://example.com/avatar.png" data-testid="input-member-avatar" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -380,8 +343,8 @@ export default function TeamMembers() {
           <SelectContent>
             <SelectItem value="ALL">All Roles</SelectItem>
             {roleOptions.map((role) => (
-              <SelectItem key={role} value={role}>
-                {role}
+              <SelectItem key={role.value} value={role.value}>
+                {role.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -409,12 +372,14 @@ export default function TeamMembers() {
                     <Avatar>
                       <AvatarImage src={member.avatarUrl || ""} />
                       <AvatarFallback>
-                        {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        {member.initials || member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <CardTitle className="text-base">{member.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{member.role}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {roleOptions.find(opt => opt.value === member.role)?.label || member.role}
+                      </p>
                     </div>
                   </div>
                   <Badge variant={member.isActive ? "default" : "secondary"}>
@@ -429,30 +394,11 @@ export default function TeamMembers() {
                     <span className="truncate">{member.email}</span>
                   </div>
                 )}
-                {member.phoneNumber && (
+                {member.initials && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="h-4 w-4" />
-                    <span>{member.phoneNumber}</span>
-                  </div>
-                )}
-                {member.department && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Building className="h-4 w-4" />
-                    <span>{member.department}</span>
-                  </div>
-                )}
-                {member.expertise && member.expertise.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {member.expertise.slice(0, 3).map((skill) => (
-                      <Badge key={skill} variant="outline" className="text-xs">
-                        {skill}
-                      </Badge>
-                    ))}
-                    {member.expertise.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{member.expertise.length - 3} more
-                      </Badge>
-                    )}
+                    <span className="font-mono text-xs bg-muted px-2 py-1 rounded">
+                      {member.initials}
+                    </span>
                   </div>
                 )}
                 <div className="flex justify-between pt-2">

@@ -93,6 +93,15 @@ export const updateTypeEnum = pgEnum("update_type", [
   "GENERAL"
 ]);
 
+export const teamMemberRoleEnum = pgEnum("team_member_role", [
+  "PI",
+  "data_scientist", 
+  "intern",
+  "resident",
+  "fellow",
+  "regulatory_coordinator"
+]);
+
 // User storage table (required for Replit Auth)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -218,19 +227,16 @@ export const studyStatusUpdates = pgTable("study_status_updates", {
   extractedAt: timestamp("extracted_at").defaultNow(),
 });
 
-// Team Members table for lab personnel management
+// Team Members table for lab personnel management  
 export const teamMembers = pgTable("team_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
+  initials: varchar("initials", { length: 10 }),
   email: varchar("email").unique(),
-  role: varchar("role").notNull(), // PI, Research Coordinator, Data Analyst, etc.
-  department: varchar("department"),
+  role: teamMemberRoleEnum("role").notNull(),
+  avatarUrl: varchar("avatar_url"), // PNG avatar image URL
   labId: varchar("lab_id").references(() => labs.id),
   isActive: boolean("is_active").default(true),
-  phoneNumber: varchar("phone_number"),
-  expertise: text("expertise").array(),
-  bio: text("bio"),
-  avatarUrl: varchar("avatar_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
