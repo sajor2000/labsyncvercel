@@ -70,8 +70,12 @@ export function TeamMemberAvatarUpload({
       const response = await apiRequest('POST', '/api/upload/avatar') as any;
       console.log('Got upload URL:', response.uploadURL);
 
+      if (!response.uploadURL) {
+        throw new Error('No upload URL received from server');
+      }
+
       // Upload file directly to the presigned URL
-      console.log('Uploading file...');
+      console.log('Uploading file to:', response.uploadURL.substring(0, 100) + '...');
       const uploadResponse = await fetch(response.uploadURL, {
         method: 'PUT',
         body: file,
@@ -80,7 +84,11 @@ export function TeamMemberAvatarUpload({
         },
       });
 
+      console.log('Upload response status:', uploadResponse.status);
+
       if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('Upload failed with response:', errorText);
         throw new Error(`Upload failed: ${uploadResponse.status}`);
       }
 
@@ -94,6 +102,7 @@ export function TeamMemberAvatarUpload({
       console.log('Normalized path:', normalizedPath);
 
       if (onAvatarChange) {
+        console.log('Calling onAvatarChange with:', normalizedPath);
         onAvatarChange(normalizedPath);
       }
 
