@@ -117,8 +117,8 @@ export default function Deadlines() {
       type: "OTHER",
       dueDate: "",
       priority: "MEDIUM",
-      assignedTo: "",
-      relatedStudyId: "",
+      assignedTo: "unassigned",
+      relatedStudyId: "none",
       submissionUrl: "",
       notes: "",
     },
@@ -130,8 +130,8 @@ export default function Deadlines() {
         ...data,
         dueDate: new Date(data.dueDate),
         labId: selectedLab!.id,
-        assignedTo: data.assignedTo || undefined,
-        relatedStudyId: data.relatedStudyId || undefined,
+        assignedTo: data.assignedTo === "unassigned" ? undefined : data.assignedTo,
+        relatedStudyId: data.relatedStudyId === "none" ? undefined : data.relatedStudyId,
       };
       return apiRequest("POST", "/api/deadlines", deadlineData);
     },
@@ -147,8 +147,8 @@ export default function Deadlines() {
       const updateData = {
         ...data,
         dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-        assignedTo: data.assignedTo || undefined,
-        relatedStudyId: data.relatedStudyId || undefined,
+        assignedTo: data.assignedTo === "unassigned" ? undefined : data.assignedTo,
+        relatedStudyId: data.relatedStudyId === "none" ? undefined : data.relatedStudyId,
       };
       return apiRequest("PUT", `/api/deadlines/${id}`, updateData);
     },
@@ -192,9 +192,9 @@ export default function Deadlines() {
       description: deadline.description || "",
       type: deadline.type,
       dueDate: new Date(deadline.dueDate).toISOString().split('T')[0],
-      priority: deadline.priority,
-      assignedTo: deadline.assignedTo || "",
-      relatedStudyId: deadline.relatedStudyId || "",
+      priority: deadline.priority || "MEDIUM",
+      assignedTo: deadline.assignedTo || "unassigned",
+      relatedStudyId: deadline.relatedStudyId || "none",
       submissionUrl: deadline.submissionUrl || "",
       notes: deadline.notes || "",
     });
@@ -371,8 +371,8 @@ export default function Deadlines() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Unassigned</SelectItem>
-                            {teamMembers.map((member: any) => (
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                            {(teamMembers as any[]).map((member: any) => (
                               <SelectItem key={member.id} value={member.id}>
                                 {member.name}
                               </SelectItem>
@@ -399,8 +399,8 @@ export default function Deadlines() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">No related study</SelectItem>
-                            {studies.map((study: any) => (
+                            <SelectItem value="none">No related study</SelectItem>
+                            {(studies as any[]).map((study: any) => (
                               <SelectItem key={study.id} value={study.id}>
                                 {study.name}
                               </SelectItem>
@@ -543,8 +543,8 @@ export default function Deadlines() {
         <div className="space-y-4">
           {sortedDeadlines.map((deadline: Deadline) => {
             const daysUntil = getDaysUntilDue(deadline.dueDate);
-            const assignedMember = teamMembers.find((m: any) => m.id === deadline.assignedTo);
-            const relatedStudy = studies.find((s: any) => s.id === deadline.relatedStudyId);
+            const assignedMember = (teamMembers as any[]).find((m: any) => m.id === deadline.assignedTo);
+            const relatedStudy = (studies as any[]).find((s: any) => s.id === deadline.relatedStudyId);
             
             return (
               <Card 
@@ -565,7 +565,7 @@ export default function Deadlines() {
                         <CardTitle className="text-lg">{deadline.title}</CardTitle>
                         {deadline.submissionUrl && (
                           <a 
-                            href={deadline.submissionUrl} 
+                            href={deadline.submissionUrl || ""} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800"
@@ -621,19 +621,19 @@ export default function Deadlines() {
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
                   <div className="flex flex-wrap gap-2 items-center">
-                    <Badge variant="outline" className={priorityColors[deadline.priority]}>
-                      {deadline.priority}
+                    <Badge variant="outline" className={priorityColors[deadline.priority || "MEDIUM"]}>
+                      {deadline.priority || "MEDIUM"}
                     </Badge>
-                    <Badge variant="secondary" className={typeColors[deadline.type]}>
-                      {typeLabels[deadline.type]}
+                    <Badge variant="secondary" className={typeColors[deadline.type || "OTHER"]}>
+                      {typeLabels[deadline.type || "OTHER"]}
                     </Badge>
                     <Select 
-                      value={deadline.status} 
+                      value={deadline.status || "PENDING"} 
                       onValueChange={(status) => statusUpdateMutation.mutate({ id: deadline.id, status })}
                     >
                       <SelectTrigger className="w-auto h-auto p-0 border-0 text-xs bg-transparent">
-                        <Badge className={statusColors[deadline.status]}>
-                          {statusLabels[deadline.status]}
+                        <Badge className={statusColors[deadline.status || "PENDING"]}>
+                          {statusLabels[deadline.status || "PENDING"]}
                         </Badge>
                       </SelectTrigger>
                       <SelectContent>
