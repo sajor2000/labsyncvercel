@@ -26,7 +26,7 @@ export async function createSampleData() {
         labId: lab1.id,
       },
       {
-        name: "Health Equity Research",
+        name: "RHEDAS Research",
         color: "#f59e0b",
         labId: lab2?.id || lab1.id,
       },
@@ -97,7 +97,7 @@ export async function createSampleData() {
         assignees: ["Dr. Chen", "Sarah", "Miguel"],
         funding: "FOUNDATION" as const,
         externalCollaborators: "Rural Health Coalition",
-        bucketId: insertedBuckets[2].id, // Health Equity bucket
+        bucketId: insertedBuckets[2].id, // RHEDAS Research bucket
         labId: lab2?.id || lab1.id,
         createdBy: "sample-user",
       },

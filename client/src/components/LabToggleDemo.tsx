@@ -75,7 +75,7 @@ export function LabToggleDemo() {
             <Badge variant="outline">
               {selectedLab?.name?.includes("RHEDAS") 
                 ? "Abbott & Wisconsin R01" 
-                : "RICCC Projects"}
+                : "Critical Care Projects"}
             </Badge>
           </div>
           <div className="flex items-center justify-between">
