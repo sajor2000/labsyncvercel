@@ -21,6 +21,13 @@ const sizeClasses = {
   xl: "h-24 w-24",
 };
 
+const containerSizeClasses = {
+  sm: { width: '32px', height: '32px' },
+  md: { width: '40px', height: '40px' },
+  lg: { width: '64px', height: '64px' },
+  xl: { width: '96px', height: '96px' },
+};
+
 export function TeamMemberAvatarUpload({
   currentAvatarUrl,
   userName,
@@ -146,12 +153,12 @@ export function TeamMemberAvatarUpload({
   };
 
   return (
-    <div className={`relative inline-block ${className}`}>
-      <Avatar className={`${sizeClasses[size]} ring-2 ring-background overflow-hidden`}>
+    <div className={`relative inline-block ${className}`} style={containerSizeClasses[size]}>
+      <Avatar className={`${sizeClasses[size]} ring-2 ring-background`}>
         <AvatarImage 
           src={currentAvatarUrl} 
           alt={userName || "Team member avatar"}
-          className="object-cover w-full h-full"
+          style={{ objectFit: 'cover' }}
         />
         <AvatarFallback className="bg-muted">
           {userName ? getInitials(userName) : <User className="h-4 w-4" />}
