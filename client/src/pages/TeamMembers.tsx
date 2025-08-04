@@ -9,44 +9,38 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { AvatarUpload } from "@/components/AvatarUpload";
 import { TeamMemberAvatarUpload } from "@/components/TeamMemberAvatarUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Plus, 
   Search,
   Users,
   Mail,
-  Phone,
-  Building,
   UserCheck,
   UserX,
-  Settings,
   Edit,
   Trash2
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertTeamMemberSchema, type TeamMember, type InsertTeamMember, type Lab } from "@shared/schema";
+import { insertTeamMemberSchema, type TeamMember, type InsertTeamMember } from "@shared/schema";
 import { z } from "zod";
 
 // Create form schema
 const createTeamMemberFormSchema = insertTeamMemberSchema;
-
 type CreateTeamMemberFormData = z.infer<typeof createTeamMemberFormSchema>;
 
 // Role options for team members
 const roleOptions = [
   { value: "PI", label: "PI" },
-  { value: "data_scientist", label: "Data Scientist" },
-  { value: "intern", label: "Intern" },
-  { value: "resident", label: "Resident" },
-  { value: "fellow", label: "Fellow" },
-  { value: "regulatory_coordinator", label: "Regulatory Coordinator" }
+  { value: "Data Scientist", label: "Data Scientist" },
+  { value: "Data Analyst", label: "Data Analyst" },
+  { value: "Regulatory Coordinator", label: "Regulatory Coordinator" },
+  { value: "Coordinator", label: "Coordinator" },
+  { value: "Lab Intern", label: "Lab Intern" },
+  { value: "Summer Intern", label: "Summer Intern" }
 ];
 
 export default function TeamMembers() {
@@ -258,6 +252,38 @@ export default function TeamMembers() {
     },
   });
 
+  // Load sample team data mutation
+  const loadSampleDataMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', '/api/load-sample-team-data', {});
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Sample team data loaded successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to load sample team data",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: CreateTeamMemberFormData) => {
     createMemberMutation.mutate(data);
   };
@@ -323,31 +349,72 @@ export default function TeamMembers() {
             Manage lab personnel and their assignments in {selectedLab.name}
           </p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-member">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Team Member
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Add New Team Member</DialogTitle>
-              <DialogDescription>
-                Add a new team member to {selectedLab.name} lab.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...createMemberForm}>
-              <form onSubmit={createMemberForm.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => loadSampleDataMutation.mutate()}
+            disabled={loadSampleDataMutation.isPending}
+            data-testid="button-load-sample-data"
+          >
+            {loadSampleDataMutation.isPending ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+            ) : (
+              <Users className="h-4 w-4 mr-2" />
+            )}
+            Load Sample Data
+          </Button>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-member">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Team Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Add New Team Member</DialogTitle>
+                <DialogDescription>
+                  Add a new team member to {selectedLab.name} lab.
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...createMemberForm}>
+                <form onSubmit={createMemberForm.handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={createMemberForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-member-name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={createMemberForm.control}
+                      name="initials"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Initials</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ""} placeholder="e.g., JS" maxLength={10} data-testid="input-member-initials" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={createMemberForm.control}
-                    name="name"
+                    name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Full Name</FormLabel>
+                        <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-member-name" />
+                          <Input type="email" {...field} value={field.value || ""} data-testid="input-member-email" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -355,235 +422,91 @@ export default function TeamMembers() {
                   />
                   <FormField
                     control={createMemberForm.control}
-                    name="initials"
+                    name="role"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Initials</FormLabel>
-                        <FormControl>
-                          <Input {...field} value={field.value || ""} placeholder="e.g., JS" maxLength={10} data-testid="input-member-initials" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={createMemberForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} value={field.value || ""} data-testid="input-member-email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createMemberForm.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Role</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-member-role">
-                            <SelectValue placeholder="Select role" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {roleOptions.map((role) => (
-                            <SelectItem key={role.value} value={role.value}>
-                              {role.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={createMemberForm.control}
-                  name="avatarUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Avatar (PNG/JPG)</FormLabel>
-                      <FormControl>
-                        <div className="flex items-center gap-3">
-                          <TeamMemberAvatarUpload
-                            currentAvatarUrl={field.value || undefined}
-                            userName={createMemberForm.watch('name') || 'New Member'}
-                            size="lg"
-                            showUploadButton={true}
-                            className="flex-shrink-0"
-                            onAvatarChange={(avatarUrl) => field.onChange(avatarUrl)}
-                          />
-                          <div className="flex-1">
-                            <p className="text-sm text-muted-foreground">
-                              Upload a PNG or JPG image, or use initials as fallback
-                            </p>
-                            <Input 
-                              {...field} 
-                              value={field.value || ""} 
-                              placeholder="Or paste image URL..." 
-                              className="mt-2"
-                              data-testid="input-member-avatar" 
-                            />
-                          </div>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button type="submit" disabled={createMemberMutation.isPending} data-testid="button-submit-member">
-                    {createMemberMutation.isPending ? "Creating..." : "Create Member"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Member Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Team Member</DialogTitle>
-              <DialogDescription>
-                Update team member information for {selectedLab.name} lab.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...editMemberForm}>
-              <form onSubmit={editMemberForm.handleSubmit(onEditSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={editMemberForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Full Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} data-testid="input-edit-member-name" />
-                        </FormControl>
+                        <FormLabel>Role</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-member-role">
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {roleOptions.map((role) => (
+                              <SelectItem key={role.value} value={role.value}>
+                                {role.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   <FormField
-                    control={editMemberForm.control}
-                    name="initials"
+                    control={createMemberForm.control}
+                    name="avatarUrl"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Initials</FormLabel>
+                        <FormLabel>Avatar (PNG/JPG)</FormLabel>
                         <FormControl>
-                          <Input {...field} value={field.value || ""} placeholder="e.g., JS" maxLength={10} data-testid="input-edit-member-initials" />
+                          <div className="flex items-center gap-3">
+                            <TeamMemberAvatarUpload
+                              currentAvatarUrl={field.value || undefined}
+                              userName={createMemberForm.watch('name') || 'New Member'}
+                              size="lg"
+                              showUploadButton={true}
+                              className="flex-shrink-0"
+                              onAvatarChange={(avatarUrl) => field.onChange(avatarUrl)}
+                            />
+                            <div className="flex-1">
+                              <p className="text-sm text-muted-foreground">
+                                Upload a PNG or JPG image, or use initials as fallback
+                              </p>
+                              <Input 
+                                {...field} 
+                                value={field.value || ""} 
+                                placeholder="Or paste image URL..." 
+                                className="mt-2"
+                                data-testid="input-member-avatar" 
+                              />
+                            </div>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-                <FormField
-                  control={editMemberForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ""} type="email" data-testid="input-edit-member-email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editMemberForm.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Role</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-edit-member-role">
-                            <SelectValue placeholder="Select role" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {roleOptions.map((role) => (
-                            <SelectItem key={role.value} value={role.value}>
-                              {role.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editMemberForm.control}
-                  name="avatarUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Avatar (PNG/JPG)</FormLabel>
-                      <FormControl>
-                        <div className="flex items-center gap-3">
-                          <TeamMemberAvatarUpload
-                            currentAvatarUrl={field.value || undefined}
-                            userName={editMemberForm.watch('name') || 'Team Member'}
-                            size="lg"
-                            showUploadButton={true}
-                            className="flex-shrink-0"
-                            onAvatarChange={(avatarUrl) => field.onChange(avatarUrl)}
-                          />
-                          <div className="flex-1">
-                            <p className="text-sm text-muted-foreground">
-                              Upload a PNG or JPG image, or use initials as fallback
-                            </p>
-                            <Input 
-                              {...field} 
-                              value={field.value || ""} 
-                              placeholder="Or paste image URL..." 
-                              className="mt-2"
-                              data-testid="input-edit-member-avatar" 
-                            />
-                          </div>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button type="submit" disabled={updateMemberMutation.isPending} data-testid="button-submit-edit-member">
-                    {updateMemberMutation.isPending ? "Updating..." : "Update Member"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                  <DialogFooter>
+                    <Button type="submit" disabled={createMemberMutation.isPending} data-testid="button-submit-member">
+                      {createMemberMutation.isPending ? "Creating..." : "Create Member"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4 mb-6">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search members..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-            data-testid="input-search-members"
-          />
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search team members..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+              data-testid="input-search-members"
+            />
+          </div>
         </div>
         <Select value={selectedRole} onValueChange={setSelectedRole}>
-          <SelectTrigger className="w-[200px]" data-testid="select-role-filter">
-            <SelectValue placeholder="All Roles" />
+          <SelectTrigger className="w-full sm:w-48" data-testid="select-filter-role">
+            <SelectValue placeholder="Filter by role" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All Roles</SelectItem>
@@ -595,8 +518,8 @@ export default function TeamMembers() {
           </SelectContent>
         </Select>
         <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-          <SelectTrigger className="w-[200px]" data-testid="select-status-filter">
-            <SelectValue placeholder="All Status" />
+          <SelectTrigger className="w-full sm:w-48" data-testid="select-filter-status">
+            <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All Status</SelectItem>
@@ -613,7 +536,7 @@ export default function TeamMembers() {
             <Card key={member.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center space-x-3">
                     <TeamMemberAvatarUpload
                       currentAvatarUrl={member.avatarUrl || undefined}
                       userName={member.name}
@@ -621,11 +544,16 @@ export default function TeamMembers() {
                       showUploadButton={false}
                       className="flex-shrink-0"
                     />
-                    <div>
-                      <CardTitle className="text-base">{member.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        {roleOptions.find(opt => opt.value === member.role)?.label || member.role}
-                      </p>
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg truncate">{member.name}</CardTitle>
+                      <Badge className="mt-1" variant="secondary">
+                        {roleOptions.find(r => r.value === member.role)?.label || member.role}
+                      </Badge>
+                      {member.department && (
+                        <p className="text-sm text-muted-foreground mt-1 truncate">
+                          {member.department}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <Badge variant={member.isActive ? "default" : "secondary"}>
@@ -714,6 +642,126 @@ export default function TeamMembers() {
           </CardContent>
         </Card>
       )}
+
+      {/* Edit Member Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Team Member</DialogTitle>
+            <DialogDescription>
+              Update team member information for {selectedLab.name} lab.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editMemberForm}>
+            <form onSubmit={editMemberForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editMemberForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-edit-member-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editMemberForm.control}
+                  name="initials"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Initials</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} placeholder="e.g., JS" maxLength={10} data-testid="input-edit-member-initials" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={editMemberForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ""} type="email" data-testid="input-edit-member-email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editMemberForm.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-member-role">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {roleOptions.map((role) => (
+                          <SelectItem key={role.value} value={role.value}>
+                            {role.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editMemberForm.control}
+                name="avatarUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Avatar (PNG/JPG)</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-3">
+                        <TeamMemberAvatarUpload
+                          currentAvatarUrl={field.value || undefined}
+                          userName={editMemberForm.watch('name') || 'Team Member'}
+                          size="lg"
+                          showUploadButton={true}
+                          className="flex-shrink-0"
+                          onAvatarChange={(avatarUrl) => field.onChange(avatarUrl)}
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm text-muted-foreground">
+                            Upload a PNG or JPG image, or use initials as fallback
+                          </p>
+                          <Input 
+                            {...field} 
+                            value={field.value || ""} 
+                            placeholder="Or paste image URL..." 
+                            className="mt-2"
+                            data-testid="input-edit-member-avatar" 
+                          />
+                        </div>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit" disabled={updateMemberMutation.isPending} data-testid="button-submit-edit-member">
+                  {updateMemberMutation.isPending ? "Updating..." : "Update Member"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
