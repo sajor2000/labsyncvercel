@@ -97,7 +97,7 @@ export class DatabaseStorage implements IStorage {
           color: "#3b82f6",
         },
         {
-          name: "Health Equity Labs", 
+          name: "Rush Health Equity Data Analytics Studio", 
           description: "Studying health disparities and social determinants",
           piName: "Dr. Michael Chen",
           color: "#10b981",
