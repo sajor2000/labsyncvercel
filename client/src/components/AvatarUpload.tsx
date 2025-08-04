@@ -71,6 +71,7 @@ export function AvatarUpload({
       // Get upload URL
       console.log('Getting upload URL...');
       const response = await apiRequest('POST', '/api/upload/avatar') as any;
+      console.log('Full response:', response);
       console.log('Got upload URL:', response.uploadURL);
 
       if (!response.uploadURL) {
