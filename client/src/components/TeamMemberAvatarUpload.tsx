@@ -37,11 +37,13 @@ export function TeamMemberAvatarUpload({
   const handleGetUploadParameters = async () => {
     try {
       const response = await apiRequest('POST', '/api/upload/avatar') as any;
+      console.log('Got upload URL:', response.uploadURL);
       return {
         method: 'PUT' as const,
         url: response.uploadURL,
       };
     } catch (error) {
+      console.error('Failed to get upload URL:', error);
       toast({
         title: "Error",
         description: "Failed to get upload URL",
@@ -53,19 +55,48 @@ export function TeamMemberAvatarUpload({
 
   const handleUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
     setUploadingAvatar(true);
+    console.log('Full upload result:', result);
     if (result.successful && result.successful.length > 0) {
       const uploadedFile = result.successful[0];
-      const avatarUrl = (uploadedFile as any).uploadURL;
+      console.log('Uploaded file object:', uploadedFile);
+      
+      // Try different possible properties for the upload URL
+      const avatarUrl = (uploadedFile as any).uploadURL || 
+                       (uploadedFile as any).response?.uploadURL ||
+                       (uploadedFile as any).response?.location ||
+                       (uploadedFile as any).response?.Location ||
+                       (uploadedFile as any).meta?.uploadURL;
+      
+      console.log('Found avatarUrl:', avatarUrl);
+      
       if (avatarUrl && onAvatarChange) {
-        // Normalize the path for team member avatars
-        const normalizedPath = `/objects/avatars/${avatarUrl.split('/').pop()}`;
+        // Extract the file ID from the uploaded URL
+        const urlParts = avatarUrl.split('/');
+        const fileId = urlParts[urlParts.length - 1].split('?')[0]; // Remove query params
+        const normalizedPath = `/objects/avatars/${fileId}`;
+        console.log('Normalized path:', normalizedPath);
         onAvatarChange(normalizedPath);
         setUploadingAvatar(false);
         toast({
           title: "Success",
           description: "Avatar uploaded successfully",
         });
+      } else {
+        console.error('No upload URL found in result');
+        setUploadingAvatar(false);
+        toast({
+          title: "Error",
+          description: "Upload completed but no URL found",
+          variant: "destructive",
+        });
       }
+    } else {
+      setUploadingAvatar(false);
+      toast({
+        title: "Error", 
+        description: "Upload failed",
+        variant: "destructive",
+      });
     }
   };
 
