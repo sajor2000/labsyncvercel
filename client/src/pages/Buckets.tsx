@@ -11,14 +11,31 @@ import { Plus, Folder, FlaskConical, Settings, Eye, Edit, Trash2 } from "lucide-
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useLabContext } from "@/hooks/useLabContext";
 import type { Bucket, Lab, Study } from "@shared/schema";
+
+// Form schema for bucket creation
+const bucketFormSchema = z.object({
+  name: z.string().min(1, "Bucket name is required"),
+  color: z.string().optional(),
+});
+
+type BucketFormValues = z.infer<typeof bucketFormSchema>;
 
 export default function Buckets() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { selectedLab: currentLab } = useLabContext();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLab, setSelectedLab] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -60,6 +77,56 @@ export default function Buckets() {
     },
   });
 
+  // Form for bucket creation
+  const form = useForm<BucketFormValues>({
+    resolver: zodResolver(bucketFormSchema),
+    defaultValues: {
+      name: "",
+      color: "#3b82f6",
+    },
+  });
+
+  // Create bucket mutation
+  const createBucketMutation = useMutation({
+    mutationFn: async (data: BucketFormValues) => {
+      if (!currentLab) {
+        throw new Error("No lab selected");
+      }
+      const bucketData = {
+        ...data,
+        labId: currentLab.id,
+      };
+      return apiRequest('POST', '/api/buckets', bucketData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
+      setIsCreateOpen(false);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Bucket created successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create bucket",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Get studies count for each bucket
   const { data: allStudies = [] } = useQuery<Study[]>({
     queryKey: ['/api/studies'],
@@ -69,9 +136,7 @@ export default function Buckets() {
   // Delete bucket mutation
   const deleteBucketMutation = useMutation({
     mutationFn: async (bucketId: string) => {
-      return apiRequest(`/api/buckets/${bucketId}`, {
-        method: 'DELETE',
-      });
+      return apiRequest('DELETE', `/api/buckets/${bucketId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
@@ -112,6 +177,10 @@ export default function Buckets() {
     return allStudies.filter(study => study.bucketId === bucketId).length;
   };
 
+  const onSubmit = (data: BucketFormValues) => {
+    createBucketMutation.mutate(data);
+  };
+
   const getLabName = (labId: string) => {
     const lab = labs.find(l => l.id === labId);
     return lab?.name || 'Unknown Lab';
@@ -137,10 +206,86 @@ export default function Buckets() {
           <h1 className="text-2xl font-bold text-foreground">Project Buckets</h1>
           <p className="text-muted-foreground">Organize your studies into manageable project buckets</p>
         </div>
-        <Button data-testid="button-create-bucket">
-          <Plus className="h-4 w-4 mr-2" />
-          New Bucket
-        </Button>
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-create-bucket">
+              <Plus className="h-4 w-4 mr-2" />
+              New Bucket
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create New Bucket</DialogTitle>
+              <DialogDescription>
+                Create a new project bucket to organize your studies
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bucket Name</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter bucket name..." 
+                          {...field} 
+                          data-testid="input-bucket-name"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="color"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Color</FormLabel>
+                      <FormControl>
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            type="color" 
+                            {...field} 
+                            className="w-16 h-10 p-1 rounded border"
+                            data-testid="input-bucket-color"
+                          />
+                          <Input 
+                            placeholder="#3b82f6" 
+                            {...field}
+                            className="flex-1"
+                            data-testid="input-bucket-color-text"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => {
+                      setIsCreateOpen(false);
+                      form.reset();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createBucketMutation.isPending}>
+                    {createBucketMutation.isPending ? "Creating..." : "Create Bucket"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filters */}
@@ -200,7 +345,10 @@ export default function Buckets() {
                   : "Create your first bucket to organize your studies"
                 }
               </p>
-              <Button data-testid="button-create-first-bucket">
+              <Button 
+                onClick={() => setIsCreateOpen(true)}
+                data-testid="button-create-first-bucket"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Bucket
               </Button>
