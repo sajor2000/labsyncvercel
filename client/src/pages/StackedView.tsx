@@ -319,8 +319,8 @@ export default function StackedView() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {buckets.map((bucket) => (
-                                <SelectItem key={bucket.id} value={bucket.id || "none"}>
+                              {buckets.filter(bucket => bucket.id && bucket.id.trim() !== "").map((bucket) => (
+                                <SelectItem key={bucket.id} value={bucket.id}>
                                   <div className="flex items-center gap-2">
                                     <div 
                                       className="w-3 h-3 rounded-full" 
