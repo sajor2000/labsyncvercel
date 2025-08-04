@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { useLabContext } from "@/hooks/useLabContext";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { FlaskConical, Plus } from "lucide-react";
+import { Plus, Database } from "lucide-react";
 
 export function CreateSampleDataButton() {
+  const { contextLab } = useLabContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -15,12 +16,13 @@ export function CreateSampleDataButton() {
     mutationFn: async () => {
       return apiRequest('/api/create-sample-data', 'POST', {});
     },
-    onSuccess: (result) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
       queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       toast({
         title: "Success",
-        description: `Created ${result.bucketsCreated} buckets and ${result.studiesCreated} studies matching your Airtable examples`,
+        description: "Sample data created successfully! You now have Abbott and Wisconsin R01 buckets with example studies.",
       });
     },
     onError: (error) => {
@@ -43,19 +45,20 @@ export function CreateSampleDataButton() {
     },
   });
 
+  if (!contextLab) {
+    return null;
+  }
+
   return (
     <Button
-      variant="outline"
-      size="sm"
       onClick={() => createSampleDataMutation.mutate()}
       disabled={createSampleDataMutation.isPending}
+      variant="outline"
+      size="sm"
       data-testid="button-create-sample-data"
     >
-      <FlaskConical className="h-4 w-4 mr-2" />
+      <Database className="h-4 w-4 mr-2" />
       {createSampleDataMutation.isPending ? "Creating..." : "Add Sample Data"}
-      <Badge variant="secondary" className="ml-2 text-xs">
-        Demo
-      </Badge>
     </Button>
   );
 }

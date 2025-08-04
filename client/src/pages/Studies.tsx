@@ -80,8 +80,8 @@ export default function Studies() {
   
   const filteredStudies = labFilteredStudies.filter(study => {
     const matchesSearch = study.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLab = !selectedLab || study.labId === selectedLab;
-    const matchesStatus = !selectedStatus || study.status === selectedStatus;
+    const matchesLab = !selectedLab || selectedLab === "ALL" || study.labId === selectedLab;
+    const matchesStatus = !selectedStatus || selectedStatus === "ALL" || study.status === selectedStatus;
     return matchesSearch && matchesLab && matchesStatus;
   });
 
@@ -128,7 +128,7 @@ export default function Studies() {
             <SelectValue placeholder="All Labs" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Labs</SelectItem>
+            <SelectItem value="ALL">All Labs</SelectItem>
             {labs.map((lab) => (
               <SelectItem key={lab.id} value={lab.id}>
                 {lab.name}
@@ -141,7 +141,7 @@ export default function Studies() {
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Statuses</SelectItem>
+            <SelectItem value="ALL">All Statuses</SelectItem>
             <SelectItem value="PLANNING">Planning</SelectItem>
             <SelectItem value="IRB_SUBMISSION">IRB Submission</SelectItem>
             <SelectItem value="IRB_APPROVED">IRB Approved</SelectItem>

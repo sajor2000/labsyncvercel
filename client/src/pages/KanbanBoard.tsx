@@ -64,7 +64,7 @@ export default function KanbanBoard() {
 
   // Filter studies by lab context and selected bucket
   const labStudies = contextLab ? allStudies.filter(study => study.labId === contextLab.id) : allStudies;
-  const bucketStudies = selectedBucket ? labStudies.filter(study => study.bucketId === selectedBucket) : labStudies;
+  const bucketStudies = selectedBucket && selectedBucket !== "ALL" ? labStudies.filter(study => study.bucketId === selectedBucket) : labStudies;
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ['/api/tasks', selectedStudy],
@@ -188,7 +188,7 @@ export default function KanbanBoard() {
               <SelectValue placeholder="All Buckets" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Buckets</SelectItem>
+              <SelectItem value="ALL">All Buckets</SelectItem>
               {buckets.map((bucket) => (
                 <SelectItem key={bucket.id} value={bucket.id}>
                   <div className="flex items-center gap-2">
