@@ -118,7 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Avatar and object storage routes
   app.post("/api/upload/avatar", isAuthenticated, async (req, res) => {
     try {
-      console.log("Avatar upload URL requested by user:", req.user?.claims?.sub);
+      console.log("Avatar upload URL requested by user:", (req.user as any)?.claims?.sub);
       const { ObjectStorageService } = require("./objectStorage");
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getAvatarUploadURL();
