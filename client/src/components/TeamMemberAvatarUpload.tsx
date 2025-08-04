@@ -4,18 +4,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import type { UploadResult } from "@uppy/core";
 
-interface AvatarUploadProps {
+interface TeamMemberAvatarUploadProps {
   currentAvatarUrl?: string;
   userName?: string;
-  userId?: string;
   size?: "sm" | "md" | "lg" | "xl";
   showUploadButton?: boolean;
   className?: string;
+  onAvatarChange?: (avatarUrl: string) => void;
 }
 
 const sizeClasses = {
@@ -25,51 +23,16 @@ const sizeClasses = {
   xl: "h-24 w-24",
 };
 
-export function AvatarUpload({
+export function TeamMemberAvatarUpload({
   currentAvatarUrl,
   userName,
-  userId,
   size = "lg",
   showUploadButton = true,
   className = "",
-}: AvatarUploadProps) {
+  onAvatarChange,
+}: TeamMemberAvatarUploadProps) {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-
-  // Update user avatar mutation
-  const updateAvatarMutation = useMutation({
-    mutationFn: async (avatarUrl: string) => {
-      return apiRequest('PUT', '/api/auth/avatar', { avatarUrl });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      setUploadingAvatar(false);
-      toast({
-        title: "Success",
-        description: "Avatar updated successfully",
-      });
-    },
-    onError: (error) => {
-      setUploadingAvatar(false);
-      if (isUnauthorizedError(error as Error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to update avatar",
-        variant: "destructive",
-      });
-    },
-  });
 
   const handleGetUploadParameters = async () => {
     try {
@@ -93,8 +56,15 @@ export function AvatarUpload({
     if (result.successful && result.successful.length > 0) {
       const uploadedFile = result.successful[0];
       const avatarUrl = (uploadedFile as any).uploadURL;
-      if (avatarUrl) {
-        updateAvatarMutation.mutate(avatarUrl);
+      if (avatarUrl && onAvatarChange) {
+        // Normalize the path for team member avatars
+        const normalizedPath = `/objects/avatars/${avatarUrl.split('/').pop()}`;
+        onAvatarChange(normalizedPath);
+        setUploadingAvatar(false);
+        toast({
+          title: "Success",
+          description: "Avatar uploaded successfully",
+        });
       }
     }
   };
@@ -114,7 +84,7 @@ export function AvatarUpload({
       <Avatar className={`${sizeClasses[size]} ring-2 ring-background`}>
         <AvatarImage 
           src={currentAvatarUrl} 
-          alt={userName || "User avatar"}
+          alt={userName || "Team member avatar"}
           className="object-cover"
         />
         <AvatarFallback className="bg-muted">

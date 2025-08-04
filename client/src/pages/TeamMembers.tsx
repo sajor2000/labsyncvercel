@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { AvatarUpload } from "@/components/AvatarUpload";
+import { TeamMemberAvatarUpload } from "@/components/TeamMemberAvatarUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -408,9 +409,30 @@ export default function TeamMembers() {
                   name="avatarUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Avatar URL (optional)</FormLabel>
+                      <FormLabel>Avatar (PNG/JPG)</FormLabel>
                       <FormControl>
-                        <Input {...field} value={field.value || ""} placeholder="https://example.com/avatar.png" data-testid="input-member-avatar" />
+                        <div className="flex items-center gap-3">
+                          <TeamMemberAvatarUpload
+                            currentAvatarUrl={field.value}
+                            userName={createMemberForm.watch('name') || 'New Member'}
+                            size="lg"
+                            showUploadButton={true}
+                            className="flex-shrink-0"
+                            onAvatarChange={(avatarUrl) => field.onChange(avatarUrl)}
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm text-muted-foreground">
+                              Upload a PNG or JPG image, or use initials as fallback
+                            </p>
+                            <Input 
+                              {...field} 
+                              value={field.value || ""} 
+                              placeholder="Or paste image URL..." 
+                              className="mt-2"
+                              data-testid="input-member-avatar" 
+                            />
+                          </div>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -507,9 +529,30 @@ export default function TeamMembers() {
                   name="avatarUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Avatar URL (optional)</FormLabel>
+                      <FormLabel>Avatar (PNG/JPG)</FormLabel>
                       <FormControl>
-                        <Input {...field} value={field.value || ""} placeholder="https://example.com/avatar.png" data-testid="input-edit-member-avatar" />
+                        <div className="flex items-center gap-3">
+                          <TeamMemberAvatarUpload
+                            currentAvatarUrl={field.value}
+                            userName={editMemberForm.watch('name') || 'Team Member'}
+                            size="lg"
+                            showUploadButton={true}
+                            className="flex-shrink-0"
+                            onAvatarChange={(avatarUrl) => field.onChange(avatarUrl)}
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm text-muted-foreground">
+                              Upload a PNG or JPG image, or use initials as fallback
+                            </p>
+                            <Input 
+                              {...field} 
+                              value={field.value || ""} 
+                              placeholder="Or paste image URL..." 
+                              className="mt-2"
+                              data-testid="input-edit-member-avatar" 
+                            />
+                          </div>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -571,10 +614,9 @@ export default function TeamMembers() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <AvatarUpload
+                    <TeamMemberAvatarUpload
                       currentAvatarUrl={member.avatarUrl || undefined}
                       userName={member.name}
-                      userId={member.id}
                       size="md"
                       showUploadButton={false}
                       className="flex-shrink-0"
