@@ -1,13 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Camera, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ObjectUploader } from "@/components/ObjectUploader";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { UploadResult } from "@uppy/core";
 
 interface AvatarUploadProps {
   currentAvatarUrl?: string;
@@ -36,25 +34,93 @@ export function AvatarUpload({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Update user avatar mutation
-  const updateAvatarMutation = useMutation({
-    mutationFn: async (avatarUrl: string) => {
-      return apiRequest('PUT', '/api/auth/avatar', { avatarUrl });
-    },
-    onSuccess: () => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
+
+    console.log('File selected:', file.name, file.type, file.size);
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5242880) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      // Get upload URL
+      console.log('Getting upload URL...');
+      const response = await apiRequest('POST', '/api/upload/avatar') as any;
+      console.log('Got upload URL:', response.uploadURL);
+
+      if (!response.uploadURL) {
+        throw new Error('No upload URL received from server');
+      }
+
+      // Upload file directly to the presigned URL
+      console.log('Uploading file to:', response.uploadURL.substring(0, 100) + '...');
+      const uploadResponse = await fetch(response.uploadURL, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      console.log('Upload response status:', uploadResponse.status);
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('Upload failed with response:', errorText);
+        throw new Error(`Upload failed: ${uploadResponse.status}`);
+      }
+
+      console.log('Upload successful');
+
+      // Extract file ID from upload URL
+      const urlParts = response.uploadURL.split('/');
+      const fileId = urlParts[urlParts.length - 1].split('?')[0];
+      const normalizedPath = `/objects/avatars/${fileId}`;
+      
+      console.log('Normalized path:', normalizedPath);
+
+      // Update user avatar in backend
+      console.log('Updating user avatar...');
+      await apiRequest('PUT', '/api/auth/avatar', { avatarUrl: normalizedPath });
+      
+      // Invalidate user data to refresh avatar
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      setUploadingAvatar(false);
+
       toast({
         title: "Success",
-        description: "Avatar updated successfully",
+        description: "Avatar uploaded successfully",
       });
-    },
-    onError: (error) => {
-      setUploadingAvatar(false);
+
+    } catch (error) {
+      console.error('Upload error:', error);
       if (isUnauthorizedError(error as Error)) {
         toast({
-          title: "Unauthorized",
+          title: "Unauthorized", 
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
@@ -65,38 +131,22 @@ export function AvatarUpload({
       }
       toast({
         title: "Error",
-        description: "Failed to update avatar",
+        description: "Failed to upload avatar",
         variant: "destructive",
       });
-    },
-  });
-
-  const handleGetUploadParameters = async () => {
-    try {
-      const response = await apiRequest('POST', '/api/upload/avatar') as any;
-      return {
-        method: 'PUT' as const,
-        url: response.uploadURL,
-      };
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to get upload URL",
-        variant: "destructive",
-      });
-      throw error;
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
-  const handleUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-    setUploadingAvatar(true);
-    if (result.successful && result.successful.length > 0) {
-      const uploadedFile = result.successful[0];
-      const avatarUrl = (uploadedFile as any).uploadURL;
-      if (avatarUrl) {
-        updateAvatarMutation.mutate(avatarUrl);
-      }
+  const handleCameraClick = () => {
+    console.log('Camera button clicked');
+    if (!fileInputRef.current) {
+      console.error('File input ref is null');
+      return;
     }
+    console.log('Triggering file input click');
+    fileInputRef.current.click();
   };
 
   const getInitials = (name?: string) => {
@@ -124,16 +174,20 @@ export function AvatarUpload({
 
       {showUploadButton && (
         <div className="absolute -bottom-1 -right-1">
-          <ObjectUploader
-            maxNumberOfFiles={1}
-            maxFileSize={5242880} // 5MB
-            allowedFileTypes={['.jpg', '.jpeg', '.png']}
-            onGetUploadParameters={handleGetUploadParameters}
-            onComplete={handleUploadComplete}
-            buttonClassName="h-6 w-6 rounded-full p-0 bg-primary hover:bg-primary/90 border-2 border-background"
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button
+            onClick={handleCameraClick}
+            className="h-6 w-6 rounded-full p-0 bg-primary hover:bg-primary/90 border-2 border-background"
+            disabled={uploadingAvatar}
           >
             <Camera className="h-3 w-3 text-primary-foreground" />
-          </ObjectUploader>
+          </Button>
         </div>
       )}
 
