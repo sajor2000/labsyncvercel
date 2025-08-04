@@ -167,9 +167,6 @@ export default function Labs() {
                       />
                       {lab.name}
                     </CardTitle>
-                    {lab.piName && (
-                      <p className="text-sm text-muted-foreground mt-1">PI: {lab.piName}</p>
-                    )}
                   </div>
                   <Button variant="ghost" size="sm" data-testid={`button-lab-settings-${lab.id}`}>
                     <Settings className="h-4 w-4" />
