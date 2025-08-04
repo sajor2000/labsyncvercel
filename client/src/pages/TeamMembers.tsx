@@ -132,7 +132,7 @@ export default function TeamMembers() {
         ...data,
         labId: selectedLab?.id || "",
       };
-      return apiRequest('/api/team-members', 'POST', memberData);
+      return apiRequest('POST', '/api/team-members', memberData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
@@ -166,7 +166,7 @@ export default function TeamMembers() {
   // Toggle member status
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ memberId, isActive }: { memberId: string; isActive: boolean }) => {
-      return apiRequest(`/api/team-members/${memberId}`, 'PUT', { isActive });
+      return apiRequest('PUT', `/api/team-members/${memberId}`, { isActive });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
@@ -198,7 +198,7 @@ export default function TeamMembers() {
   // Update member mutation
   const updateMemberMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<CreateTeamMemberFormData> }) => {
-      return apiRequest(`/api/team-members/${id}`, 'PUT', data);
+      return apiRequest('PUT', `/api/team-members/${id}`, data);
     },
     onSuccess: () => {
       toast({ title: "Team member updated successfully" });
@@ -231,7 +231,7 @@ export default function TeamMembers() {
   // Delete member mutation
   const deleteMemberMutation = useMutation({
     mutationFn: async (memberId: string) => {
-      return apiRequest(`/api/team-members/${memberId}`, 'DELETE');
+      return apiRequest('DELETE', `/api/team-members/${memberId}`);
     },
     onSuccess: () => {
       toast({ title: "Team member deleted successfully" });
