@@ -160,7 +160,11 @@ export const labs = pgTable("labs", {
 export const buckets = pgTable("buckets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
+  description: text("description"),
   color: varchar("color").default("#3b82f6"),
+  icon: varchar("icon").default("folder"),
+  position: varchar("position").default("0"), // For kanban column ordering
+  isActive: boolean("is_active").default(true),
   labId: varchar("lab_id").notNull().references(() => labs.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -172,12 +176,18 @@ export const studies = pgTable("studies", {
   oraNumber: varchar("ora_number"),
   status: studyStatusEnum("status").default("PLANNING"),
   studyType: varchar("study_type"),
+  projectType: varchar("project_type").default("study"), // study, rct, ehr_study, ai_llm
   assignees: text("assignees").array(), // Multiple assignees as array
   funding: fundingTypeEnum("funding"),
+  fundingSource: varchar("funding_source"),
   externalCollaborators: text("external_collaborators"),
   notes: text("notes"),
   priority: priorityEnum("priority").default("MEDIUM"),
   dueDate: timestamp("due_date"),
+  protocolLink: varchar("protocol_link"),
+  dataLink: varchar("data_link"),
+  position: varchar("position").default("0"), // For positioning in kanban
+  isActive: boolean("is_active").default(true),
   bucketId: varchar("bucket_id").notNull().references(() => buckets.id),
   labId: varchar("lab_id").notNull().references(() => labs.id),
   createdBy: varchar("created_by").notNull().references(() => users.id),
@@ -211,7 +221,14 @@ export const tasks = pgTable("tasks", {
   priority: priorityEnum("priority").default("MEDIUM"),
   assigneeId: varchar("assignee_id").references(() => users.id),
   studyId: varchar("study_id").references(() => studies.id),
+  parentTaskId: varchar("parent_task_id").references(() => tasks.id), // For subtasks
+  position: varchar("position").default("0"), // Order within project
+  tags: text("tags").array(),
+  completedAt: timestamp("completed_at"),
+  completedById: varchar("completed_by_id").references(() => users.id),
+  isActive: boolean("is_active").default(true),
   dueDate: timestamp("due_date"),
+  createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -220,6 +237,7 @@ export const standupMeetings = pgTable("standup_meetings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   labId: varchar("lab_id").notNull().references(() => labs.id),
   meetingDate: timestamp("meeting_date").notNull(),
+  scheduledDate: timestamp("scheduled_date").notNull(), // For querying by date
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time"),
   meetingType: meetingTypeEnum("meeting_type").default("DAILY_STANDUP"),
@@ -227,6 +245,7 @@ export const standupMeetings = pgTable("standup_meetings", {
   transcript: text("transcript"),
   aiSummary: json("ai_summary"),
   participants: json("participants"),
+  isActive: boolean("is_active").default(true),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -265,6 +284,7 @@ export const teamMembers = pgTable("team_members", {
   role: teamMemberRoleEnum("role").notNull(),
   avatarUrl: varchar("avatar_url"), // PNG avatar image URL
   labId: varchar("lab_id").references(() => labs.id),
+  position: varchar("position").default("0"), // For ordering in lists
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -278,6 +298,23 @@ export const teamMemberAssignments = pgTable("team_member_assignments", {
   taskId: varchar("task_id").references(() => tasks.id),
   bucketId: varchar("bucket_id").references(() => buckets.id),
   assignmentType: varchar("assignment_type").notNull(), // lead, collaborator, reviewer
+  assignedAt: timestamp("assigned_at").defaultNow(),
+});
+
+// Project Members - for better project team management
+export const projectMembers = pgTable("project_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").notNull().references(() => studies.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  role: varchar("role").default("contributor"), // lead, contributor, advisor
+  joinedAt: timestamp("joined_at").defaultNow(),
+});
+
+// Task Assignments - for multiple assignees per task
+export const taskAssignments = pgTable("task_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: varchar("task_id").notNull().references(() => tasks.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
   assignedAt: timestamp("assigned_at").defaultNow(),
 });
 
@@ -367,6 +404,7 @@ export const studiesRelations = relations(studies, ({ one, many }) => ({
   actionItems: many(standupActionItems),
   statusUpdates: many(studyStatusUpdates),
   tasks: many(tasks),
+  members: many(projectMembers),
 }));
 
 export const studyAssignmentsRelations = relations(studyAssignments, ({ one }) => ({
@@ -408,7 +446,7 @@ export const standupActionItemsRelations = relations(standupActionItems, ({ one 
   }),
 }));
 
-export const tasksRelations = relations(tasks, ({ one }) => ({
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
   assignee: one(users, {
     fields: [tasks.assigneeId],
     references: [users.id],
@@ -417,6 +455,23 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
     fields: [tasks.studyId],
     references: [studies.id],
   }),
+  parentTask: one(tasks, {
+    fields: [tasks.parentTaskId],
+    references: [tasks.id],
+    relationName: "TaskSubtasks",
+  }),
+  subtasks: many(tasks, {
+    relationName: "TaskSubtasks",
+  }),
+  creator: one(users, {
+    fields: [tasks.createdBy],
+    references: [users.id],
+  }),
+  completedBy: one(users, {
+    fields: [tasks.completedById],
+    references: [users.id],
+  }),
+  assignments: many(taskAssignments),
 }));
 
 // Insert schemas
@@ -483,6 +538,16 @@ export const insertDeadlineSchema = createInsertSchema(deadlines).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertProjectMemberSchema = createInsertSchema(projectMembers).omit({
+  id: true,
+  joinedAt: true,
+});
+
+export const insertTaskAssignmentSchema = createInsertSchema(taskAssignments).omit({
+  id: true,
+  assignedAt: true,
 });
 
 // Team member relations
@@ -568,3 +633,31 @@ export type Idea = typeof ideas.$inferSelect;
 export type InsertIdea = z.infer<typeof insertIdeaSchema>;
 export type Deadline = typeof deadlines.$inferSelect;
 export type InsertDeadline = z.infer<typeof insertDeadlineSchema>;
+export type ProjectMember = typeof projectMembers.$inferSelect;
+export type InsertProjectMember = z.infer<typeof insertProjectMemberSchema>;
+export type TaskAssignment = typeof taskAssignments.$inferSelect;
+export type InsertTaskAssignment = z.infer<typeof insertTaskAssignmentSchema>;
+
+// Project Members relations
+export const projectMembersRelations = relations(projectMembers, ({ one }) => ({
+  project: one(studies, {
+    fields: [projectMembers.projectId],
+    references: [studies.id],
+  }),
+  user: one(users, {
+    fields: [projectMembers.userId],
+    references: [users.id],
+  }),
+}));
+
+// Task Assignments relations
+export const taskAssignmentsRelations = relations(taskAssignments, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskAssignments.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [taskAssignments.userId],
+    references: [users.id],
+  }),
+}));

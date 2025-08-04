@@ -449,6 +449,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced CRUD operations - Soft delete endpoints
+  app.patch("/api/studies/:id/soft-delete", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const deletedStudy = await storage.softDeleteStudy(id);
+      res.json(deletedStudy);
+    } catch (error) {
+      console.error("Error soft deleting study:", error);
+      res.status(500).json({ message: "Failed to soft delete study" });
+    }
+  });
+
+  app.patch("/api/tasks/:id/soft-delete", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const deletedTask = await storage.softDeleteTask(id);
+      res.json(deletedTask);
+    } catch (error) {
+      console.error("Error soft deleting task:", error);
+      res.status(500).json({ message: "Failed to soft delete task" });
+    }
+  });
+
+  app.patch("/api/buckets/:id/soft-delete", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const deletedBucket = await storage.softDeleteBucket(id);
+      res.json(deletedBucket);
+    } catch (error) {
+      console.error("Error soft deleting bucket:", error);
+      res.status(500).json({ message: "Failed to soft delete bucket" });
+    }
+  });
+
+  // Position update endpoint
+  app.patch("/api/items/:type/:id/position", isAuthenticated, async (req: any, res) => {
+    try {
+      const { type, id } = req.params;
+      const { position } = req.body;
+      
+      if (!['bucket', 'study', 'task'].includes(type)) {
+        return res.status(400).json({ message: "Invalid item type" });
+      }
+      
+      await storage.updateItemPosition(type as 'bucket' | 'study' | 'task', id, position);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating item position:", error);
+      res.status(500).json({ message: "Failed to update item position" });
+    }
+  });
+
+  // Project member management
+  app.get("/api/projects/:id/members", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const members = await storage.getProjectMembers(id);
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching project members:", error);
+      res.status(500).json({ message: "Failed to fetch project members" });
+    }
+  });
+
+  app.post("/api/projects/:id/members", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { userId, role } = req.body;
+      
+      const member = await storage.addProjectMember({
+        projectId: id,
+        userId,
+        role: role || 'contributor'
+      });
+      
+      res.status(201).json(member);
+    } catch (error) {
+      console.error("Error adding project member:", error);
+      res.status(500).json({ message: "Failed to add project member" });
+    }
+  });
+
+  app.delete("/api/projects/:projectId/members/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { projectId, userId } = req.params;
+      await storage.removeProjectMember(projectId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing project member:", error);
+      res.status(500).json({ message: "Failed to remove project member" });
+    }
+  });
+
+  // Task assignment management
+  app.get("/api/tasks/:id/assignments", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const assignments = await storage.getTaskAssignments(id);
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching task assignments:", error);
+      res.status(500).json({ message: "Failed to fetch task assignments" });
+    }
+  });
+
+  app.post("/api/tasks/:id/assignments", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { userId } = req.body;
+      
+      const assignment = await storage.assignUserToTask({
+        taskId: id,
+        userId
+      });
+      
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Error assigning user to task:", error);
+      res.status(500).json({ message: "Failed to assign user to task" });
+    }
+  });
+
+  app.delete("/api/tasks/:taskId/assignments/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { taskId, userId } = req.params;
+      await storage.removeTaskAssignment(taskId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing task assignment:", error);
+      res.status(500).json({ message: "Failed to remove task assignment" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -8,6 +8,8 @@ import {
   standupActionItems,
   teamMembers,
   teamMemberAssignments,
+  projectMembers,
+  taskAssignments,
   ideas,
   deadlines,
   type User,
@@ -28,6 +30,10 @@ import {
   type InsertTeamMember,
   type TeamMemberAssignment,
   type InsertTeamMemberAssignment,
+  type ProjectMember,
+  type InsertProjectMember,
+  type TaskAssignment,
+  type InsertTaskAssignment,
   type Idea,
   type InsertIdea,
   type Deadline,
@@ -73,6 +79,22 @@ export interface IStorage {
   createTeamMember(member: InsertTeamMember): Promise<TeamMember>;
   updateTeamMember(id: string, updates: Partial<InsertTeamMember>): Promise<TeamMember>;
   deleteTeamMember(id: string): Promise<void>;
+  
+  // Enhanced CRUD operations
+  softDeleteStudy(id: string): Promise<Study>;
+  softDeleteTask(id: string): Promise<Task>;
+  softDeleteBucket(id: string): Promise<Bucket>;
+  updateItemPosition(type: 'bucket' | 'study' | 'task', id: string, position: string): Promise<void>;
+  
+  // Project member operations
+  getProjectMembers(projectId: string): Promise<ProjectMember[]>;
+  addProjectMember(member: InsertProjectMember): Promise<ProjectMember>;
+  removeProjectMember(projectId: string, userId: string): Promise<void>;
+  
+  // Task assignment operations
+  getTaskAssignments(taskId: string): Promise<TaskAssignment[]>;
+  assignUserToTask(assignment: InsertTaskAssignment): Promise<TaskAssignment>;
+  removeTaskAssignment(taskId: string, userId: string): Promise<void>;
   
   // Team member assignment operations
   getTeamMemberAssignments(): Promise<TeamMemberAssignment[]>;
@@ -191,11 +213,12 @@ export class DatabaseStorage implements IStorage {
 
   // Study operations
   async getStudies(labId?: string): Promise<Study[]> {
-    const query = db.select().from(studies);
-    if (labId) {
-      return await query.where(eq(studies.labId, labId)).orderBy(desc(studies.updatedAt));
-    }
-    return await query.orderBy(desc(studies.updatedAt));
+    let query = db.select().from(studies);
+    
+    const conditions = [eq(studies.isActive, true)];
+    if (labId) conditions.push(eq(studies.labId, labId));
+    
+    return await query.where(and(...conditions)).orderBy(asc(studies.position), desc(studies.updatedAt));
   }
 
   async getStudy(id: string): Promise<Study | undefined> {
@@ -225,15 +248,11 @@ export class DatabaseStorage implements IStorage {
   async getTasks(studyId?: string, assigneeId?: string): Promise<Task[]> {
     let query = db.select().from(tasks);
     
-    const conditions = [];
+    const conditions = [eq(tasks.isActive, true)];
     if (studyId) conditions.push(eq(tasks.studyId, studyId));
     if (assigneeId) conditions.push(eq(tasks.assigneeId, assigneeId));
     
-    if (conditions.length > 0) {
-      return await query.where(and(...conditions)).orderBy(desc(tasks.createdAt));
-    }
-    
-    return await query.orderBy(desc(tasks.createdAt));
+    return await query.where(and(...conditions)).orderBy(desc(tasks.createdAt));
   }
 
   async createTask(task: InsertTask): Promise<Task> {
@@ -304,14 +323,12 @@ export class DatabaseStorage implements IStorage {
 
   // Bucket operations
   async getBuckets(labId?: string): Promise<Bucket[]> {
-    if (labId) {
-      return await db
-        .select()
-        .from(buckets)
-        .where(eq(buckets.labId, labId))
-        .orderBy(asc(buckets.name));
-    }
-    return await db.select().from(buckets).orderBy(asc(buckets.name));
+    let query = db.select().from(buckets);
+    
+    const conditions = [eq(buckets.isActive, true)];
+    if (labId) conditions.push(eq(buckets.labId, labId));
+    
+    return await query.where(and(...conditions)).orderBy(asc(buckets.position), asc(buckets.name));
   }
 
   async createBucket(bucket: InsertBucket): Promise<Bucket> {
@@ -491,6 +508,92 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: string): Promise<void> {
     await db.delete(users).where(eq(users.id, id));
+  }
+
+  // Enhanced CRUD operations
+  async softDeleteStudy(id: string): Promise<Study> {
+    const [deletedStudy] = await db
+      .update(studies)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(studies.id, id))
+      .returning();
+    return deletedStudy;
+  }
+
+  async softDeleteTask(id: string): Promise<Task> {
+    const [deletedTask] = await db
+      .update(tasks)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+    return deletedTask;
+  }
+
+  async softDeleteBucket(id: string): Promise<Bucket> {
+    const [deletedBucket] = await db
+      .update(buckets)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(buckets.id, id))
+      .returning();
+    return deletedBucket;
+  }
+
+  async updateItemPosition(type: 'bucket' | 'study' | 'task', id: string, position: string): Promise<void> {
+    switch (type) {
+      case 'bucket':
+        await db.update(buckets).set({ position, updatedAt: new Date() }).where(eq(buckets.id, id));
+        break;
+      case 'study':
+        await db.update(studies).set({ position, updatedAt: new Date() }).where(eq(studies.id, id));
+        break;
+      case 'task':
+        await db.update(tasks).set({ position, updatedAt: new Date() }).where(eq(tasks.id, id));
+        break;
+    }
+  }
+
+  // Project member operations
+  async getProjectMembers(projectId: string): Promise<ProjectMember[]> {
+    return await db
+      .select()
+      .from(projectMembers)
+      .where(eq(projectMembers.projectId, projectId));
+  }
+
+  async addProjectMember(member: InsertProjectMember): Promise<ProjectMember> {
+    const [newMember] = await db
+      .insert(projectMembers)
+      .values(member)
+      .returning();
+    return newMember;
+  }
+
+  async removeProjectMember(projectId: string, userId: string): Promise<void> {
+    await db
+      .delete(projectMembers)
+      .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, userId)));
+  }
+
+  // Task assignment operations
+  async getTaskAssignments(taskId: string): Promise<TaskAssignment[]> {
+    return await db
+      .select()
+      .from(taskAssignments)
+      .where(eq(taskAssignments.taskId, taskId));
+  }
+
+  async assignUserToTask(assignment: InsertTaskAssignment): Promise<TaskAssignment> {
+    const [newAssignment] = await db
+      .insert(taskAssignments)
+      .values(assignment)
+      .returning();
+    return newAssignment;
+  }
+
+  async removeTaskAssignment(taskId: string, userId: string): Promise<void> {
+    await db
+      .delete(taskAssignments)
+      .where(and(eq(taskAssignments.taskId, taskId), eq(taskAssignments.userId, userId)));
   }
 }
 
