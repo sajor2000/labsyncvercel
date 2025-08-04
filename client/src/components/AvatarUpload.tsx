@@ -70,17 +70,18 @@ export function AvatarUpload({
     try {
       // Get upload URL
       console.log('Getting upload URL...');
-      const response = await apiRequest('POST', '/api/upload/avatar') as any;
-      console.log('Full response:', response);
-      console.log('Got upload URL:', response.uploadURL);
+      const response = await apiRequest('POST', '/api/upload/avatar');
+      const data = await response.json();
+      console.log('Full response data:', data);
+      console.log('Got upload URL:', data.uploadURL);
 
-      if (!response.uploadURL) {
+      if (!data.uploadURL) {
         throw new Error('No upload URL received from server');
       }
 
       // Upload file directly to the presigned URL
-      console.log('Uploading file to:', response.uploadURL.substring(0, 100) + '...');
-      const uploadResponse = await fetch(response.uploadURL, {
+      console.log('Uploading file to:', data.uploadURL.substring(0, 100) + '...');
+      const uploadResponse = await fetch(data.uploadURL, {
         method: 'PUT',
         body: file,
         headers: {
@@ -99,7 +100,7 @@ export function AvatarUpload({
       console.log('Upload successful');
 
       // Extract file ID from upload URL
-      const urlParts = response.uploadURL.split('/');
+      const urlParts = data.uploadURL.split('/');
       const fileId = urlParts[urlParts.length - 1].split('?')[0];
       const normalizedPath = `/objects/avatars/${fileId}`;
       
