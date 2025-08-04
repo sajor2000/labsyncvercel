@@ -5,6 +5,16 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { 
+  generatePositionBetween, 
+  updateItemPosition, 
+  dragHandlers, 
+  sortByPosition 
+} from "@/lib/dragAndDropUtils";
+import { DraggableCard } from "@/components/DraggableCard";
+import { DropZone } from "@/components/DropZone";
+import { SoftDeleteButton } from "@/components/SoftDeleteButton";
+import { RecentlyDeletedModal } from "@/components/RecentlyDeletedModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +38,9 @@ import {
   Settings2,
   FlaskConical,
   Calendar,
-  User
+  User,
+  Archive,
+  MoreHorizontal
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -81,6 +93,8 @@ export default function StackedView() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedStudy, setSelectedStudy] = useState<Study | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [draggedItem, setDraggedItem] = useState<any>(null);
+  const [draggedType, setDraggedType] = useState<string>('');
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -148,10 +162,10 @@ export default function StackedView() {
     return matchesSearch && matchesStatus;
   });
 
-  // Group studies by bucket
-  const studiesByBucket = buckets.map(bucket => ({
+  // Group studies by bucket with sorted data
+  const studiesByBucket = sortedBuckets.map(bucket => ({
     bucket,
-    studies: filteredStudies.filter(study => study.bucketId === bucket.id)
+    studies: sortByPosition(sortedStudies.filter(study => study.bucketId === bucket.id))
   })).filter(group => group.studies.length > 0);
 
   // Create study form
@@ -205,6 +219,26 @@ export default function StackedView() {
     },
   });
 
+  // Position update mutation for drag and drop
+  const updatePositionMutation = useMutation({
+    mutationFn: async ({ type, id, position }: { type: 'bucket' | 'study' | 'task'; id: string; position: string }) => {
+      await updateItemPosition(type, id, position);
+    },
+    onSuccess: () => {
+      // Invalidate relevant queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update position",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: InsertStudy) => {
     // Convert assignees string to array
     const processedData = {
@@ -219,6 +253,38 @@ export default function StackedView() {
     };
     createStudyMutation.mutate(processedData);
   };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, item: any, type: string) => {
+    setDraggedItem(item);
+    setDraggedType(type);
+    dragHandlers.onDragStart(e, item, type);
+  };
+
+  const handleDrop = (draggedItem: any, draggedType: string, targetPosition: string) => {
+    if (!draggedItem || !draggedType) return;
+
+    // Generate new position
+    const newPosition = generatePositionBetween(
+      targetPosition === 'start' ? undefined : targetPosition,
+      targetPosition === 'end' ? undefined : targetPosition
+    );
+
+    // Update position
+    updatePositionMutation.mutate({
+      type: draggedType as 'bucket' | 'study' | 'task',
+      id: draggedItem.id,
+      position: newPosition,
+    });
+
+    // Reset drag state
+    setDraggedItem(null);
+    setDraggedType('');
+  };
+
+  // Sort data by position
+  const sortedBuckets = sortByPosition(buckets);
+  const sortedStudies = sortByPosition(filteredStudies);
 
   if (isLoading) {
     return (
@@ -256,6 +322,12 @@ export default function StackedView() {
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <CreateSampleDataButton />
+          <RecentlyDeletedModal>
+            <Button variant="outline" size="sm" data-testid="button-recently-deleted">
+              <Archive className="h-4 w-4 mr-2" />
+              Recently Deleted
+            </Button>
+          </RecentlyDeletedModal>
           <Button variant="outline" size="sm" data-testid="button-customize">
             <Settings2 className="h-4 w-4 mr-2" />
             Customize cards
@@ -520,10 +592,19 @@ export default function StackedView() {
         </Card>
       )}
 
-      {/* Stacked by Bucket View */}
+      {/* Stacked by Bucket View with Drag and Drop */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {studiesByBucket.map(({ bucket, studies }) => (
-          <div key={bucket.id} className="space-y-4">
+          <DropZone
+            key={bucket.id}
+            onDrop={(e) => {
+              const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+              const position = studies.length > 0 ? generatePositionBetween(studies[studies.length - 1].position || 'z') : 'a';
+              handleDrop(data.item, data.type, position);
+            }}
+            className="space-y-4 min-h-[200px] p-3 rounded-lg"
+            label={`Drop in ${bucket.name}`}
+          >
             {/* Bucket Header */}
             <div className="flex items-center gap-2">
               <div 
@@ -539,21 +620,43 @@ export default function StackedView() {
 
             {/* Study Cards */}
             <div className="space-y-3">
-              {studies.map((study) => (
-                <Card 
-                  key={study.id} 
-                  className="hover:shadow-md transition-shadow cursor-pointer border-l-4"
+              {studies.map((study, index) => (
+                <DraggableCard
+                  key={study.id}
+                  item={study}
+                  type="study"
+                  onDragStart={handleDragStart}
+                  onDragOver={dragHandlers.onDragOver}
+                  isDragging={draggedItem?.id === study.id}
+                  className="border-l-4 hover:shadow-md transition-all duration-200"
                   style={{ borderLeftColor: bucket.color || '#3b82f6' }}
-                  data-testid={`study-card-${study.id}`}
-                  onClick={() => {
-                    setSelectedStudy(study);
-                    setIsDetailModalOpen(true);
-                  }}
                 >
-                  <CardContent className="p-4 space-y-3">
+                  <CardContent 
+                    className="p-4 space-y-3 relative group"
+                    data-testid={`study-card-${study.id}`}
+                  >
+                    {/* Card Actions */}
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <SoftDeleteButton
+                        id={study.id}
+                        type="study"
+                        itemName={study.name}
+                        variant="ghost"
+                        size="sm"
+                        showIcon={true}
+                        showText={false}
+                      />
+                    </div>
+                    
                     {/* Study Title */}
-                    <div>
-                      <h3 className="font-medium text-foreground leading-tight">
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setSelectedStudy(study);
+                        setIsDetailModalOpen(true);
+                      }}
+                    >
+                      <h3 className="font-medium text-foreground leading-tight pr-8">
                         {study.name}
                       </h3>
                     </div>
@@ -603,11 +706,18 @@ export default function StackedView() {
                         <p className="text-sm text-foreground">{study.externalCollaborators}</p>
                       </div>
                     )}
+
+                    {/* Position indicator (for development) */}
+                    {study.position && (
+                      <div className="text-xs text-muted-foreground opacity-50">
+                        Position: {study.position}
+                      </div>
+                    )}
                   </CardContent>
-                </Card>
+                </DraggableCard>
               ))}
             </div>
-          </div>
+          </DropZone>
         ))}
       </div>
 

@@ -84,6 +84,16 @@ export interface IStorage {
   softDeleteStudy(id: string): Promise<Study>;
   softDeleteTask(id: string): Promise<Task>;
   softDeleteBucket(id: string): Promise<Bucket>;
+  
+  // Restore operations
+  restoreStudy(id: string): Promise<Study>;
+  restoreTask(id: string): Promise<Task>;
+  restoreBucket(id: string): Promise<Bucket>;
+  
+  // Get deleted items
+  getDeletedStudies(labId?: string): Promise<Study[]>;
+  getDeletedTasks(labId?: string): Promise<Task[]>;
+  getDeletedBuckets(labId?: string): Promise<Bucket[]>;
   updateItemPosition(type: 'bucket' | 'study' | 'task', id: string, position: string): Promise<void>;
   
   // Project member operations
@@ -536,6 +546,71 @@ export class DatabaseStorage implements IStorage {
       .where(eq(buckets.id, id))
       .returning();
     return deletedBucket;
+  }
+
+  // Restore operations
+  async restoreStudy(id: string): Promise<Study> {
+    const [restoredStudy] = await db
+      .update(studies)
+      .set({ isActive: true, updatedAt: new Date() })
+      .where(eq(studies.id, id))
+      .returning();
+    return restoredStudy;
+  }
+
+  async restoreTask(id: string): Promise<Task> {
+    const [restoredTask] = await db
+      .update(tasks)
+      .set({ isActive: true, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+    return restoredTask;
+  }
+
+  async restoreBucket(id: string): Promise<Bucket> {
+    const [restoredBucket] = await db
+      .update(buckets)
+      .set({ isActive: true, updatedAt: new Date() })
+      .where(eq(buckets.id, id))
+      .returning();
+    return restoredBucket;
+  }
+
+  // Get deleted items
+  async getDeletedStudies(labId?: string): Promise<Study[]> {
+    let query = db.select().from(studies);
+    
+    const conditions = [eq(studies.isActive, false)];
+    if (labId) conditions.push(eq(studies.labId, labId));
+    
+    return await query.where(and(...conditions)).orderBy(desc(studies.updatedAt));
+  }
+
+  async getDeletedTasks(labId?: string): Promise<Task[]> {
+    let query = db.select().from(tasks);
+    
+    const conditions = [eq(tasks.isActive, false)];
+    
+    if (labId) {
+      // Join with studies to filter by lab
+      return await db
+        .select()
+        .from(tasks)
+        .leftJoin(studies, eq(tasks.studyId, studies.id))
+        .where(and(eq(tasks.isActive, false), eq(studies.labId, labId)))
+        .orderBy(desc(tasks.updatedAt));
+    }
+    
+    return await query.where(and(...conditions)).orderBy(desc(tasks.updatedAt));
+  }
+
+  async getDeletedBuckets(labId?: string): Promise<Bucket[]> {
+    let query = db.select().from(buckets);
+    
+    const conditions = [eq(buckets.isActive, false)];
+    if (labId) conditions.push(eq(buckets.labId, labId));
+    
+    return await query.where(and(...conditions)).orderBy(desc(buckets.updatedAt));
   }
 
   async updateItemPosition(type: 'bucket' | 'study' | 'task', id: string, position: string): Promise<void> {

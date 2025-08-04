@@ -582,6 +582,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Restore functionality endpoints
+  app.patch("/api/studies/:id/restore", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const restoredStudy = await storage.restoreStudy(id);
+      res.json(restoredStudy);
+    } catch (error) {
+      console.error("Error restoring study:", error);
+      res.status(500).json({ message: "Failed to restore study" });
+    }
+  });
+
+  app.patch("/api/tasks/:id/restore", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const restoredTask = await storage.restoreTask(id);
+      res.json(restoredTask);
+    } catch (error) {
+      console.error("Error restoring task:", error);
+      res.status(500).json({ message: "Failed to restore task" });
+    }
+  });
+
+  app.patch("/api/buckets/:id/restore", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const restoredBucket = await storage.restoreBucket(id);
+      res.json(restoredBucket);
+    } catch (error) {
+      console.error("Error restoring bucket:", error);
+      res.status(500).json({ message: "Failed to restore bucket" });
+    }
+  });
+
+  // Endpoints to fetch deleted items
+  app.get("/api/studies/deleted", isAuthenticated, async (req: any, res) => {
+    try {
+      const labId = req.query.labId as string;
+      const deletedStudies = await storage.getDeletedStudies(labId);
+      res.json(deletedStudies);
+    } catch (error) {
+      console.error("Error fetching deleted studies:", error);
+      res.status(500).json({ message: "Failed to fetch deleted studies" });
+    }
+  });
+
+  app.get("/api/tasks/deleted", isAuthenticated, async (req: any, res) => {
+    try {
+      const labId = req.query.labId as string;
+      const deletedTasks = await storage.getDeletedTasks(labId);
+      res.json(deletedTasks);
+    } catch (error) {
+      console.error("Error fetching deleted tasks:", error);
+      res.status(500).json({ message: "Failed to fetch deleted tasks" });
+    }
+  });
+
+  app.get("/api/buckets/deleted", isAuthenticated, async (req: any, res) => {
+    try {
+      const labId = req.query.labId as string;
+      const deletedBuckets = await storage.getDeletedBuckets(labId);
+      res.json(deletedBuckets);
+    } catch (error) {
+      console.error("Error fetching deleted buckets:", error);
+      res.status(500).json({ message: "Failed to fetch deleted buckets" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
