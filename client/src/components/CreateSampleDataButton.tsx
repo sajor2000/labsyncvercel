@@ -8,7 +8,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { Plus, Database } from "lucide-react";
 
 export function CreateSampleDataButton() {
-  const { contextLab } = useLabContext();
+  const { selectedLab } = useLabContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -45,7 +45,7 @@ export function CreateSampleDataButton() {
     },
   });
 
-  if (!contextLab) {
+  if (!selectedLab) {
     return null;
   }
 

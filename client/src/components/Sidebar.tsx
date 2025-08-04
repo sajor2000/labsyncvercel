@@ -17,11 +17,15 @@ import {
   Lightbulb,
   Clock
 } from "lucide-react";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import type { User } from "@shared/schema";
+import { useLabContext } from "@/hooks/useLabContext";
+import { useQuery } from "@tanstack/react-query";
+import type { User, Lab } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AvatarUpload } from "@/components/AvatarUpload";
+import { LabSwitcher } from "@/components/LabSwitcher";
 
 const navigationItems = [
   { name: "Overview", href: "/", icon: BarChart3 },
@@ -45,7 +49,21 @@ const userActions = [
 
 export function Sidebar() {
   const [location] = useLocation();
-  const { user } = useAuth() as { user?: User };
+  const { user, isAuthenticated } = useAuth() as { user?: User; isAuthenticated: boolean };
+  const { setAllLabs } = useLabContext();
+
+  // Fetch labs and populate lab context
+  const { data: labs = [] } = useQuery<Lab[]>({
+    queryKey: ['/api/labs'],
+    enabled: isAuthenticated,
+  });
+
+  // Update lab context when labs are loaded
+  useEffect(() => {
+    if (labs.length > 0 && setAllLabs) {
+      setAllLabs(labs);
+    }
+  }, [labs, setAllLabs]);
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
@@ -64,6 +82,11 @@ export function Sidebar() {
             <p className="text-sm text-muted-foreground">Research Hub</p>
           </div>
         </div>
+      </div>
+
+      {/* Lab Switcher */}
+      <div className="px-4 py-3 border-b border-border">
+        <LabSwitcher />
       </div>
 
       {/* Navigation */}
