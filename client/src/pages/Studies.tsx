@@ -83,8 +83,8 @@ export default function Studies() {
   });
 
   const { data: studies = [], isLoading: studiesLoading, error: studiesError } = useQuery<Study[]>({
-    queryKey: ['/api/studies'],
-    enabled: isAuthenticated,
+    queryKey: ['/api/studies', contextLab?.id],
+    enabled: isAuthenticated && !!contextLab,
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error as Error)) {
         toast({
@@ -102,8 +102,8 @@ export default function Studies() {
   });
 
   const { data: buckets = [], isLoading: bucketsLoading } = useQuery<Bucket[]>({
-    queryKey: ['/api/buckets'],
-    enabled: isAuthenticated,
+    queryKey: ['/api/buckets', contextLab?.id],
+    enabled: isAuthenticated && !!contextLab,
   });
 
   const { data: teamMembers = [], isLoading: teamMembersLoading } = useQuery<TeamMember[]>({

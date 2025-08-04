@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Lab } from "@shared/schema";
 
 interface LabContextType {
@@ -21,6 +22,21 @@ export function useLabContext() {
 export function useLabContextValue(): LabContextType {
   const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
   const [allLabs, setAllLabs] = useState<Lab[]>([]);
+  const queryClient = useQueryClient();
+  
+  // Enhanced setSelectedLab that invalidates queries
+  const setSelectedLabWithInvalidation = (lab: Lab | null) => {
+    setSelectedLab(lab);
+    if (lab) {
+      // Invalidate queries when lab changes to force refetch with new lab ID
+      queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deadlines'] });
+    }
+  };
 
   // Auto-select first lab when labs are loaded
   useEffect(() => {
@@ -31,7 +47,7 @@ export function useLabContextValue(): LabContextType {
 
   return {
     selectedLab,
-    setSelectedLab,
+    setSelectedLab: setSelectedLabWithInvalidation,
     allLabs,
     setAllLabs,
   };

@@ -44,7 +44,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bucket routes
   app.get("/api/buckets", isAuthenticated, async (req, res) => {
     try {
-      const buckets = await storage.getBuckets();
+      const labId = req.query.labId as string;
+      const buckets = await storage.getBuckets(labId);
       res.json(buckets);
     } catch (error) {
       console.error("Error fetching buckets:", error);
@@ -65,7 +66,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Study routes
   app.get("/api/studies", isAuthenticated, async (req, res) => {
     try {
-      const studies = await storage.getStudies();
+      const labId = req.query.labId as string;
+      const studies = await storage.getStudies(labId);
       res.json(studies);
     } catch (error) {
       console.error("Error fetching studies:", error);

@@ -49,7 +49,7 @@ export function LabSwitcher() {
               <CommandItem
                 key={lab.id}
                 onSelect={() => {
-                  setSelectedLab(lab.id === selectedLab?.id ? null : lab);
+                  setSelectedLab(lab);
                   setOpen(false);
                 }}
                 data-testid={`lab-option-${lab.id}`}

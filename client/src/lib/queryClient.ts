@@ -29,7 +29,15 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const [endpoint, labId] = queryKey;
+    const url = new URL(endpoint as string, window.location.origin);
+    
+    // Add labId as query parameter if provided
+    if (labId) {
+      url.searchParams.append('labId', labId as string);
+    }
+    
+    const res = await fetch(url.toString(), {
       credentials: "include",
     });
 
