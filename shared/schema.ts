@@ -95,11 +95,12 @@ export const updateTypeEnum = pgEnum("update_type", [
 
 export const teamMemberRoleEnum = pgEnum("team_member_role", [
   "PI",
-  "data_scientist", 
-  "intern",
-  "resident",
-  "fellow",
-  "regulatory_coordinator"
+  "Data Scientist", 
+  "Data Analyst",
+  "Regulatory Coordinator",
+  "Coordinator",
+  "Lab Intern",
+  "Summer Intern"
 ]);
 
 export const ideaCategoryEnum = pgEnum("idea_category", [
@@ -285,6 +286,9 @@ export const teamMembers = pgTable("team_members", {
   avatarUrl: varchar("avatar_url"), // PNG avatar image URL
   labId: varchar("lab_id").references(() => labs.id),
   position: varchar("position").default("0"), // For ordering in lists
+  department: varchar("department"), // Department or group affiliation
+  phoneNumber: varchar("phone_number"),
+  startDate: timestamp("start_date"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -307,6 +311,7 @@ export const projectMembers = pgTable("project_members", {
   projectId: varchar("project_id").notNull().references(() => studies.id),
   userId: varchar("user_id").notNull().references(() => users.id),
   role: varchar("role").default("contributor"), // lead, contributor, advisor
+  assignedAt: timestamp("assigned_at").defaultNow(),
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 

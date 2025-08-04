@@ -76,6 +76,7 @@ export interface IStorage {
   
   // Team member operations
   getTeamMembers(): Promise<TeamMember[]>;
+  getTeamMembersByLab(labId: string): Promise<TeamMember[]>;
   createTeamMember(member: InsertTeamMember): Promise<TeamMember>;
   updateTeamMember(id: string, updates: Partial<InsertTeamMember>): Promise<TeamMember>;
   deleteTeamMember(id: string): Promise<void>;
@@ -355,6 +356,14 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(teamMembers).orderBy(asc(teamMembers.name));
   }
 
+  async getTeamMembersByLab(labId: string): Promise<TeamMember[]> {
+    return await db
+      .select()
+      .from(teamMembers)
+      .where(eq(teamMembers.labId, labId))
+      .orderBy(asc(teamMembers.name));
+  }
+
   async createTeamMember(member: InsertTeamMember): Promise<TeamMember> {
     const [newMember] = await db.insert(teamMembers).values(member).returning();
     return newMember;
@@ -587,21 +596,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDeletedTasks(labId?: string): Promise<Task[]> {
-    let query = db.select().from(tasks);
-    
-    const conditions = [eq(tasks.isActive, false)];
-    
     if (labId) {
       // Join with studies to filter by lab
-      return await db
-        .select()
+      const results = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          description: tasks.description,
+          status: tasks.status,
+          priority: tasks.priority,
+          assigneeId: tasks.assigneeId,
+          studyId: tasks.studyId,
+          position: tasks.position,
+          isActive: tasks.isActive,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
+          dueDate: tasks.dueDate,
+          estimatedHours: tasks.estimatedHours,
+          actualHours: tasks.actualHours,
+          tags: tasks.tags,
+          completedAt: tasks.completedAt,
+          completedById: tasks.completedById,
+        })
         .from(tasks)
         .leftJoin(studies, eq(tasks.studyId, studies.id))
         .where(and(eq(tasks.isActive, false), eq(studies.labId, labId)))
         .orderBy(desc(tasks.updatedAt));
+      return results;
     }
     
-    return await query.where(and(...conditions)).orderBy(desc(tasks.updatedAt));
+    return await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.isActive, false))
+      .orderBy(desc(tasks.updatedAt));
   }
 
   async getDeletedBuckets(labId?: string): Promise<Bucket[]> {

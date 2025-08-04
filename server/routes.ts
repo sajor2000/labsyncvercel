@@ -650,6 +650,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team member endpoints
+  app.get("/api/team-members/:labId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { labId } = req.params;
+      const teamMembers = await storage.getTeamMembersByLab(labId);
+      res.json(teamMembers);
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+      res.status(500).json({ message: "Failed to fetch team members" });
+    }
+  });
+
+  app.post("/api/team-members", isAuthenticated, async (req: any, res) => {
+    try {
+      const teamMember = await storage.createTeamMember(req.body);
+      res.status(201).json(teamMember);
+    } catch (error) {
+      console.error("Error creating team member:", error);
+      res.status(500).json({ message: "Failed to create team member" });
+    }
+  });
+
+  // Project member endpoints  
+  app.get("/api/project-members/:projectId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { projectId } = req.params;
+      const projectMembers = await storage.getProjectMembers(projectId);
+      res.json(projectMembers);
+    } catch (error) {
+      console.error("Error fetching project members:", error);
+      res.status(500).json({ message: "Failed to fetch project members" });
+    }
+  });
+
+  app.post("/api/project-members", isAuthenticated, async (req: any, res) => {
+    try {
+      const projectMember = await storage.addProjectMember(req.body);
+      res.status(201).json(projectMember);
+    } catch (error) {
+      console.error("Error adding project member:", error);
+      res.status(500).json({ message: "Failed to add project member" });
+    }
+  });
+
+  app.delete("/api/project-members/:projectId/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { projectId, userId } = req.params;
+      await storage.removeProjectMember(projectId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing project member:", error);
+      res.status(500).json({ message: "Failed to remove project member" });
+    }
+  });
+
+  // Load sample team data endpoint (for development)
+  app.post("/api/load-sample-team-data", isAuthenticated, async (req: any, res) => {
+    try {
+      const { RICCC_TEAM_MEMBERS, RHEDAS_TEAM_MEMBERS } = await import("./sampleTeamData");
+      
+      // Get existing labs
+      const labs = await storage.getLabs();
+      const riccLab = labs.find(lab => lab.name === "RICCC");
+      const rhedasLab = labs.find(lab => lab.name === "RHEDAS");
+      
+      if (!riccLab || !rhedasLab) {
+        return res.status(400).json({ message: "RICCC and RHEDAS labs must exist first" });
+      }
+
+      // Load RICCC team members
+      for (const memberData of RICCC_TEAM_MEMBERS) {
+        try {
+          await storage.createTeamMember({
+            ...memberData,
+            labId: riccLab.id,
+          });
+        } catch (error) {
+          // Ignore duplicate email errors
+          if (!error.message?.includes('duplicate')) {
+            console.error("Error creating RICCC team member:", error);
+          }
+        }
+      }
+
+      // Load RHEDAS team members (avoiding Juan Rojas duplicate)
+      for (const memberData of RHEDAS_TEAM_MEMBERS) {
+        try {
+          // Skip Juan Rojas for RHEDAS since he's already in RICCC
+          if (memberData.email === "juan_rojas@rush.edu") continue;
+          
+          await storage.createTeamMember({
+            ...memberData,
+            labId: rhedasLab.id,
+          });
+        } catch (error) {
+          // Ignore duplicate email errors
+          if (!error.message?.includes('duplicate')) {
+            console.error("Error creating RHEDAS team member:", error);
+          }
+        }
+      }
+
+      res.json({ message: "Sample team data loaded successfully" });
+    } catch (error) {
+      console.error("Error loading sample team data:", error);
+      res.status(500).json({ message: "Failed to load sample team data" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

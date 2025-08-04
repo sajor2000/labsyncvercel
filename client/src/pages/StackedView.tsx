@@ -15,6 +15,7 @@ import { DraggableCard } from "@/components/DraggableCard";
 import { DropZone } from "@/components/DropZone";
 import { SoftDeleteButton } from "@/components/SoftDeleteButton";
 import { RecentlyDeletedModal } from "@/components/RecentlyDeletedModal";
+import { ProjectTeamManager } from "@/components/ProjectTeamManager";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -636,7 +637,17 @@ export default function StackedView() {
                     data-testid={`study-card-${study.id}`}
                   >
                     {/* Card Actions */}
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ProjectTeamManager study={study}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-primary"
+                          data-testid={`button-manage-team-${study.id}`}
+                        >
+                          <Users className="h-4 w-4" />
+                        </Button>
+                      </ProjectTeamManager>
                       <SoftDeleteButton
                         id={study.id}
                         type="study"
