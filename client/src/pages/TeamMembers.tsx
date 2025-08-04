@@ -571,12 +571,14 @@ export default function TeamMembers() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={member.avatarUrl || ""} />
-                      <AvatarFallback>
-                        {member.initials || member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <AvatarUpload
+                      currentAvatarUrl={member.avatarUrl || undefined}
+                      userName={member.name}
+                      userId={member.id}
+                      size="md"
+                      showUploadButton={false}
+                      className="flex-shrink-0"
+                    />
                     <div>
                       <CardTitle className="text-base">{member.name}</CardTitle>
                       <p className="text-sm text-muted-foreground">

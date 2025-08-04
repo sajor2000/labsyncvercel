@@ -55,6 +55,13 @@ Lab Management: Support for multiple separate research labs with toggle function
 - **Notifications**: Live notification system for task updates and meeting alerts
 - **Lab Context Switching**: Real-time lab switching with automatic data filtering across all pages
 
+### Avatar Upload System
+- **File Upload**: Comprehensive avatar upload system supporting JPG and PNG images
+- **Circular Images**: All avatars display as circular profile pictures with proper object-fit styling
+- **Object Storage**: Google Cloud Storage integration for secure file storage and serving
+- **Upload Interface**: User-friendly camera button overlay for easy avatar changes
+- **Cross-Page Integration**: Avatar display and upload functionality across Sidebar, headers, and user profiles
+
 ### Development & Deployment
 - **Type Safety**: Full TypeScript implementation across frontend, backend, and shared schemas
 - **Development Server**: Vite dev server with HMR for rapid development
