@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { createSampleData } from "./sampleData";
 import { aiService } from "./services/aiService";
 import multer from "multer";
 
@@ -358,6 +359,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating action item:", error);
       res.status(500).json({ message: "Failed to update action item" });
+    }
+  });
+
+  // Sample data creation endpoint (for development/demo)
+  app.post('/api/create-sample-data', isAuthenticated, async (req, res) => {
+    try {
+      const result = await createSampleData();
+      res.json({ 
+        message: "Sample data created successfully",
+        ...result 
+      });
+    } catch (error) {
+      console.error("Error creating sample data:", error);
+      res.status(500).json({ message: "Failed to create sample data" });
     }
   });
 

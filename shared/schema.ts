@@ -134,7 +134,7 @@ export const studies = pgTable("studies", {
   oraNumber: varchar("ora_number"),
   status: studyStatusEnum("status").default("PLANNING"),
   studyType: varchar("study_type"),
-  assignee: varchar("assignee"),
+  assignees: text("assignees").array(), // Multiple assignees as array
   funding: fundingTypeEnum("funding"),
   externalCollaborators: text("external_collaborators"),
   notes: text("notes"),

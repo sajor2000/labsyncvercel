@@ -11,6 +11,7 @@ import Studies from "@/pages/Studies";
 import KanbanBoard from "@/pages/KanbanBoard";
 import Labs from "@/pages/Labs";
 import Buckets from "@/pages/Buckets";
+import StackedView from "@/pages/StackedView";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/Layout";
 import { LabProvider } from "@/components/LabProvider";
@@ -27,6 +28,7 @@ function Router() {
           <Route path="/" component={() => <Layout><Dashboard /></Layout>} />
           <Route path="/studies" component={() => <Layout><Studies /></Layout>} />
           <Route path="/kanban" component={() => <Layout><KanbanBoard /></Layout>} />
+          <Route path="/stacked" component={() => <Layout><StackedView /></Layout>} />
           <Route path="/labs" component={() => <Layout><Labs /></Layout>} />
           <Route path="/buckets" component={() => <Layout><Buckets /></Layout>} />
         </LabProvider>

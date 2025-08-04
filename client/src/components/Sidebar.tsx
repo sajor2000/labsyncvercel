@@ -11,7 +11,8 @@ import {
   Building2,
   Mic,
   FileText,
-  KanbanSquare
+  KanbanSquare,
+  LayoutGrid
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
@@ -23,6 +24,7 @@ const navigationItems = [
   { name: "Labs", href: "/labs", icon: Building2 },
   { name: "Buckets", href: "/buckets", icon: FolderOpen },
   { name: "Studies", href: "/studies", icon: FlaskConical },
+  { name: "Stacked by Bucket", href: "/stacked", icon: LayoutGrid },
   { name: "Task Board", href: "/kanban", icon: KanbanSquare },
   { name: "Standups", href: "/standups", icon: Mic },
   { name: "Calendar", href: "/calendar", icon: Calendar },
