@@ -40,6 +40,7 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUserAvatar(id: string, avatarUrl: string): Promise<User>;
   
   // Lab operations
   getLabs(): Promise<Lab[]>;
@@ -51,6 +52,7 @@ export interface IStorage {
   getStudy(id: string): Promise<Study | undefined>;
   createStudy(study: InsertStudy): Promise<Study>;
   updateStudy(id: string, study: Partial<Study>): Promise<Study>;
+  deleteStudy(id: string): Promise<void>;
   
   // Task operations
   getTasks(studyId?: string, assigneeId?: string): Promise<Task[]>;
@@ -114,6 +116,18 @@ export class DatabaseStorage implements IStorage {
           updatedAt: new Date(),
         },
       })
+      .returning();
+    return user;
+  }
+
+  async updateUserAvatar(id: string, avatarUrl: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        profileImageUrl: avatarUrl,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
       .returning();
     return user;
   }
@@ -184,6 +198,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(studies.id, id))
       .returning();
     return updatedStudy;
+  }
+
+  async deleteStudy(id: string): Promise<void> {
+    await db.delete(studies).where(eq(studies.id, id));
   }
 
   // Task operations

@@ -103,6 +103,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Avatar and object storage routes
+  app.post("/api/upload/avatar", isAuthenticated, async (req, res) => {
+    try {
+      const { ObjectStorageService } = require("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getAvatarUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting avatar upload URL:", error);
+      res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+
+  app.put("/api/auth/avatar", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { avatarUrl } = req.body;
+      
+      const { ObjectStorageService } = require("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const normalizedPath = objectStorageService.normalizeObjectEntityPath(avatarUrl);
+      
+      const updatedUser = await storage.updateUserAvatar(userId, normalizedPath);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating avatar:", error);
+      res.status(500).json({ message: "Failed to update avatar" });
+    }
+  });
+
+  app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
+    try {
+      const { ObjectStorageService } = require("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error: any) {
+      console.error("Error serving object:", error);
+      if (error.name === "ObjectNotFoundError") {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
   // Task routes
   app.get("/api/tasks", isAuthenticated, async (req, res) => {
     try {

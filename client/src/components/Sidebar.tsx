@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AvatarUpload } from "@/components/AvatarUpload";
 
 const navigationItems = [
   { name: "Overview", href: "/", icon: BarChart3 },
@@ -97,9 +98,17 @@ export function Sidebar() {
         {/* User Info */}
         {user && (
           <div className="flex items-center space-x-3 mb-4">
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium">
-              {user.firstName?.[0] || user.email?.[0]?.toUpperCase() || "U"}
-            </div>
+            <AvatarUpload
+              currentAvatarUrl={user?.profileImageUrl}
+              userName={user.firstName && user.lastName 
+                ? `${user.firstName} ${user.lastName}`
+                : user.email
+              }
+              userId={user?.id}
+              size="sm"
+              showUploadButton={true}
+              className="flex-shrink-0"
+            />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
                 {user.firstName && user.lastName 
