@@ -162,12 +162,12 @@ export function AvatarUpload({
   };
 
   return (
-    <div className={`relative ${className}`}>
-      <Avatar className={`${sizeClasses[size]} ring-2 ring-background`}>
+    <div className={`relative inline-block ${className}`}>
+      <Avatar className={`${sizeClasses[size]} ring-2 ring-background overflow-hidden`}>
         <AvatarImage 
           src={currentAvatarUrl} 
           alt={userName || "User avatar"}
-          className="object-cover"
+          className="object-cover w-full h-full"
         />
         <AvatarFallback className="bg-muted">
           {userName ? getInitials(userName) : <User className="h-4 w-4" />}
@@ -175,7 +175,7 @@ export function AvatarUpload({
       </Avatar>
 
       {showUploadButton && (
-        <div className="absolute -bottom-1 -right-1">
+        <div className="absolute -bottom-1 -right-1 z-10">
           <input
             ref={fileInputRef}
             type="file"
@@ -185,7 +185,7 @@ export function AvatarUpload({
           />
           <Button
             onClick={handleCameraClick}
-            className="h-6 w-6 rounded-full p-0 bg-primary hover:bg-primary/90 border-2 border-background"
+            className="h-6 w-6 rounded-full p-0 bg-primary hover:bg-primary/90 border-2 border-background shadow-md"
             disabled={uploadingAvatar}
           >
             <Camera className="h-3 w-3 text-primary-foreground" />
