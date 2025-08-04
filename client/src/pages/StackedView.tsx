@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import StudyDetailModal from "./StudyDetailModal";
+import { CreateSampleDataButton } from "@/components/CreateSampleDataButton";
 import { 
   Plus, 
   Users, 
@@ -77,6 +79,8 @@ export default function StackedView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedStudy, setSelectedStudy] = useState<Study | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -250,6 +254,7 @@ export default function StackedView() {
         
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
+          <CreateSampleDataButton />
           <Button variant="outline" size="sm" data-testid="button-customize">
             <Settings2 className="h-4 w-4 mr-2" />
             Customize cards
@@ -539,6 +544,10 @@ export default function StackedView() {
                   className="hover:shadow-md transition-shadow cursor-pointer border-l-4"
                   style={{ borderLeftColor: bucket.color || '#3b82f6' }}
                   data-testid={`study-card-${study.id}`}
+                  onClick={() => {
+                    setSelectedStudy(study);
+                    setIsDetailModalOpen(true);
+                  }}
                 >
                   <CardContent className="p-4 space-y-3">
                     {/* Study Title */}
@@ -600,6 +609,17 @@ export default function StackedView() {
           </div>
         ))}
       </div>
+
+      {/* Study Detail Modal */}
+      <StudyDetailModal
+        study={selectedStudy}
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedStudy(null);
+        }}
+        buckets={buckets}
+      />
     </main>
   );
 }
