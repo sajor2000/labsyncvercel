@@ -11,7 +11,7 @@ export default function Landing() {
             <img 
               src={logoUrl} 
               alt="LabSync Logo" 
-              className="h-20 w-auto mx-auto"
+              className="h-28 w-auto mx-auto"
             />
           </div>
         </CardHeader>
