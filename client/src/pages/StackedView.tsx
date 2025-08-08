@@ -163,6 +163,10 @@ export default function StackedView() {
     return matchesSearch && matchesStatus;
   });
 
+  // Sort data by position
+  const sortedBuckets = sortByPosition(buckets);
+  const sortedStudies = sortByPosition(filteredStudies);
+
   // Group studies by bucket with sorted data
   const studiesByBucket = sortedBuckets.map(bucket => ({
     bucket,
@@ -282,10 +286,6 @@ export default function StackedView() {
     setDraggedItem(null);
     setDraggedType('');
   };
-
-  // Sort data by position
-  const sortedBuckets = sortByPosition(buckets);
-  const sortedStudies = sortByPosition(filteredStudies);
 
   if (isLoading) {
     return (
