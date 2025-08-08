@@ -12,6 +12,11 @@ import {
   taskAssignments,
   ideas,
   deadlines,
+  bucketMembers,
+  comments,
+  attachments,
+  notifications,
+  mentions,
   type User,
   type UpsertUser,
   type Lab,
@@ -38,9 +43,47 @@ import {
   type InsertIdea,
   type Deadline,
   type InsertDeadline,
+  type BucketMember,
+  type InsertBucketMember,
+  type Comment,
+  type InsertComment,
+  type Attachment,
+  type InsertAttachment,
+  type Notification,
+  type InsertNotification,
+  type StatusHistory,
+  type InsertStatusHistory,
+  type TimeEntry,
+  type InsertTimeEntry,
+  statusHistory,
+  timeEntries,
+  type Tag,
+  type InsertTag,
+  type TaskTag,
+  type InsertTaskTag,
+  type ProjectTag,
+  type InsertProjectTag,
+  type CustomField,
+  type InsertCustomField,
+  type CustomFieldValue,
+  type InsertCustomFieldValue,
+  type TaskTemplate,
+  type InsertTaskTemplate,
+  type RecurringTask,
+  type InsertRecurringTask,
+  type UserPreferences,
+  type InsertUserPreferences,
+  tags,
+  taskTags,
+  projectTags,
+  customFields,
+  customFieldValues,
+  taskTemplates,
+  recurringTasks,
+  userPreferences,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, inArray, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -141,6 +184,67 @@ export interface IStorage {
   getUserSettings(id: string): Promise<any>;
   updateUserSettings(id: string, settings: any): Promise<any>;
   deleteUser(id: string): Promise<void>;
+
+  // PHASE 1: CRITICAL SECURITY OPERATIONS
+  validateUserLabAccess(userId: string, labId: string): Promise<boolean>;
+  validateProjectMembership(userId: string, projectId: string): Promise<boolean>;
+  getBucketMembers(bucketId: string): Promise<BucketMember[]>;
+  addBucketMember(member: InsertBucketMember): Promise<BucketMember>;
+  removeBucketMember(bucketId: string, userId: string): Promise<void>;
+  assignTaskWithValidation(assignment: InsertTaskAssignment): Promise<TaskAssignment>;
+  getComments(entityType: string, entityId: string): Promise<Comment[]>;
+  createComment(comment: InsertComment): Promise<Comment>;
+  getNotifications(userId: string): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationRead(notificationId: string): Promise<void>;
+  getAttachments(entityType: string, entityId: string): Promise<Attachment[]>;
+  createAttachment(attachment: InsertAttachment): Promise<Attachment>;
+  deleteAttachment(attachmentId: string): Promise<void>;
+
+  // PHASE 3: PROJECT MANAGEMENT OPERATIONS
+  createStatusHistory(history: InsertStatusHistory): Promise<StatusHistory>;
+  getStatusHistory(entityType: string, entityId: string): Promise<StatusHistory[]>;
+  createTimeEntry(entry: InsertTimeEntry): Promise<TimeEntry>;
+  getTimeEntries(taskId?: string, userId?: string, projectId?: string): Promise<TimeEntry[]>;
+  updateTimeEntry(id: string, entry: Partial<TimeEntry>): Promise<TimeEntry>;
+  deleteTimeEntry(id: string): Promise<void>;
+  getProjectTimeEntries(projectId: string, startDate?: Date, endDate?: Date): Promise<TimeEntry[]>;
+  getUserTimeEntries(userId: string, startDate?: Date, endDate?: Date): Promise<TimeEntry[]>;
+
+  // PHASE 4: ENHANCED ORGANIZATION OPERATIONS
+  // Tags
+  getTags(labId?: string): Promise<Tag[]>;
+  createTag(tag: InsertTag): Promise<Tag>;
+  updateTag(id: string, tag: Partial<Tag>): Promise<Tag>;
+  deleteTag(id: string): Promise<void>;
+  // Task Tags
+  getTaskTags(taskId: string): Promise<TaskTag[]>;
+  addTaskTag(taskTag: InsertTaskTag): Promise<TaskTag>;
+  removeTaskTag(taskId: string, tagId: string): Promise<void>;
+  // Project Tags
+  getProjectTags(projectId: string): Promise<ProjectTag[]>;
+  addProjectTag(projectTag: InsertProjectTag): Promise<ProjectTag>;
+  removeProjectTag(projectId: string, tagId: string): Promise<void>;
+  // Custom Fields
+  getCustomFields(labId: string, entityType?: string): Promise<CustomField[]>;
+  createCustomField(field: InsertCustomField): Promise<CustomField>;
+  updateCustomField(id: string, field: Partial<CustomField>): Promise<CustomField>;
+  deleteCustomField(id: string): Promise<void>;
+  getCustomFieldValues(entityId: string): Promise<CustomFieldValue[]>;
+  setCustomFieldValue(value: InsertCustomFieldValue): Promise<CustomFieldValue>;
+  // Task Templates
+  getTaskTemplates(labId?: string): Promise<TaskTemplate[]>;
+  createTaskTemplate(template: InsertTaskTemplate): Promise<TaskTemplate>;
+  updateTaskTemplate(id: string, template: Partial<TaskTemplate>): Promise<TaskTemplate>;
+  deleteTaskTemplate(id: string): Promise<void>;
+  // Recurring Tasks
+  getRecurringTasks(labId?: string): Promise<RecurringTask[]>;
+  createRecurringTask(task: InsertRecurringTask): Promise<RecurringTask>;
+  updateRecurringTask(id: string, task: Partial<RecurringTask>): Promise<RecurringTask>;
+  deleteRecurringTask(id: string): Promise<void>;
+  // User Preferences
+  getUserPreferences(userId: string): Promise<UserPreferences | undefined>;
+  upsertUserPreferences(preferences: InsertUserPreferences): Promise<UserPreferences>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -697,6 +801,464 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(taskAssignments)
       .where(and(eq(taskAssignments.taskId, taskId), eq(taskAssignments.userId, userId)));
+  }
+
+  // PHASE 1: CRITICAL SECURITY IMPLEMENTATIONS
+  
+  async validateUserLabAccess(userId: string, labId: string): Promise<boolean> {
+    try {
+      const [user] = await db
+        .select({ labId: users.labId })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      
+      return user?.labId === labId;
+    } catch {
+      return false;
+    }
+  }
+  
+  async validateProjectMembership(userId: string, projectId: string): Promise<boolean> {
+    try {
+      const [membership] = await db
+        .select({ id: projectMembers.id })
+        .from(projectMembers)
+        .where(
+          and(
+            eq(projectMembers.userId, userId),
+            eq(projectMembers.projectId, projectId)
+          )
+        )
+        .limit(1);
+      
+      return !!membership;
+    } catch {
+      return false;
+    }
+  }
+  
+  async getBucketMembers(bucketId: string): Promise<BucketMember[]> {
+    return await db
+      .select()
+      .from(bucketMembers)
+      .where(eq(bucketMembers.bucketId, bucketId));
+  }
+  
+  async addBucketMember(member: InsertBucketMember): Promise<BucketMember> {
+    const [newMember] = await db
+      .insert(bucketMembers)
+      .values(member)
+      .returning();
+    return newMember;
+  }
+  
+  async removeBucketMember(bucketId: string, userId: string): Promise<void> {
+    await db
+      .delete(bucketMembers)
+      .where(
+        and(
+          eq(bucketMembers.bucketId, bucketId),
+          eq(bucketMembers.userId, userId)
+        )
+      );
+  }
+  
+  // CRITICAL: Validated task assignment - ensures only project members can be assigned
+  async assignTaskWithValidation(assignment: InsertTaskAssignment): Promise<TaskAssignment> {
+    // Step 1: Validate that user is a member of the project
+    const isProjectMember = await this.validateProjectMembership(
+      assignment.userId,
+      assignment.projectId
+    );
+    
+    if (!isProjectMember) {
+      throw new Error("Cannot assign task: User is not a member of this project");
+    }
+    
+    // Step 2: Validate cross-lab access (get project's lab and check user's lab)
+    const [project] = await db
+      .select({ labId: studies.labId })
+      .from(studies)
+      .where(eq(studies.id, assignment.projectId))
+      .limit(1);
+    
+    if (!project) {
+      throw new Error("Project not found");
+    }
+    
+    const hasLabAccess = await this.validateUserLabAccess(assignment.userId, project.labId);
+    if (!hasLabAccess) {
+      throw new Error("Cannot assign task: Cross-lab access denied");
+    }
+    
+    // Step 3: Create the assignment
+    const [newAssignment] = await db
+      .insert(taskAssignments)
+      .values(assignment)
+      .returning();
+    
+    return newAssignment;
+  }
+  
+  async getComments(entityType: string, entityId: string): Promise<Comment[]> {
+    return await db
+      .select()
+      .from(comments)
+      .where(
+        and(
+          eq(comments.entityType, entityType as any),
+          eq(comments.entityId, entityId),
+          eq(comments.isDeleted, false)
+        )
+      )
+      .orderBy(asc(comments.createdAt));
+  }
+  
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const [newComment] = await db
+      .insert(comments)
+      .values(comment)
+      .returning();
+    return newComment;
+  }
+  
+  async getNotifications(userId: string): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+  
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [newNotification] = await db
+      .insert(notifications)
+      .values(notification)
+      .returning();
+    return newNotification;
+  }
+  
+  async markNotificationRead(notificationId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ read: true, readAt: new Date() })
+      .where(eq(notifications.id, notificationId));
+  }
+  
+  // PHASE 2: ATTACHMENT OPERATIONS
+  
+  async getAttachments(entityType: string, entityId: string): Promise<Attachment[]> {
+    return await db
+      .select()
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.entityType, entityType as any),
+          eq(attachments.entityId, entityId),
+          eq(attachments.isDeleted, false)
+        )
+      )
+      .orderBy(desc(attachments.uploadedAt));
+  }
+  
+  async createAttachment(attachment: InsertAttachment): Promise<Attachment> {
+    const [newAttachment] = await db
+      .insert(attachments)
+      .values(attachment)
+      .returning();
+    return newAttachment;
+  }
+  
+  async deleteAttachment(attachmentId: string): Promise<void> {
+    await db
+      .update(attachments)
+      .set({ isDeleted: true })
+      .where(eq(attachments.id, attachmentId));
+  }
+
+  // PHASE 3: PROJECT MANAGEMENT OPERATIONS
+  async createStatusHistory(history: InsertStatusHistory): Promise<StatusHistory> {
+    const [newHistory] = await db.insert(statusHistory).values(history).returning();
+    return newHistory;
+  }
+
+  async getStatusHistory(entityType: string, entityId: string): Promise<StatusHistory[]> {
+    return await db
+      .select()
+      .from(statusHistory)
+      .where(and(
+        eq(statusHistory.entityType, entityType),
+        eq(statusHistory.entityId, entityId)
+      ))
+      .orderBy(desc(statusHistory.changedAt));
+  }
+
+  async createTimeEntry(entry: InsertTimeEntry): Promise<TimeEntry> {
+    const [newEntry] = await db.insert(timeEntries).values(entry).returning();
+    return newEntry;
+  }
+
+  async getTimeEntries(taskId?: string, userId?: string, projectId?: string): Promise<TimeEntry[]> {
+    let query = db.select().from(timeEntries);
+    
+    const conditions = [];
+    if (taskId) conditions.push(eq(timeEntries.taskId, taskId));
+    if (userId) conditions.push(eq(timeEntries.userId, userId));
+    if (projectId) conditions.push(eq(timeEntries.projectId, projectId));
+    
+    if (conditions.length > 0) {
+      return await query.where(and(...conditions)).orderBy(desc(timeEntries.date));
+    }
+    
+    return await query.orderBy(desc(timeEntries.date));
+  }
+
+  async updateTimeEntry(id: string, entry: Partial<TimeEntry>): Promise<TimeEntry> {
+    const [updatedEntry] = await db
+      .update(timeEntries)
+      .set({ ...entry, updatedAt: new Date() })
+      .where(eq(timeEntries.id, id))
+      .returning();
+    return updatedEntry;
+  }
+
+  async deleteTimeEntry(id: string): Promise<void> {
+    await db.delete(timeEntries).where(eq(timeEntries.id, id));
+  }
+
+  async getProjectTimeEntries(projectId: string, startDate?: Date, endDate?: Date): Promise<TimeEntry[]> {
+    let query = db.select().from(timeEntries).where(eq(timeEntries.projectId, projectId));
+    
+    const conditions = [eq(timeEntries.projectId, projectId)];
+    if (startDate) conditions.push(sql`${timeEntries.date} >= ${startDate}`);
+    if (endDate) conditions.push(sql`${timeEntries.date} <= ${endDate}`);
+    
+    return await query.where(and(...conditions)).orderBy(desc(timeEntries.date));
+  }
+
+  async getUserTimeEntries(userId: string, startDate?: Date, endDate?: Date): Promise<TimeEntry[]> {
+    let query = db.select().from(timeEntries).where(eq(timeEntries.userId, userId));
+    
+    const conditions = [eq(timeEntries.userId, userId)];
+    if (startDate) conditions.push(sql`${timeEntries.date} >= ${startDate}`);
+    if (endDate) conditions.push(sql`${timeEntries.date} <= ${endDate}`);
+    
+    return await query.where(and(...conditions)).orderBy(desc(timeEntries.date));
+  }
+
+  // PHASE 4: ENHANCED ORGANIZATION OPERATIONS
+  
+  // Tags
+  async getTags(labId?: string): Promise<Tag[]> {
+    if (labId) {
+      return await db
+        .select()
+        .from(tags)
+        .where(and(eq(tags.labId, labId), eq(tags.isActive, true)))
+        .orderBy(asc(tags.name));
+    }
+    return await db.select().from(tags).where(eq(tags.isActive, true)).orderBy(asc(tags.name));
+  }
+
+  async createTag(tag: InsertTag): Promise<Tag> {
+    const [newTag] = await db.insert(tags).values(tag).returning();
+    return newTag;
+  }
+
+  async updateTag(id: string, tag: Partial<Tag>): Promise<Tag> {
+    const [updatedTag] = await db
+      .update(tags)
+      .set({ ...tag, updatedAt: new Date() })
+      .where(eq(tags.id, id))
+      .returning();
+    return updatedTag;
+  }
+
+  async deleteTag(id: string): Promise<void> {
+    await db.update(tags).set({ isActive: false }).where(eq(tags.id, id));
+  }
+
+  // Task Tags
+  async getTaskTags(taskId: string): Promise<TaskTag[]> {
+    return await db.select().from(taskTags).where(eq(taskTags.taskId, taskId));
+  }
+
+  async addTaskTag(taskTag: InsertTaskTag): Promise<TaskTag> {
+    const [newTaskTag] = await db.insert(taskTags).values(taskTag).returning();
+    return newTaskTag;
+  }
+
+  async removeTaskTag(taskId: string, tagId: string): Promise<void> {
+    await db.delete(taskTags).where(and(eq(taskTags.taskId, taskId), eq(taskTags.tagId, tagId)));
+  }
+
+  // Project Tags
+  async getProjectTags(projectId: string): Promise<ProjectTag[]> {
+    return await db.select().from(projectTags).where(eq(projectTags.projectId, projectId));
+  }
+
+  async addProjectTag(projectTag: InsertProjectTag): Promise<ProjectTag> {
+    const [newProjectTag] = await db.insert(projectTags).values(projectTag).returning();
+    return newProjectTag;
+  }
+
+  async removeProjectTag(projectId: string, tagId: string): Promise<void> {
+    await db.delete(projectTags).where(and(eq(projectTags.projectId, projectId), eq(projectTags.tagId, tagId)));
+  }
+
+  // Custom Fields
+  async getCustomFields(labId: string, entityType?: string): Promise<CustomField[]> {
+    let query = db.select().from(customFields).where(and(eq(customFields.labId, labId), eq(customFields.isActive, true)));
+    
+    if (entityType) {
+      query = query.where(and(
+        eq(customFields.labId, labId),
+        eq(customFields.entityType, entityType),
+        eq(customFields.isActive, true)
+      ));
+    }
+    
+    return await query.orderBy(asc(customFields.position), asc(customFields.fieldLabel));
+  }
+
+  async createCustomField(field: InsertCustomField): Promise<CustomField> {
+    const [newField] = await db.insert(customFields).values(field).returning();
+    return newField;
+  }
+
+  async updateCustomField(id: string, field: Partial<CustomField>): Promise<CustomField> {
+    const [updatedField] = await db
+      .update(customFields)
+      .set({ ...field, updatedAt: new Date() })
+      .where(eq(customFields.id, id))
+      .returning();
+    return updatedField;
+  }
+
+  async deleteCustomField(id: string): Promise<void> {
+    await db.update(customFields).set({ isActive: false }).where(eq(customFields.id, id));
+  }
+
+  async getCustomFieldValues(entityId: string): Promise<CustomFieldValue[]> {
+    return await db.select().from(customFieldValues).where(eq(customFieldValues.entityId, entityId));
+  }
+
+  async setCustomFieldValue(value: InsertCustomFieldValue): Promise<CustomFieldValue> {
+    const [newValue] = await db
+      .insert(customFieldValues)
+      .values(value)
+      .onConflictDoUpdate({
+        target: [customFieldValues.fieldId, customFieldValues.entityId],
+        set: {
+          value: value.value,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return newValue;
+  }
+
+  // Task Templates
+  async getTaskTemplates(labId?: string): Promise<TaskTemplate[]> {
+    if (labId) {
+      return await db
+        .select()
+        .from(taskTemplates)
+        .where(and(eq(taskTemplates.labId, labId), eq(taskTemplates.isActive, true)))
+        .orderBy(asc(taskTemplates.name));
+    }
+    return await db.select().from(taskTemplates).where(eq(taskTemplates.isActive, true)).orderBy(asc(taskTemplates.name));
+  }
+
+  async createTaskTemplate(template: InsertTaskTemplate): Promise<TaskTemplate> {
+    const [newTemplate] = await db.insert(taskTemplates).values(template).returning();
+    return newTemplate;
+  }
+
+  async updateTaskTemplate(id: string, template: Partial<TaskTemplate>): Promise<TaskTemplate> {
+    const [updatedTemplate] = await db
+      .update(taskTemplates)
+      .set({ ...template, updatedAt: new Date() })
+      .where(eq(taskTemplates.id, id))
+      .returning();
+    return updatedTemplate;
+  }
+
+  async deleteTaskTemplate(id: string): Promise<void> {
+    await db.update(taskTemplates).set({ isActive: false }).where(eq(taskTemplates.id, id));
+  }
+
+  // Recurring Tasks
+  async getRecurringTasks(labId?: string): Promise<RecurringTask[]> {
+    if (labId) {
+      // Join with tasks to filter by lab through study relationship
+      const results = await db
+        .select({
+          id: recurringTasks.id,
+          taskId: recurringTasks.taskId,
+          templateId: recurringTasks.templateId,
+          pattern: recurringTasks.pattern,
+          interval: recurringTasks.interval,
+          dayOfWeek: recurringTasks.dayOfWeek,
+          dayOfMonth: recurringTasks.dayOfMonth,
+          customCron: recurringTasks.customCron,
+          nextDueDate: recurringTasks.nextDueDate,
+          lastCreated: recurringTasks.lastCreated,
+          endDate: recurringTasks.endDate,
+          maxOccurrences: recurringTasks.maxOccurrences,
+          occurrenceCount: recurringTasks.occurrenceCount,
+          isActive: recurringTasks.isActive,
+          createdAt: recurringTasks.createdAt,
+          updatedAt: recurringTasks.updatedAt,
+        })
+        .from(recurringTasks)
+        .leftJoin(tasks, eq(recurringTasks.taskId, tasks.id))
+        .leftJoin(studies, eq(tasks.studyId, studies.id))
+        .where(and(eq(studies.labId, labId), eq(recurringTasks.isActive, true)))
+        .orderBy(asc(recurringTasks.nextDueDate));
+      return results;
+    }
+    return await db.select().from(recurringTasks).where(eq(recurringTasks.isActive, true)).orderBy(asc(recurringTasks.nextDueDate));
+  }
+
+  async createRecurringTask(task: InsertRecurringTask): Promise<RecurringTask> {
+    const [newRecurringTask] = await db.insert(recurringTasks).values(task).returning();
+    return newRecurringTask;
+  }
+
+  async updateRecurringTask(id: string, task: Partial<RecurringTask>): Promise<RecurringTask> {
+    const [updatedTask] = await db
+      .update(recurringTasks)
+      .set({ ...task, updatedAt: new Date() })
+      .where(eq(recurringTasks.id, id))
+      .returning();
+    return updatedTask;
+  }
+
+  async deleteRecurringTask(id: string): Promise<void> {
+    await db.update(recurringTasks).set({ isActive: false }).where(eq(recurringTasks.id, id));
+  }
+
+  // User Preferences
+  async getUserPreferences(userId: string): Promise<UserPreferences | undefined> {
+    const [preferences] = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId));
+    return preferences;
+  }
+
+  async upsertUserPreferences(preferences: InsertUserPreferences): Promise<UserPreferences> {
+    const [newPreferences] = await db
+      .insert(userPreferences)
+      .values(preferences)
+      .onConflictDoUpdate({
+        target: userPreferences.userId,
+        set: {
+          ...preferences,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return newPreferences;
   }
 }
 

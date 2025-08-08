@@ -518,16 +518,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { userId, role } = req.body;
       
+      // CRITICAL: Get project's lab for cross-lab validation
+      const project = await storage.getStudy(id);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
       const member = await storage.addProjectMember({
         projectId: id,
         userId,
+        labId: project.labId, // REQUIRED for cross-lab security
         role: role || 'contributor'
       });
       
       res.status(201).json(member);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding project member:", error);
-      res.status(500).json({ message: "Failed to add project member" });
+      res.status(400).json({ message: error.message || "Failed to add project member" });
     }
   });
 
@@ -559,15 +566,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { userId } = req.body;
       
-      const assignment = await storage.assignUserToTask({
+      // CRITICAL: Get task's project for validation
+      const allTasks = await storage.getTasks();
+      const task = allTasks.find(t => t.id === id);
+      if (!task?.studyId) {
+        return res.status(404).json({ message: "Task or associated project not found" });
+      }
+      
+      // Use the validated assignment method
+      const assignment = await storage.assignTaskWithValidation({
         taskId: id,
-        userId
+        userId,
+        projectId: task.studyId, // REQUIRED for validation
+        isActive: true
       });
       
       res.status(201).json(assignment);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error assigning user to task:", error);
-      res.status(500).json({ message: "Failed to assign user to task" });
+      res.status(400).json({ message: error.message || "Failed to assign user to task" });
     }
   });
 
@@ -616,6 +633,261 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PHASE 3: PROJECT MANAGEMENT ENDPOINTS
+  
+  // Status History routes
+  app.get("/api/status-history/:entityType/:entityId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { entityType, entityId } = req.params;
+      const history = await storage.getStatusHistory(entityType, entityId);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching status history:", error);
+      res.status(500).json({ message: "Failed to fetch status history" });
+    }
+  });
+
+  app.post("/api/status-history", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const historyData = {
+        ...req.body,
+        changedById: userId,
+        changedAt: new Date()
+      };
+      const history = await storage.createStatusHistory(historyData);
+      res.json(history);
+    } catch (error) {
+      console.error("Error creating status history:", error);
+      res.status(500).json({ message: "Failed to create status history" });
+    }
+  });
+
+  // Time Entry routes
+  app.get("/api/time-entries", isAuthenticated, async (req: any, res) => {
+    try {
+      const { taskId, userId, projectId } = req.query;
+      const timeEntries = await storage.getTimeEntries(taskId, userId, projectId);
+      res.json(timeEntries);
+    } catch (error) {
+      console.error("Error fetching time entries:", error);
+      res.status(500).json({ message: "Failed to fetch time entries" });
+    }
+  });
+
+  app.post("/api/time-entries", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const entryData = {
+        ...req.body,
+        userId,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      const timeEntry = await storage.createTimeEntry(entryData);
+      res.json(timeEntry);
+    } catch (error) {
+      console.error("Error creating time entry:", error);
+      res.status(500).json({ message: "Failed to create time entry" });
+    }
+  });
+
+  app.put("/api/time-entries/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const timeEntry = await storage.updateTimeEntry(id, req.body);
+      res.json(timeEntry);
+    } catch (error) {
+      console.error("Error updating time entry:", error);
+      res.status(500).json({ message: "Failed to update time entry" });
+    }
+  });
+
+  app.delete("/api/time-entries/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteTimeEntry(id);
+      res.json({ message: "Time entry deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting time entry:", error);
+      res.status(500).json({ message: "Failed to delete time entry" });
+    }
+  });
+
+  // Project time tracking endpoints
+  app.get("/api/projects/:id/time-entries", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { startDate, endDate } = req.query;
+      const timeEntries = await storage.getProjectTimeEntries(
+        id,
+        startDate ? new Date(startDate) : undefined,
+        endDate ? new Date(endDate) : undefined
+      );
+      res.json(timeEntries);
+    } catch (error) {
+      console.error("Error fetching project time entries:", error);
+      res.status(500).json({ message: "Failed to fetch project time entries" });
+    }
+  });
+
+  // User time tracking endpoints
+  app.get("/api/users/:id/time-entries", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { startDate, endDate } = req.query;
+      const timeEntries = await storage.getUserTimeEntries(
+        id,
+        startDate ? new Date(startDate) : undefined,
+        endDate ? new Date(endDate) : undefined
+      );
+      res.json(timeEntries);
+    } catch (error) {
+      console.error("Error fetching user time entries:", error);
+      res.status(500).json({ message: "Failed to fetch user time entries" });
+    }
+  });
+
+  // Notification management routes
+  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notifications = await storage.getNotifications(userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const notification = await storage.createNotification(req.body);
+      res.json(notification);
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      res.status(500).json({ message: "Failed to create notification" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.markNotificationRead(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  // Comment system routes
+  app.get("/api/comments/:entityType/:entityId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { entityType, entityId } = req.params;
+      const comments = await storage.getComments(entityType, entityId);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  app.post("/api/comments", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const commentData = {
+        ...req.body,
+        authorId: userId,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      const comment = await storage.createComment(commentData);
+      res.json(comment);
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      res.status(500).json({ message: "Failed to create comment" });
+    }
+  });
+
+  // Attachment system routes
+  app.get("/api/attachments/:entityType/:entityId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { entityType, entityId } = req.params;
+      const attachments = await storage.getAttachments(entityType, entityId);
+      res.json(attachments);
+    } catch (error) {
+      console.error("Error fetching attachments:", error);
+      res.status(500).json({ message: "Failed to fetch attachments" });
+    }
+  });
+
+  app.post("/api/attachments", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const attachmentData = {
+        ...req.body,
+        uploadedById: userId,
+        uploadedAt: new Date()
+      };
+      const attachment = await storage.createAttachment(attachmentData);
+      res.json(attachment);
+    } catch (error) {
+      console.error("Error creating attachment:", error);
+      res.status(500).json({ message: "Failed to create attachment" });
+    }
+  });
+
+  app.delete("/api/attachments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteAttachment(id);
+      res.json({ message: "Attachment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting attachment:", error);
+      res.status(500).json({ message: "Failed to delete attachment" });
+    }
+  });
+
+  // Bucket membership routes
+  app.get("/api/buckets/:id/members", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const members = await storage.getBucketMembers(id);
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching bucket members:", error);
+      res.status(500).json({ message: "Failed to fetch bucket members" });
+    }
+  });
+
+  app.post("/api/buckets/:id/members", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const memberData = {
+        ...req.body,
+        bucketId: id,
+        joinedAt: new Date()
+      };
+      const member = await storage.addBucketMember(memberData);
+      res.json(member);
+    } catch (error) {
+      console.error("Error adding bucket member:", error);
+      res.status(500).json({ message: "Failed to add bucket member" });
+    }
+  });
+
+  app.delete("/api/buckets/:bucketId/members/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { bucketId, userId } = req.params;
+      await storage.removeBucketMember(bucketId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing bucket member:", error);
+      res.status(500).json({ message: "Failed to remove bucket member" });
+    }
+  });
+
   // Endpoints to fetch deleted items
   app.get("/api/studies/deleted", isAuthenticated, async (req: any, res) => {
     try {
@@ -647,6 +919,383 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching deleted buckets:", error);
       res.status(500).json({ message: "Failed to fetch deleted buckets" });
+    }
+  });
+
+  // PHASE 4: ENHANCED ORGANIZATION ENDPOINTS
+  
+  // Tags management
+  app.get("/api/tags", isAuthenticated, async (req: any, res) => {
+    try {
+      const labId = req.query.labId as string;
+      const tags = await storage.getTags(labId);
+      res.json(tags);
+    } catch (error) {
+      console.error("Error fetching tags:", error);
+      res.status(500).json({ message: "Failed to fetch tags" });
+    }
+  });
+
+  app.post("/api/tags", isAuthenticated, async (req: any, res) => {
+    try {
+      const tag = await storage.createTag(req.body);
+      res.json(tag);
+    } catch (error) {
+      console.error("Error creating tag:", error);
+      res.status(500).json({ message: "Failed to create tag" });
+    }
+  });
+
+  app.put("/api/tags/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tag = await storage.updateTag(id, req.body);
+      res.json(tag);
+    } catch (error) {
+      console.error("Error updating tag:", error);
+      res.status(500).json({ message: "Failed to update tag" });
+    }
+  });
+
+  app.delete("/api/tags/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteTag(id);
+      res.json({ message: "Tag deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting tag:", error);
+      res.status(500).json({ message: "Failed to delete tag" });
+    }
+  });
+
+  // Task tagging
+  app.get("/api/tasks/:id/tags", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tags = await storage.getTaskTags(id);
+      res.json(tags);
+    } catch (error) {
+      console.error("Error fetching task tags:", error);
+      res.status(500).json({ message: "Failed to fetch task tags" });
+    }
+  });
+
+  app.post("/api/tasks/:id/tags", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { tagId } = req.body;
+      const userId = req.user.claims.sub;
+      const taskTag = await storage.addTaskTag({
+        taskId: id,
+        tagId,
+        taggedById: userId,
+        taggedAt: new Date()
+      });
+      res.json(taskTag);
+    } catch (error) {
+      console.error("Error adding task tag:", error);
+      res.status(500).json({ message: "Failed to add task tag" });
+    }
+  });
+
+  app.delete("/api/tasks/:taskId/tags/:tagId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { taskId, tagId } = req.params;
+      await storage.removeTaskTag(taskId, tagId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing task tag:", error);
+      res.status(500).json({ message: "Failed to remove task tag" });
+    }
+  });
+
+  // Project tagging
+  app.get("/api/projects/:id/tags", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tags = await storage.getProjectTags(id);
+      res.json(tags);
+    } catch (error) {
+      console.error("Error fetching project tags:", error);
+      res.status(500).json({ message: "Failed to fetch project tags" });
+    }
+  });
+
+  app.post("/api/projects/:id/tags", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { tagId } = req.body;
+      const userId = req.user.claims.sub;
+      const projectTag = await storage.addProjectTag({
+        projectId: id,
+        tagId,
+        taggedById: userId,
+        taggedAt: new Date()
+      });
+      res.json(projectTag);
+    } catch (error) {
+      console.error("Error adding project tag:", error);
+      res.status(500).json({ message: "Failed to add project tag" });
+    }
+  });
+
+  app.delete("/api/projects/:projectId/tags/:tagId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { projectId, tagId } = req.params;
+      await storage.removeProjectTag(projectId, tagId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing project tag:", error);
+      res.status(500).json({ message: "Failed to remove project tag" });
+    }
+  });
+
+  // Custom Fields management
+  app.get("/api/custom-fields", isAuthenticated, async (req: any, res) => {
+    try {
+      const { labId, entityType } = req.query;
+      const fields = await storage.getCustomFields(labId, entityType);
+      res.json(fields);
+    } catch (error) {
+      console.error("Error fetching custom fields:", error);
+      res.status(500).json({ message: "Failed to fetch custom fields" });
+    }
+  });
+
+  app.post("/api/custom-fields", isAuthenticated, async (req: any, res) => {
+    try {
+      const field = await storage.createCustomField(req.body);
+      res.json(field);
+    } catch (error) {
+      console.error("Error creating custom field:", error);
+      res.status(500).json({ message: "Failed to create custom field" });
+    }
+  });
+
+  app.put("/api/custom-fields/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const field = await storage.updateCustomField(id, req.body);
+      res.json(field);
+    } catch (error) {
+      console.error("Error updating custom field:", error);
+      res.status(500).json({ message: "Failed to update custom field" });
+    }
+  });
+
+  app.delete("/api/custom-fields/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCustomField(id);
+      res.json({ message: "Custom field deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting custom field:", error);
+      res.status(500).json({ message: "Failed to delete custom field" });
+    }
+  });
+
+  // Custom Field Values
+  app.get("/api/custom-field-values/:entityId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { entityId } = req.params;
+      const values = await storage.getCustomFieldValues(entityId);
+      res.json(values);
+    } catch (error) {
+      console.error("Error fetching custom field values:", error);
+      res.status(500).json({ message: "Failed to fetch custom field values" });
+    }
+  });
+
+  app.put("/api/custom-field-values", isAuthenticated, async (req: any, res) => {
+    try {
+      const value = await storage.setCustomFieldValue(req.body);
+      res.json(value);
+    } catch (error) {
+      console.error("Error setting custom field value:", error);
+      res.status(500).json({ message: "Failed to set custom field value" });
+    }
+  });
+
+  // Task Templates
+  app.get("/api/task-templates", isAuthenticated, async (req: any, res) => {
+    try {
+      const labId = req.query.labId as string;
+      const templates = await storage.getTaskTemplates(labId);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching task templates:", error);
+      res.status(500).json({ message: "Failed to fetch task templates" });
+    }
+  });
+
+  app.post("/api/task-templates", isAuthenticated, async (req: any, res) => {
+    try {
+      const template = await storage.createTaskTemplate(req.body);
+      res.json(template);
+    } catch (error) {
+      console.error("Error creating task template:", error);
+      res.status(500).json({ message: "Failed to create task template" });
+    }
+  });
+
+  app.put("/api/task-templates/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.updateTaskTemplate(id, req.body);
+      res.json(template);
+    } catch (error) {
+      console.error("Error updating task template:", error);
+      res.status(500).json({ message: "Failed to update task template" });
+    }
+  });
+
+  app.delete("/api/task-templates/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteTaskTemplate(id);
+      res.json({ message: "Task template deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting task template:", error);
+      res.status(500).json({ message: "Failed to delete task template" });
+    }
+  });
+
+  // Recurring Tasks
+  app.get("/api/recurring-tasks", isAuthenticated, async (req: any, res) => {
+    try {
+      const labId = req.query.labId as string;
+      const recurringTasks = await storage.getRecurringTasks(labId);
+      res.json(recurringTasks);
+    } catch (error) {
+      console.error("Error fetching recurring tasks:", error);
+      res.status(500).json({ message: "Failed to fetch recurring tasks" });
+    }
+  });
+
+  app.post("/api/recurring-tasks", isAuthenticated, async (req: any, res) => {
+    try {
+      const recurringTask = await storage.createRecurringTask(req.body);
+      res.json(recurringTask);
+    } catch (error) {
+      console.error("Error creating recurring task:", error);
+      res.status(500).json({ message: "Failed to create recurring task" });
+    }
+  });
+
+  app.put("/api/recurring-tasks/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const recurringTask = await storage.updateRecurringTask(id, req.body);
+      res.json(recurringTask);
+    } catch (error) {
+      console.error("Error updating recurring task:", error);
+      res.status(500).json({ message: "Failed to update recurring task" });
+    }
+  });
+
+  app.delete("/api/recurring-tasks/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteRecurringTask(id);
+      res.json({ message: "Recurring task deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting recurring task:", error);
+      res.status(500).json({ message: "Failed to delete recurring task" });
+    }
+  });
+
+  // User Preferences
+  app.get("/api/auth/preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const preferences = await storage.getUserPreferences(userId);
+      res.json(preferences || null);
+    } catch (error) {
+      console.error("Error fetching user preferences:", error);
+      res.status(500).json({ message: "Failed to fetch user preferences" });
+    }
+  });
+
+  app.put("/api/auth/preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const preferencesData = {
+        ...req.body,
+        userId,
+      };
+      const preferences = await storage.upsertUserPreferences(preferencesData);
+      res.json(preferences);
+    } catch (error) {
+      console.error("Error updating user preferences:", error);
+      res.status(500).json({ message: "Failed to update user preferences" });
+    }
+  });
+
+  // Enhanced study and task update routes with status history tracking
+  app.put("/api/studies/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, reason } = req.body;
+      const userId = req.user.claims.sub;
+      
+      // Get current study to track old status
+      const currentStudy = await storage.getStudy(id);
+      if (!currentStudy) {
+        return res.status(404).json({ message: "Study not found" });
+      }
+      
+      // Update the study status
+      const updatedStudy = await storage.updateStudy(id, { status });
+      
+      // Create status history record
+      await storage.createStatusHistory({
+        entityType: 'study',
+        entityId: id,
+        fromStatus: currentStudy.status || null,
+        toStatus: status,
+        reason,
+        changedById: userId,
+        changedAt: new Date()
+      });
+      
+      res.json(updatedStudy);
+    } catch (error) {
+      console.error("Error updating study status:", error);
+      res.status(500).json({ message: "Failed to update study status" });
+    }
+  });
+
+  app.put("/api/tasks/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, reason } = req.body;
+      const userId = req.user.claims.sub;
+      
+      // Get current task to track old status
+      const allTasks = await storage.getTasks();
+      const currentTask = allTasks.find(t => t.id === id);
+      if (!currentTask) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      
+      // Update the task status
+      const updatedTask = await storage.updateTask(id, { status });
+      
+      // Create status history record
+      await storage.createStatusHistory({
+        entityType: 'task',
+        entityId: id,
+        fromStatus: currentTask.status || null,
+        toStatus: status,
+        reason,
+        changedById: userId,
+        changedAt: new Date()
+      });
+      
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error updating task status:", error);
+      res.status(500).json({ message: "Failed to update task status" });
     }
   });
 
@@ -756,6 +1405,169 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error loading sample team data:", error);
       res.status(500).json({ message: "Failed to load sample team data" });
+    }
+  });
+
+  // PHASE 1: NEW SECURITY ROUTES
+  
+  // Bucket membership routes
+  app.get("/api/buckets/:id/members", isAuthenticated, async (req, res) => {
+    try {
+      const members = await storage.getBucketMembers(req.params.id);
+      res.json(members);
+    } catch (error: any) {
+      console.error("Error fetching bucket members:", error);
+      res.status(500).json({ message: "Failed to fetch bucket members" });
+    }
+  });
+  
+  app.post("/api/buckets/:id/members", isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId, role } = req.body;
+      const member = await storage.addBucketMember({
+        bucketId: req.params.id,
+        userId,
+        role: role || 'INFORMED'
+      });
+      res.status(201).json(member);
+    } catch (error: any) {
+      console.error("Error adding bucket member:", error);
+      res.status(400).json({ message: error.message || "Failed to add bucket member" });
+    }
+  });
+  
+  app.delete("/api/buckets/:bucketId/members/:userId", isAuthenticated, async (req, res) => {
+    try {
+      await storage.removeBucketMember(req.params.bucketId, req.params.userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error removing bucket member:", error);
+      res.status(500).json({ message: "Failed to remove bucket member" });
+    }
+  });
+  
+  // Comment system routes
+  app.get("/api/comments", isAuthenticated, async (req, res) => {
+    try {
+      const { entityType, entityId } = req.query;
+      if (!entityType || !entityId) {
+        return res.status(400).json({ message: "entityType and entityId are required" });
+      }
+      const comments = await storage.getComments(entityType as string, entityId as string);
+      res.json(comments);
+    } catch (error: any) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+  
+  app.post("/api/comments", isAuthenticated, async (req: any, res) => {
+    try {
+      const { content, entityType, entityId, parentId } = req.body;
+      const userId = req.user.claims.sub;
+      
+      const comment = await storage.createComment({
+        content,
+        entityType,
+        entityId,
+        parentId: parentId || null,
+        authorId: userId
+      });
+      
+      res.status(201).json(comment);
+    } catch (error: any) {
+      console.error("Error creating comment:", error);
+      res.status(400).json({ message: error.message || "Failed to create comment" });
+    }
+  });
+  
+  // Notification routes
+  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notifications = await storage.getNotifications(userId);
+      res.json(notifications);
+    } catch (error: any) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+  
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req, res) => {
+    try {
+      await storage.markNotificationRead(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+  
+  // PHASE 2: FILE ATTACHMENT SYSTEM
+  
+  // Get upload URL for attachments
+  app.post("/api/attachments/upload", isAuthenticated, async (req, res) => {
+    try {
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error: any) {
+      console.error("Error getting attachment upload URL:", error);
+      res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+  
+  // Create attachment record after upload
+  app.post("/api/attachments", isAuthenticated, async (req: any, res) => {
+    try {
+      const { filename, url, fileSize, mimeType, entityType, entityId } = req.body;
+      const userId = req.user.claims.sub;
+      
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const normalizedPath = objectStorageService.normalizeObjectEntityPath(url);
+      
+      const attachment = await storage.createAttachment({
+        filename,
+        url: normalizedPath,
+        fileSize: fileSize.toString(),
+        mimeType,
+        entityType,
+        entityId,
+        uploadedById: userId
+      });
+      
+      res.status(201).json(attachment);
+    } catch (error: any) {
+      console.error("Error creating attachment:", error);
+      res.status(400).json({ message: error.message || "Failed to create attachment" });
+    }
+  });
+  
+  // Get attachments for an entity
+  app.get("/api/attachments", isAuthenticated, async (req, res) => {
+    try {
+      const { entityType, entityId } = req.query;
+      if (!entityType || !entityId) {
+        return res.status(400).json({ message: "entityType and entityId are required" });
+      }
+      const attachments = await storage.getAttachments(entityType as string, entityId as string);
+      res.json(attachments);
+    } catch (error: any) {
+      console.error("Error fetching attachments:", error);
+      res.status(500).json({ message: "Failed to fetch attachments" });
+    }
+  });
+  
+  // Delete attachment
+  app.delete("/api/attachments/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteAttachment(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting attachment:", error);
+      res.status(500).json({ message: "Failed to delete attachment" });
     }
   });
 

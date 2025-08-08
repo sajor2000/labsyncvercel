@@ -71,6 +71,43 @@ export const taskStatusEnum = pgEnum("task_status", [
   "BLOCKED"
 ]);
 
+export const memberRoleEnum = pgEnum("member_role", [
+  "OWNER",
+  "ADMIN",
+  "CONTRIBUTOR",
+  "VIEWER",
+  "INFORMED"
+]);
+
+export const commentableTypeEnum = pgEnum("commentable_type", [
+  "PROJECT",
+  "TASK",
+  "IDEA",
+  "STANDUP",
+  "BUCKET"
+]);
+
+export const attachableTypeEnum = pgEnum("attachable_type", [
+  "PROJECT",
+  "TASK",
+  "COMMENT",
+  "IDEA",
+  "ACTION_ITEM"
+]);
+
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "TASK_ASSIGNED",
+  "TASK_COMPLETED",
+  "TASK_DUE_SOON",
+  "TASK_OVERDUE",
+  "PROJECT_STATUS_CHANGE",
+  "COMMENT_MENTION",
+  "COMMENT_REPLY",
+  "DEADLINE_APPROACHING",
+  "REVIEW_REQUESTED",
+  "BUCKET_ASSIGNMENT"
+]);
+
 export const meetingTypeEnum = pgEnum("meeting_type", [
   "DAILY_STANDUP",
   "WEEKLY_REVIEW",
@@ -101,6 +138,30 @@ export const teamMemberRoleEnum = pgEnum("team_member_role", [
   "Coordinator",
   "Lab Intern",
   "Summer Intern"
+]);
+
+// PHASE 4: ORGANIZATION ENUMS
+export const customFieldTypeEnum = pgEnum("custom_field_type", [
+  "TEXT",
+  "TEXTAREA",
+  "NUMBER",
+  "DATE",
+  "DATETIME",
+  "SELECT",
+  "MULTISELECT",
+  "CHECKBOX",
+  "URL",
+  "EMAIL"
+]);
+
+export const recurrencePatternEnum = pgEnum("recurrence_pattern", [
+  "DAILY",
+  "WEEKLY",
+  "BIWEEKLY",
+  "MONTHLY",
+  "QUARTERLY",
+  "YEARLY",
+  "CUSTOM"
 ]);
 
 export const ideaCategoryEnum = pgEnum("idea_category", [
@@ -222,7 +283,7 @@ export const tasks = pgTable("tasks", {
   priority: priorityEnum("priority").default("MEDIUM"),
   assigneeId: varchar("assignee_id").references(() => users.id),
   studyId: varchar("study_id").references(() => studies.id),
-  parentTaskId: varchar("parent_task_id").references(() => tasks.id), // For subtasks
+  parentTaskId: varchar("parent_task_id"), // Self-reference without function to avoid circular reference
   position: varchar("position").default("0"), // Order within project
   tags: text("tags").array(),
   completedAt: timestamp("completed_at"),
@@ -305,23 +366,32 @@ export const teamMemberAssignments = pgTable("team_member_assignments", {
   assignedAt: timestamp("assigned_at").defaultNow(),
 });
 
-// Project Members - for better project team management
+// Project Members - for better project team management with lab-level security
 export const projectMembers = pgTable("project_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   projectId: varchar("project_id").notNull().references(() => studies.id),
   userId: varchar("user_id").notNull().references(() => users.id),
+  labId: varchar("lab_id").notNull().references(() => labs.id), // CRITICAL: Cross-lab access control
   role: varchar("role").default("contributor"), // lead, contributor, advisor
   assignedAt: timestamp("assigned_at").defaultNow(),
   joinedAt: timestamp("joined_at").defaultNow(),
-});
+}, (table) => ({
+  uniqueProjectUser: index("unique_project_user").on(table.projectId, table.userId),
+  labUserIndex: index("lab_user_idx").on(table.labId, table.userId)
+}));
 
-// Task Assignments - for multiple assignees per task
+// Task Assignments - for multiple assignees per task with validation
 export const taskAssignments = pgTable("task_assignments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   taskId: varchar("task_id").notNull().references(() => tasks.id),
   userId: varchar("user_id").notNull().references(() => users.id),
+  projectId: varchar("project_id").notNull().references(() => studies.id), // CRITICAL: For validation
   assignedAt: timestamp("assigned_at").defaultNow(),
-});
+  isActive: boolean("is_active").default(true),
+}, (table) => ({
+  uniqueTaskUser: index("unique_task_user").on(table.taskId, table.userId),
+  validationIndex: index("user_project_idx").on(table.userId, table.projectId)
+}));
 
 // Ideas Board - for lab brainstorming and innovation tracking
 export const ideas = pgTable("ideas", {
@@ -359,6 +429,251 @@ export const deadlines = pgTable("deadlines", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// PHASE 1: CRITICAL SECURITY MODELS
+
+// Bucket Members - for bucket-level team membership and permissions
+export const bucketMembers = pgTable("bucket_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bucketId: varchar("bucket_id").notNull().references(() => buckets.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  role: memberRoleEnum("role").default("INFORMED"),
+  joinedAt: timestamp("joined_at").defaultNow(),
+  isActive: boolean("is_active").default(true),
+}, (table) => ({
+  uniqueBucketUser: index("unique_bucket_user").on(table.bucketId, table.userId),
+  userRoleIndex: index("user_role_idx").on(table.userId, table.role)
+}));
+
+// Comments - Unified comment system for all entities
+export const comments = pgTable("comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  content: text("content").notNull(),
+  entityType: commentableTypeEnum("entity_type").notNull(),
+  entityId: varchar("entity_id").notNull(),
+  parentId: varchar("parent_id"),
+  authorId: varchar("author_id").notNull().references(() => users.id),
+  editedAt: timestamp("edited_at"),
+  isDeleted: boolean("is_deleted").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  entityIndex: index("entity_idx").on(table.entityType, table.entityId, table.createdAt),
+  authorIndex: index("author_idx").on(table.authorId, table.createdAt),
+  parentRef: index("parent_ref").on(table.parentId)
+}));
+
+// Attachments - File attachment system for all entities
+export const attachments = pgTable("attachments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  filename: varchar("filename").notNull(),
+  url: varchar("url").notNull(), // Object storage URL
+  fileSize: varchar("file_size").notNull(), // in bytes as string for large files
+  mimeType: varchar("mime_type").notNull(),
+  entityType: attachableTypeEnum("entity_type").notNull(),
+  entityId: varchar("entity_id").notNull(),
+  uploadedById: varchar("uploaded_by_id").notNull().references(() => users.id),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  isDeleted: boolean("is_deleted").default(false),
+}, (table) => ({
+  entityIndex: index("attachment_entity_idx").on(table.entityType, table.entityId),
+  uploaderIndex: index("uploader_idx").on(table.uploadedById, table.uploadedAt)
+}));
+
+// Notifications - Global notification system
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: notificationTypeEnum("type").notNull(),
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  entityType: varchar("entity_type"),
+  entityId: varchar("entity_id"),
+  metadata: json("metadata"), // Additional context
+  read: boolean("read").default(false),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userReadIndex: index("user_read_idx").on(table.userId, table.read, table.createdAt),
+  entityIndex: index("notification_entity_idx").on(table.entityType, table.entityId)
+}));
+
+// Mentions - For @mentions in comments
+export const mentions = pgTable("mentions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  commentId: varchar("comment_id").notNull().references(() => comments.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  read: boolean("read").default(false),
+  readAt: timestamp("read_at"),
+}, (table) => ({
+  uniqueCommentUser: index("unique_comment_user").on(table.commentId, table.userId)
+}));
+
+// PHASE 4: ENHANCED ORGANIZATION MODELS
+
+// First-Class Tag System
+export const tags = pgTable("tags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  labId: varchar("lab_id").notNull().references(() => labs.id),
+  color: varchar("color").default("#6B7280"),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ([
+  index("unique_lab_name").on(table.labId, table.name),
+  index("lab_active_idx").on(table.labId, table.isActive)
+]));
+
+// Task Tags - Many-to-many relationship
+export const taskTags = pgTable("task_tags", {
+  taskId: varchar("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  tagId: varchar("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  taggedAt: timestamp("tagged_at").defaultNow(),
+  taggedById: varchar("tagged_by_id").notNull().references(() => users.id),
+}, (table) => ([
+  index("task_tag_pk").on(table.taskId, table.tagId)
+]));
+
+// Project Tags - Many-to-many relationship
+export const projectTags = pgTable("project_tags", {
+  projectId: varchar("project_id").notNull().references(() => studies.id, { onDelete: "cascade" }),
+  tagId: varchar("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  taggedAt: timestamp("tagged_at").defaultNow(),
+  taggedById: varchar("tagged_by_id").notNull().references(() => users.id),
+}, (table) => ([
+  index("project_tag_pk").on(table.projectId, table.tagId)
+]));
+
+// Custom Fields for Flexibility
+export const customFields = pgTable("custom_fields", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  labId: varchar("lab_id").notNull().references(() => labs.id),
+  entityType: varchar("entity_type").notNull(), // 'project'|'task'|'idea'
+  fieldName: varchar("field_name").notNull(),
+  fieldLabel: varchar("field_label").notNull(), // Display name
+  fieldType: customFieldTypeEnum("field_type").notNull(),
+  options: json("options"), // For select/multiselect
+  validation: json("validation"), // Min/max, regex, etc.
+  required: boolean("required").default(false),
+  position: varchar("position").default("0"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ([
+  index("unique_lab_entity_field").on(table.labId, table.entityType, table.fieldName),
+  index("lab_entity_active_idx").on(table.labId, table.entityType, table.isActive)
+]));
+
+// Custom Field Values
+export const customFieldValues = pgTable("custom_field_values", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fieldId: varchar("field_id").notNull().references(() => customFields.id, { onDelete: "cascade" }),
+  entityId: varchar("entity_id").notNull(),
+  value: json("value"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ([
+  index("unique_field_entity_values").on(table.fieldId, table.entityId),
+  index("entity_values_idx").on(table.entityId)
+]));
+
+// Task Templates for Automation
+export const taskTemplates = pgTable("task_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  labId: varchar("lab_id").notNull().references(() => labs.id),
+  name: varchar("name").notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  estimatedHours: varchar("estimated_hours"), // Store as string for decimal precision
+  tags: text("tags").array(), // Template tags to apply
+  customFields: json("custom_fields"), // Template custom field values
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ([
+  index("unique_lab_template_name").on(table.labId, table.name)
+]));
+
+// Recurring Tasks
+export const recurringTasks = pgTable("recurring_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: varchar("task_id").unique().references(() => tasks.id, { onDelete: "cascade" }),
+  templateId: varchar("template_id").references(() => taskTemplates.id), // Optional link to template
+  pattern: recurrencePatternEnum("pattern").notNull(),
+  interval: varchar("interval").default("1"), // Every X periods
+  dayOfWeek: varchar("day_of_week"), // 0-6 for weekly
+  dayOfMonth: varchar("day_of_month"), // 1-31 for monthly
+  customCron: varchar("custom_cron"), // For complex patterns
+  nextDueDate: timestamp("next_due_date").notNull(),
+  lastCreated: timestamp("last_created"),
+  endDate: timestamp("end_date"),
+  maxOccurrences: varchar("max_occurrences"),
+  occurrenceCount: varchar("occurrence_count").default("0"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ([
+  index("next_due_active_idx").on(table.nextDueDate, table.isActive)
+]));
+
+// User Preferences System
+export const userPreferences = pgTable("user_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").unique().notNull().references(() => users.id),
+  // Notifications
+  emailNotifications: boolean("email_notifications").default(true),
+  emailDigestFrequency: varchar("email_digest_frequency").default("daily"), // none|daily|weekly
+  pushNotifications: boolean("push_notifications").default(true),
+  // UI Preferences
+  theme: varchar("theme").default("dark"), // light|dark|auto
+  dashboardLayout: json("dashboard_layout"),
+  defaultLabId: varchar("default_lab_id").references(() => labs.id),
+  defaultView: varchar("default_view").default("kanban"), // kanban|list|calendar|gantt
+  // Regional
+  timezone: varchar("timezone").default("America/Chicago"),
+  dateFormat: varchar("date_format").default("MM/DD/YYYY"),
+  timeFormat: varchar("time_format").default("12h"), // 12h|24h
+  weekStartsOn: varchar("week_starts_on").default("0"), // 0=Sunday
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// PHASE 3: PROJECT MANAGEMENT MODELS
+
+// Status History - Complete audit trail for all status changes
+export const statusHistory = pgTable("status_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  entityType: varchar("entity_type").notNull(), // 'project' | 'task'
+  entityId: varchar("entity_id").notNull(),
+  fromStatus: varchar("from_status"), // null for initial status
+  toStatus: varchar("to_status").notNull(),
+  reason: text("reason"), // Optional change reason
+  changedById: varchar("changed_by_id").notNull().references(() => users.id),
+  changedAt: timestamp("changed_at").defaultNow(),
+}, (table) => ({
+  entityIndex: index("status_entity_idx").on(table.entityType, table.entityId, table.changedAt),
+  changerIndex: index("status_changer_idx").on(table.changedById, table.changedAt)
+}));
+
+// Time Entries - Precise time tracking for grant reporting
+export const timeEntries = pgTable("time_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: varchar("task_id").notNull().references(() => tasks.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  projectId: varchar("project_id").notNull().references(() => studies.id), // Denormalized for queries
+  hours: varchar("hours").notNull(), // Store as string for decimal precision
+  description: text("description"),
+  date: timestamp("date").notNull(),
+  billable: boolean("billable").default(true), // For grant reporting
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userDateIndex: index("time_user_date_idx").on(table.userId, table.date),
+  projectDateIndex: index("time_project_date_idx").on(table.projectId, table.date),
+  taskUserDateIndex: index("time_task_user_date_idx").on(table.taskId, table.userId, table.date)
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   lab: one(labs, {
@@ -371,6 +686,24 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   assignedActionItems: many(standupActionItems),
   statusChanges: many(studyStatusHistory),
   assignedTasks: many(tasks),
+  // Phase 1 relations
+  bucketMembers: many(bucketMembers),
+  comments: many(comments),
+  mentions: many(mentions),
+  notifications: many(notifications),
+  attachments: many(attachments),
+  taskAssignments: many(taskAssignments),
+  projectMemberships: many(projectMembers),
+  // Phase 3 relations
+  auditHistory: many(statusHistory),
+  timeEntries: many(timeEntries),
+  // Phase 4 relations
+  taggedTasks: many(taskTags),
+  taggedProjects: many(projectTags),
+  preferences: one(userPreferences, {
+    fields: [users.id],
+    references: [userPreferences.userId],
+  }),
 }));
 
 export const labsRelations = relations(labs, ({ many }) => ({
@@ -381,6 +714,10 @@ export const labsRelations = relations(labs, ({ many }) => ({
   teamMembers: many(teamMembers),
   ideas: many(ideas),
   deadlines: many(deadlines),
+  // Phase 4 relations
+  tags: many(tags),
+  customFields: many(customFields),
+  taskTemplates: many(taskTemplates),
 }));
 
 export const bucketsRelations = relations(buckets, ({ one, many }) => ({
@@ -389,6 +726,7 @@ export const bucketsRelations = relations(buckets, ({ one, many }) => ({
     references: [labs.id],
   }),
   studies: many(studies),
+  members: many(bucketMembers),
 }));
 
 export const studiesRelations = relations(studies, ({ one, many }) => ({
@@ -410,6 +748,8 @@ export const studiesRelations = relations(studies, ({ one, many }) => ({
   statusUpdates: many(studyStatusUpdates),
   tasks: many(tasks),
   members: many(projectMembers),
+  // Phase 4 relations
+  projectTags: many(projectTags),
 }));
 
 export const studyAssignmentsRelations = relations(studyAssignments, ({ one }) => ({
@@ -477,6 +817,12 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     references: [users.id],
   }),
   assignments: many(taskAssignments),
+  // Phase 4 relations
+  taskTags: many(taskTags),
+  recurringTask: one(recurringTasks, {
+    fields: [tasks.id],
+    references: [recurringTasks.taskId],
+  }),
 }));
 
 // Insert schemas
@@ -553,6 +899,87 @@ export const insertProjectMemberSchema = createInsertSchema(projectMembers).omit
 export const insertTaskAssignmentSchema = createInsertSchema(taskAssignments).omit({
   id: true,
   assignedAt: true,
+});
+
+// PHASE 1: NEW INSERT SCHEMAS
+
+export const insertBucketMemberSchema = createInsertSchema(bucketMembers).omit({
+  id: true,
+  joinedAt: true,
+});
+
+export const insertCommentSchema = createInsertSchema(comments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAttachmentSchema = createInsertSchema(attachments).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMentionSchema = createInsertSchema(mentions).omit({
+  id: true,
+});
+
+// PHASE 3: PROJECT MANAGEMENT INSERT SCHEMAS
+
+export const insertStatusHistorySchema = createInsertSchema(statusHistory).omit({
+  id: true,
+  changedAt: true,
+});
+
+export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// PHASE 4: ENHANCED ORGANIZATION INSERT SCHEMAS
+export const insertTagSchema = createInsertSchema(tags).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTaskTagSchema = createInsertSchema(taskTags);
+
+export const insertProjectTagSchema = createInsertSchema(projectTags);
+
+export const insertCustomFieldSchema = createInsertSchema(customFields).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCustomFieldValueSchema = createInsertSchema(customFieldValues).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTaskTemplateSchema = createInsertSchema(taskTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRecurringTaskSchema = createInsertSchema(recurringTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Team member relations
@@ -643,7 +1070,43 @@ export type InsertProjectMember = z.infer<typeof insertProjectMemberSchema>;
 export type TaskAssignment = typeof taskAssignments.$inferSelect;
 export type InsertTaskAssignment = z.infer<typeof insertTaskAssignmentSchema>;
 
-// Project Members relations
+// PHASE 1: NEW TYPES
+export type BucketMember = typeof bucketMembers.$inferSelect;
+export type InsertBucketMember = z.infer<typeof insertBucketMemberSchema>;
+export type Comment = typeof comments.$inferSelect;
+export type InsertComment = z.infer<typeof insertCommentSchema>;
+export type Attachment = typeof attachments.$inferSelect;
+export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Mention = typeof mentions.$inferSelect;
+export type InsertMention = z.infer<typeof insertMentionSchema>;
+
+// PHASE 3: PROJECT MANAGEMENT TYPES
+export type StatusHistory = typeof statusHistory.$inferSelect;
+export type InsertStatusHistory = z.infer<typeof insertStatusHistorySchema>;
+export type TimeEntry = typeof timeEntries.$inferSelect;
+export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
+
+// PHASE 4: ENHANCED ORGANIZATION TYPES
+export type Tag = typeof tags.$inferSelect;
+export type InsertTag = z.infer<typeof insertTagSchema>;
+export type TaskTag = typeof taskTags.$inferSelect;
+export type InsertTaskTag = z.infer<typeof insertTaskTagSchema>;
+export type ProjectTag = typeof projectTags.$inferSelect;
+export type InsertProjectTag = z.infer<typeof insertProjectTagSchema>;
+export type CustomField = typeof customFields.$inferSelect;
+export type InsertCustomField = z.infer<typeof insertCustomFieldSchema>;
+export type CustomFieldValue = typeof customFieldValues.$inferSelect;
+export type InsertCustomFieldValue = z.infer<typeof insertCustomFieldValueSchema>;
+export type TaskTemplate = typeof taskTemplates.$inferSelect;
+export type InsertTaskTemplate = z.infer<typeof insertTaskTemplateSchema>;
+export type RecurringTask = typeof recurringTasks.$inferSelect;
+export type InsertRecurringTask = z.infer<typeof insertRecurringTaskSchema>;
+export type UserPreferences = typeof userPreferences.$inferSelect;
+export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
+
+// Project Members relations - Enhanced with lab security
 export const projectMembersRelations = relations(projectMembers, ({ one }) => ({
   project: one(studies, {
     fields: [projectMembers.projectId],
@@ -653,9 +1116,13 @@ export const projectMembersRelations = relations(projectMembers, ({ one }) => ({
     fields: [projectMembers.userId],
     references: [users.id],
   }),
+  lab: one(labs, {
+    fields: [projectMembers.labId],
+    references: [labs.id],
+  }),
 }));
 
-// Task Assignments relations
+// Task Assignments relations - Enhanced with project validation
 export const taskAssignmentsRelations = relations(taskAssignments, ({ one }) => ({
   task: one(tasks, {
     fields: [taskAssignments.taskId],
@@ -664,5 +1131,95 @@ export const taskAssignmentsRelations = relations(taskAssignments, ({ one }) => 
   user: one(users, {
     fields: [taskAssignments.userId],
     references: [users.id],
+  }),
+  project: one(studies, {
+    fields: [taskAssignments.projectId],
+    references: [studies.id],
+  }),
+}));
+
+// PHASE 1: NEW RELATIONS
+
+// Bucket Members relations
+export const bucketMembersRelations = relations(bucketMembers, ({ one }) => ({
+  bucket: one(buckets, {
+    fields: [bucketMembers.bucketId],
+    references: [buckets.id],
+  }),
+  user: one(users, {
+    fields: [bucketMembers.userId],
+    references: [users.id],
+  }),
+}));
+
+// Comments relations
+export const commentsRelations = relations(comments, ({ one, many }) => ({
+  author: one(users, {
+    fields: [comments.authorId],
+    references: [users.id],
+  }),
+  parent: one(comments, {
+    fields: [comments.parentId],
+    references: [comments.id],
+    relationName: "CommentThread",
+  }),
+  replies: many(comments, {
+    relationName: "CommentThread",
+  }),
+  mentions: many(mentions),
+  attachments: many(attachments),
+}));
+
+// Attachments relations
+export const attachmentsRelations = relations(attachments, ({ one }) => ({
+  uploadedBy: one(users, {
+    fields: [attachments.uploadedById],
+    references: [users.id],
+  }),
+}));
+
+// Notifications relations
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+}));
+
+// Mentions relations
+export const mentionsRelations = relations(mentions, ({ one }) => ({
+  comment: one(comments, {
+    fields: [mentions.commentId],
+    references: [comments.id],
+  }),
+  user: one(users, {
+    fields: [mentions.userId],
+    references: [users.id],
+  }),
+}));
+
+// PHASE 3: PROJECT MANAGEMENT RELATIONS
+
+// Status History relations
+export const statusHistoryRelations = relations(statusHistory, ({ one }) => ({
+  changedBy: one(users, {
+    fields: [statusHistory.changedById],
+    references: [users.id],
+  }),
+}));
+
+// Time Entry relations
+export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
+  task: one(tasks, {
+    fields: [timeEntries.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [timeEntries.userId],
+    references: [users.id],
+  }),
+  project: one(studies, {
+    fields: [timeEntries.projectId],
+    references: [studies.id],
   }),
 }));
