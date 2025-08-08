@@ -365,7 +365,7 @@ export const teamMembers = pgTable("team_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
   initials: varchar("initials", { length: 10 }),
-  email: varchar("email").unique(),
+  email: varchar("email"), // Removed unique constraint to allow members in multiple labs
   role: teamMemberRoleEnum("role").notNull(),
   avatarUrl: varchar("avatar_url"), // PNG avatar image URL
   labId: varchar("lab_id").references(() => labs.id),
@@ -376,7 +376,10 @@ export const teamMembers = pgTable("team_members", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  // Composite unique constraint for email + lab to prevent duplicates within the same lab
+  uniqueEmailLab: index("unique_email_lab").on(table.email, table.labId),
+}));
 
 // Team Member Assignments - linking members to studies, tasks, buckets
 export const teamMemberAssignments = pgTable("team_member_assignments", {

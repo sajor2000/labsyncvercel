@@ -9,6 +9,7 @@ Lab Manager is a comprehensive medical research lab management system designed t
 Preferred communication style: Simple, everyday language.
 UI/UX Structure: Bucket → Project/Study → Subtasks hierarchy for organization and Kanban board workflow.
 Lab Management: Support for multiple separate research labs with toggle functionality.
+Team Flexibility: Allow team members to be in multiple labs (e.g., J.C. Rojas as PI in both RICCC and RHEDAS).
 Color Scheme: Slack-inspired dark theme with professional color palette (purple primary, green accent, neutral grays).
 
 ## System Architecture
