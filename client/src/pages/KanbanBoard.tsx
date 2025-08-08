@@ -88,7 +88,7 @@ export default function KanbanBoard() {
   // Update task status
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, status }: { taskId: string; status: string }) => {
-      return apiRequest(`/api/tasks/${taskId}`, "PUT", { status });
+      return apiRequest(`/api/tasks/${taskId}`, 'PUT', { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });

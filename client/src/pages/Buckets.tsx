@@ -116,7 +116,7 @@ export default function Buckets() {
         ...data,
         labId: currentLab.id,
       };
-      return apiRequest('POST', '/api/buckets', bucketData);
+      return apiRequest('/api/buckets', 'POST', bucketData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/buckets', currentLab?.id] });
@@ -161,7 +161,7 @@ export default function Buckets() {
   // Delete bucket mutation
   const deleteBucketMutation = useMutation({
     mutationFn: async (bucketId: string) => {
-      return apiRequest('DELETE', `/api/buckets/${bucketId}`);
+      return apiRequest(`/api/buckets/${bucketId}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
@@ -228,7 +228,7 @@ export default function Buckets() {
         labId: currentLab.id,
         assignees: data.assignees?.filter(Boolean) || [],
       };
-      return apiRequest('POST', '/api/studies', studyData);
+      return apiRequest('/api/studies', 'POST', studyData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/studies', currentLab?.id] });

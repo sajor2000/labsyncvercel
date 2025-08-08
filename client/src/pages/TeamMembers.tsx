@@ -134,7 +134,7 @@ export default function TeamMembers() {
         ...data,
         labId: selectedLab?.id || "",
       };
-      return apiRequest('POST', '/api/team-members', memberData);
+      return apiRequest('/api/team-members', 'POST', memberData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
@@ -168,7 +168,7 @@ export default function TeamMembers() {
   // Toggle member status
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ memberId, isActive }: { memberId: string; isActive: boolean }) => {
-      return apiRequest('PUT', `/api/team-members/${memberId}`, { isActive });
+      return apiRequest(`/api/team-members/${memberId}`, 'PUT', { isActive });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
@@ -200,7 +200,7 @@ export default function TeamMembers() {
   // Update member mutation
   const updateMemberMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<CreateTeamMemberFormData> }) => {
-      return apiRequest('PUT', `/api/team-members/${id}`, data);
+      return apiRequest(`/api/team-members/${id}`, 'PUT', data);
     },
     onSuccess: () => {
       toast({ title: "Team member updated successfully" });
