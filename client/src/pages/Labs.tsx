@@ -52,7 +52,7 @@ export default function Labs() {
   // Mutation for creating lab
   const createLabMutation = useMutation({
     mutationFn: async (data: InsertLab) => {
-      return apiRequest('POST', '/api/labs', data);
+      return apiRequest('/api/labs', 'POST', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/labs'] });
@@ -75,7 +75,7 @@ export default function Labs() {
   // Mutation for updating lab
   const updateLabMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: InsertLab }) => {
-      return apiRequest('PUT', `/api/labs/${id}`, data);
+      return apiRequest(`/api/labs/${id}`, 'PUT', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/labs'] });

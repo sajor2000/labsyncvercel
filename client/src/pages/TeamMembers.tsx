@@ -63,10 +63,10 @@ export default function TeamMembers() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
 
-  // Fetch team members
+  // Fetch lab members with enhanced multi-lab support
   const { data: allMembers = [], isLoading: membersLoading } = useQuery<TeamMember[]>({
-    queryKey: ['/api/team-members'],
-    enabled: isAuthenticated,
+    queryKey: ['/api/lab-members', selectedLab?.id],
+    enabled: isAuthenticated && !!selectedLab,
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error as Error)) {
         toast({
