@@ -32,11 +32,19 @@ import { z } from "zod";
 const createTeamMemberFormSchema = insertTeamMemberSchema;
 type CreateTeamMemberFormData = z.infer<typeof createTeamMemberFormSchema>;
 
-// Role options for team members
+// Role options for team members  
 const roleOptions = [
-  { value: "PI", label: "PI" },
+  { value: "Principal Investigator", label: "Principal Investigator" },
   { value: "Data Scientist", label: "Data Scientist" },
   { value: "Data Analyst", label: "Data Analyst" },
+  { value: "Clinical Research Coordinator", label: "Clinical Research Coordinator" },
+  { value: "Fellow", label: "Fellow" },
+  { value: "Medical Student", label: "Medical Student" },
+  { value: "Volunteer Research Assistant", label: "Volunteer Research Assistant" },
+  { value: "Research Assistant", label: "Research Assistant" },
+  { value: "Staff/Coordinator", label: "Staff/Coordinator" },
+  // Legacy values for backward compatibility
+  { value: "PI", label: "PI" },
   { value: "Regulatory Coordinator", label: "Regulatory Coordinator" },
   { value: "Coordinator", label: "Coordinator" },
   { value: "Lab Intern", label: "Lab Intern" },

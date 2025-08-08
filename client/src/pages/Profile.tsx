@@ -7,10 +7,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { AvatarUpload } from "@/components/AvatarUpload";
+
+// Role options for user profiles
+const userRoleOptions = [
+  { value: "PRINCIPAL_INVESTIGATOR", label: "Principal Investigator" },
+  { value: "DATA_SCIENTIST", label: "Data Scientist" },
+  { value: "DATA_ANALYST", label: "Data Analyst" },
+  { value: "CLINICAL_RESEARCH_COORDINATOR", label: "Clinical Research Coordinator" },
+  { value: "FELLOW", label: "Fellow" },
+  { value: "MEDICAL_STUDENT", label: "Medical Student" },
+  { value: "VOLUNTEER_RESEARCH_ASSISTANT", label: "Volunteer Research Assistant" },
+  { value: "RESEARCH_ASSISTANT", label: "Research Assistant" },
+  { value: "STAFF_COORDINATOR", label: "Staff/Coordinator" },
+  { value: "ADMIN", label: "Admin" },
+  // Legacy values for backward compatibility
+  { value: "PI", label: "PI" },
+  { value: "RESEARCH_COORDINATOR", label: "Research Coordinator" },
+  { value: "RESEARCHER", label: "Researcher" },
+  { value: "STUDENT", label: "Student" }
+];
 
 interface UserProfile {
   id: string;
@@ -48,10 +68,7 @@ export default function Profile() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: Partial<UserProfile>) => {
-      return apiRequest('/api/auth/profile', {
-        method: 'PUT',
-        body: data,
-      });
+      return apiRequest('/api/auth/profile', 'PUT', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
@@ -302,16 +319,24 @@ export default function Profile() {
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
                   {isEditing ? (
-                    <Input
-                      id="role"
-                      value={formData.role || ''}
-                      onChange={(e) => handleInputChange('role', e.target.value)}
-                      placeholder="Research Member"
-                      data-testid="input-role"
-                    />
+                    <Select 
+                      value={formData.role || ''} 
+                      onValueChange={(value) => handleInputChange('role', value)}
+                    >
+                      <SelectTrigger data-testid="select-profile-role">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userRoleOptions.map((role) => (
+                          <SelectItem key={role.value} value={role.value}>
+                            {role.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   ) : (
                     <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                      {profile.role || 'Research Member'}
+                      {userRoleOptions.find(r => r.value === profile.role)?.label || 'Research Assistant'}
                     </p>
                   )}
                 </div>

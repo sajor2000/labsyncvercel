@@ -32,7 +32,15 @@ export const userRoleEnum = pgEnum("user_role", [
   "DATA_ANALYST",
   "RESEARCHER",
   "STUDENT",
-  "ADMIN"
+  "ADMIN",
+  "PRINCIPAL_INVESTIGATOR",
+  "DATA_SCIENTIST",
+  "CLINICAL_RESEARCH_COORDINATOR",
+  "FELLOW",
+  "MEDICAL_STUDENT",
+  "VOLUNTEER_RESEARCH_ASSISTANT",
+  "RESEARCH_ASSISTANT",
+  "STAFF_COORDINATOR"
 ]);
 
 export const studyStatusEnum = pgEnum("study_status", [
@@ -138,7 +146,14 @@ export const teamMemberRoleEnum = pgEnum("team_member_role", [
   "Regulatory Coordinator",
   "Coordinator",
   "Lab Intern",
-  "Summer Intern"
+  "Summer Intern",
+  "Principal Investigator",
+  "Clinical Research Coordinator",
+  "Fellow",
+  "Medical Student",
+  "Volunteer Research Assistant",
+  "Research Assistant",
+  "Staff/Coordinator"
 ]);
 
 // PHASE 4: ORGANIZATION ENUMS
