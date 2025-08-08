@@ -17,6 +17,7 @@ import {
   Lightbulb,
   Clock
 } from "lucide-react";
+import logoUrl from "@assets/FullLogo_1754662799020.png";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLabContext } from "@/hooks/useLabContext";
@@ -76,7 +77,7 @@ export function Sidebar() {
         <div className="flex items-center space-x-3">
           <div className="relative">
             <img 
-              src="@assets/FullLogo_1754662799020.png" 
+              src={logoUrl} 
               alt="LabSync Logo" 
               className="h-12 w-auto"
             />

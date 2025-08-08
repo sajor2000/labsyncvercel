@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import logoUrl from "@assets/FullLogo_1754662799020.png";
 
 export default function Landing() {
   return (
@@ -8,7 +9,7 @@ export default function Landing() {
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto">
             <img 
-              src="@assets/FullLogo_1754662799020.png" 
+              src={logoUrl} 
               alt="LabSync Logo" 
               className="h-20 w-auto mx-auto"
             />
