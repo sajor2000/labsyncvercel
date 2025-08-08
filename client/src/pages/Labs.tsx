@@ -23,6 +23,8 @@ export default function Labs() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingLab, setEditingLab] = useState<Lab | null>(null);
 
   // Form for creating new lab
   const form = useForm<InsertLab>({
@@ -35,13 +37,21 @@ export default function Labs() {
     },
   });
 
+  // Form for editing existing lab
+  const editForm = useForm<InsertLab>({
+    resolver: zodResolver(insertLabSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      piName: "",
+      color: "#3b82f6",
+    },
+  });
+
   // Mutation for creating lab
   const createLabMutation = useMutation({
     mutationFn: async (data: InsertLab) => {
-      return apiRequest('/api/labs', {
-        method: 'POST',
-        body: data,
-      });
+      return apiRequest('POST', '/api/labs', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/labs'] });
@@ -61,13 +71,54 @@ export default function Labs() {
     },
   });
 
+  // Mutation for updating lab
+  const updateLabMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: InsertLab }) => {
+      return apiRequest('PUT', `/api/labs/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/labs'] });
+      toast({
+        title: "Success",
+        description: "Lab updated successfully",
+      });
+      setShowEditDialog(false);
+      setEditingLab(null);
+      editForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateLab = (data: InsertLab) => {
     createLabMutation.mutate(data);
+  };
+
+  const handleUpdateLab = (data: InsertLab) => {
+    if (editingLab) {
+      updateLabMutation.mutate({ id: editingLab.id, data });
+    }
   };
 
   const handleOpenCreateDialog = () => {
     setShowCreateDialog(true);
     form.reset();
+  };
+
+  const handleOpenEditDialog = (lab: Lab) => {
+    setEditingLab(lab);
+    editForm.reset({
+      name: lab.name,
+      description: lab.description || "",
+      piName: lab.piName || "",
+      color: lab.color || "#3b82f6",
+    });
+    setShowEditDialog(true);
   };
 
   // Redirect if not authenticated
@@ -221,7 +272,12 @@ export default function Labs() {
                       {lab.name}
                     </CardTitle>
                   </div>
-                  <Button variant="ghost" size="sm" data-testid={`button-lab-settings-${lab.id}`}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleOpenEditDialog(lab)}
+                    data-testid={`button-lab-settings-${lab.id}`}
+                  >
                     <Settings className="h-4 w-4" />
                   </Button>
                 </div>
@@ -320,7 +376,8 @@ export default function Labs() {
                       <Textarea 
                         placeholder="Describe the lab's focus and purpose" 
                         className="resize-none" 
-                        {...field} 
+                        {...field}
+                        value={field.value || ""} 
                         data-testid="textarea-lab-description"
                       />
                     </FormControl>
@@ -337,7 +394,8 @@ export default function Labs() {
                     <FormControl>
                       <Input 
                         placeholder="Enter PI name" 
-                        {...field} 
+                        {...field}
+                        value={field.value || ""} 
                         data-testid="input-lab-pi"
                       />
                     </FormControl>
@@ -356,12 +414,14 @@ export default function Labs() {
                         <Input 
                           type="color" 
                           className="w-16 h-10 p-1 border" 
-                          {...field} 
+                          {...field}
+                          value={field.value || "#3b82f6"} 
                           data-testid="input-lab-color"
                         />
                         <Input 
                           placeholder="#3b82f6" 
-                          {...field} 
+                          {...field}
+                          value={field.value || "#3b82f6"} 
                           data-testid="input-lab-color-text"
                         />
                       </div>
@@ -385,6 +445,120 @@ export default function Labs() {
                   data-testid="button-confirm-create-lab"
                 >
                   {createLabMutation.isPending ? "Creating..." : "Create Lab"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Lab Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Lab</DialogTitle>
+            <DialogDescription>
+              Update the details for {editingLab?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(handleUpdateLab)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lab Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter lab name" 
+                        {...field} 
+                        data-testid="input-edit-lab-name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Describe the lab's focus and purpose" 
+                        className="resize-none" 
+                        {...field}
+                        value={field.value || ""}
+                        data-testid="textarea-edit-lab-description"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="piName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Principal Investigator</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter PI name" 
+                        {...field}
+                        value={field.value || ""}
+                        data-testid="input-edit-lab-pi"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lab Color</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="color" 
+                          className="w-16 h-10 p-1 border" 
+                          {...field}
+                          value={field.value || "#3b82f6"}
+                          data-testid="input-edit-lab-color"
+                        />
+                        <Input 
+                          placeholder="#3b82f6" 
+                          {...field}
+                          value={field.value || "#3b82f6"}
+                          data-testid="input-edit-lab-color-text"
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowEditDialog(false)}
+                  data-testid="button-cancel-edit-lab"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={updateLabMutation.isPending}
+                  data-testid="button-confirm-edit-lab"
+                >
+                  {updateLabMutation.isPending ? "Updating..." : "Update Lab"}
                 </Button>
               </div>
             </form>
