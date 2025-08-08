@@ -9,6 +9,7 @@ import {
   json,
   index,
   jsonb,
+  decimal,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -204,6 +205,7 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").default("RESEARCHER"),
   phone: varchar("phone"),
   isActive: boolean("is_active").default(true),
+  capacity: decimal("capacity", { precision: 5, scale: 2 }).default("40.00"), // Hours per week
   labId: varchar("lab_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -286,6 +288,8 @@ export const tasks = pgTable("tasks", {
   parentTaskId: varchar("parent_task_id"), // Self-reference without function to avoid circular reference
   position: varchar("position").default("0"), // Order within project
   tags: text("tags").array(),
+  estimatedHours: decimal("estimated_hours", { precision: 6, scale: 2 }), // Use Decimal not Float!
+  actualHours: decimal("actual_hours", { precision: 6, scale: 2 }),
   completedAt: timestamp("completed_at"),
   completedById: varchar("completed_by_id").references(() => users.id),
   isActive: boolean("is_active").default(true),
@@ -293,7 +297,10 @@ export const tasks = pgTable("tasks", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ([
+  index("task_project_status_position_idx").on(table.studyId, table.status, table.position), // Kanban board queries
+  index("task_assignee_status_due_idx").on(table.assigneeId, table.status, table.dueDate) // "My tasks" dashboard
+]));
 
 export const standupMeetings = pgTable("standup_meetings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -373,11 +380,13 @@ export const projectMembers = pgTable("project_members", {
   userId: varchar("user_id").notNull().references(() => users.id),
   labId: varchar("lab_id").notNull().references(() => labs.id), // CRITICAL: Cross-lab access control
   role: varchar("role").default("contributor"), // lead, contributor, advisor
+  allocation: decimal("allocation", { precision: 5, scale: 2 }).default("20.00"), // Percentage
   assignedAt: timestamp("assigned_at").defaultNow(),
   joinedAt: timestamp("joined_at").defaultNow(),
 }, (table) => ({
   uniqueProjectUser: index("unique_project_user").on(table.projectId, table.userId),
-  labUserIndex: index("lab_user_idx").on(table.labId, table.userId)
+  labUserIndex: index("lab_user_idx").on(table.labId, table.userId),
+  projectStatusIndex: index("project_members_bucket_status_idx").on(table.projectId) // "My projects"
 }));
 
 // Task Assignments - for multiple assignees per task with validation
@@ -662,7 +671,7 @@ export const timeEntries = pgTable("time_entries", {
   taskId: varchar("task_id").notNull().references(() => tasks.id),
   userId: varchar("user_id").notNull().references(() => users.id),
   projectId: varchar("project_id").notNull().references(() => studies.id), // Denormalized for queries
-  hours: varchar("hours").notNull(), // Store as string for decimal precision
+  hours: decimal("hours", { precision: 5, scale: 2 }).notNull(), // Use Decimal not string!
   description: text("description"),
   date: timestamp("date").notNull(),
   billable: boolean("billable").default(true), // For grant reporting

@@ -785,6 +785,7 @@ export class DatabaseStorage implements IStorage {
           priority: tasks.priority,
           assigneeId: tasks.assigneeId,
           studyId: tasks.studyId,
+          parentTaskId: tasks.parentTaskId,
           position: tasks.position,
           isActive: tasks.isActive,
           createdAt: tasks.createdAt,
@@ -795,6 +796,7 @@ export class DatabaseStorage implements IStorage {
           tags: tasks.tags,
           completedAt: tasks.completedAt,
           completedById: tasks.completedById,
+          createdBy: tasks.createdBy,
         })
         .from(tasks)
         .leftJoin(studies, eq(tasks.studyId, studies.id))
@@ -1102,23 +1104,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProjectTimeEntries(projectId: string, startDate?: Date, endDate?: Date): Promise<TimeEntry[]> {
-    let query = db.select().from(timeEntries).where(eq(timeEntries.projectId, projectId));
-    
     const conditions = [eq(timeEntries.projectId, projectId)];
     if (startDate) conditions.push(sql`${timeEntries.date} >= ${startDate}`);
     if (endDate) conditions.push(sql`${timeEntries.date} <= ${endDate}`);
     
-    return await query.where(and(...conditions)).orderBy(desc(timeEntries.date));
+    return await db.select().from(timeEntries).where(and(...conditions)).orderBy(desc(timeEntries.date));
   }
 
   async getUserTimeEntries(userId: string, startDate?: Date, endDate?: Date): Promise<TimeEntry[]> {
-    let query = db.select().from(timeEntries).where(eq(timeEntries.userId, userId));
-    
     const conditions = [eq(timeEntries.userId, userId)];
     if (startDate) conditions.push(sql`${timeEntries.date} >= ${startDate}`);
     if (endDate) conditions.push(sql`${timeEntries.date} <= ${endDate}`);
     
-    return await query.where(and(...conditions)).orderBy(desc(timeEntries.date));
+    return await db.select().from(timeEntries).where(and(...conditions)).orderBy(desc(timeEntries.date));
   }
 
   // PHASE 4: ENHANCED ORGANIZATION OPERATIONS
@@ -1183,17 +1181,13 @@ export class DatabaseStorage implements IStorage {
 
   // Custom Fields
   async getCustomFields(labId: string, entityType?: string): Promise<CustomField[]> {
-    let query = db.select().from(customFields).where(and(eq(customFields.labId, labId), eq(customFields.isActive, true)));
+    const conditions = [eq(customFields.labId, labId), eq(customFields.isActive, true)];
     
     if (entityType) {
-      query = query.where(and(
-        eq(customFields.labId, labId),
-        eq(customFields.entityType, entityType),
-        eq(customFields.isActive, true)
-      ));
+      conditions.push(eq(customFields.entityType, entityType));
     }
     
-    return await query.orderBy(asc(customFields.position), asc(customFields.fieldLabel));
+    return await db.select().from(customFields).where(and(...conditions)).orderBy(asc(customFields.position), asc(customFields.fieldLabel));
   }
 
   async createCustomField(field: InsertCustomField): Promise<CustomField> {
@@ -1647,7 +1641,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async generateTaskFromTemplate(templateId: string, executionId: string, projectId?: string): Promise<TaskGenerationLog> {
-    const template = await this.getTaskTemplates(undefined, templateId).then(templates => templates[0]);
+    const templates = await this.getTaskTemplates();
+    const template = templates.find(t => t.id === templateId);
     if (!template) {
       const errorLog = await this.createTaskGenerationLog({
         executionId,
@@ -1721,8 +1716,9 @@ export class DatabaseStorage implements IStorage {
         // Get the template if linked
         let template = null;
         if (recurringTask.templateId) {
-          const templates = await this.getTaskTemplates(undefined, recurringTask.templateId);
-          template = templates[0] || null;
+          const templates = await this.getTaskTemplates();
+          const templateMatches = templates.filter(t => t.id === recurringTask.templateId);
+          template = templateMatches[0] || null;
         }
 
         // Generate new task instance
@@ -1752,7 +1748,7 @@ export class DatabaseStorage implements IStorage {
 
   private calculateNextDueDate(recurringTask: RecurringTask): Date {
     const current = new Date(recurringTask.nextDueDate);
-    const interval = parseInt(recurringTask.interval);
+    const interval = parseInt(recurringTask.interval || "1");
 
     switch (recurringTask.pattern) {
       case "DAILY":
