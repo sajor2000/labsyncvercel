@@ -9,13 +9,66 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Users, FlaskConical, Folder, Settings, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import type { Lab, Study, Bucket } from "@shared/schema";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { Lab, Study, Bucket, InsertLab } from "@shared/schema";
+import { insertLabSchema } from "@shared/schema";
 
 export default function Labs() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+
+  // Form for creating new lab
+  const form = useForm<InsertLab>({
+    resolver: zodResolver(insertLabSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      piName: "",
+      color: "#3b82f6",
+    },
+  });
+
+  // Mutation for creating lab
+  const createLabMutation = useMutation({
+    mutationFn: async (data: InsertLab) => {
+      return apiRequest('/api/labs', {
+        method: 'POST',
+        body: data,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/labs'] });
+      toast({
+        title: "Success",
+        description: "Lab created successfully",
+      });
+      setShowCreateDialog(false);
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateLab = (data: InsertLab) => {
+    createLabMutation.mutate(data);
+  };
+
+  const handleOpenCreateDialog = () => {
+    setShowCreateDialog(true);
+    form.reset();
+  };
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -99,7 +152,7 @@ export default function Labs() {
           <h1 className="text-2xl font-bold text-foreground">Research Labs</h1>
           <p className="text-muted-foreground">Manage your research laboratories and teams</p>
         </div>
-        <Button data-testid="button-create-lab">
+        <Button onClick={handleOpenCreateDialog} data-testid="button-create-lab">
           <Plus className="h-4 w-4 mr-2" />
           New Lab
         </Button>
@@ -146,7 +199,7 @@ export default function Labs() {
               <p className="text-muted-foreground mb-4">
                 {searchTerm ? "Try adjusting your search" : "Create your first lab to get started"}
               </p>
-              <Button data-testid="button-create-first-lab">
+              <Button onClick={handleOpenCreateDialog} data-testid="button-create-first-lab">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Lab
               </Button>
@@ -228,6 +281,116 @@ export default function Labs() {
           ))}
         </div>
       )}
+
+      {/* Create Lab Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create New Lab</DialogTitle>
+            <DialogDescription>
+              Add a new research laboratory to your organization.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleCreateLab)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lab Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter lab name" 
+                        {...field} 
+                        data-testid="input-lab-name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Describe the lab's focus and purpose" 
+                        className="resize-none" 
+                        {...field} 
+                        data-testid="textarea-lab-description"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="piName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Principal Investigator</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter PI name" 
+                        {...field} 
+                        data-testid="input-lab-pi"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lab Color</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="color" 
+                          className="w-16 h-10 p-1 border" 
+                          {...field} 
+                          data-testid="input-lab-color"
+                        />
+                        <Input 
+                          placeholder="#3b82f6" 
+                          {...field} 
+                          data-testid="input-lab-color-text"
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCreateDialog(false)}
+                  data-testid="button-cancel-create-lab"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createLabMutation.isPending}
+                  data-testid="button-confirm-create-lab"
+                >
+                  {createLabMutation.isPending ? "Creating..." : "Create Lab"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
