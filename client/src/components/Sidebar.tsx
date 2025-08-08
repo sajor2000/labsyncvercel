@@ -74,12 +74,12 @@ export function Sidebar() {
       {/* Logo and Title */}
       <div className="p-6 border-b border-border">
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-primary rounded-lg">
-            <FlaskConical className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Lab Manager</h1>
-            <p className="text-sm text-muted-foreground">Research Hub</p>
+          <div className="relative">
+            <img 
+              src="@assets/FullLogo_1754662799020.png" 
+              alt="LabSync Logo" 
+              className="h-12 w-auto"
+            />
           </div>
         </div>
       </div>
@@ -140,7 +140,7 @@ export function Sidebar() {
                 }
               </p>
               <p className="text-xs text-muted-foreground truncate">
-                Research Member
+                Making Science Easier
               </p>
             </div>
           </div>

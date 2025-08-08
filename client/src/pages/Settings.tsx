@@ -301,7 +301,7 @@ export default function Settings() {
             Preferences
           </CardTitle>
           <CardDescription>
-            Customize your Lab Manager experience
+            Customize your LabSync experience
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -445,7 +445,7 @@ export default function Settings() {
             <div>
               <Label>Export Your Data</Label>
               <p className="text-sm text-muted-foreground">
-                Download a copy of all your Lab Manager data
+                Download a copy of all your LabSync data
               </p>
             </div>
             <Button
