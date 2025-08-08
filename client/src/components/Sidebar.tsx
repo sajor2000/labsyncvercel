@@ -79,7 +79,7 @@ export function Sidebar() {
             <img 
               src={logoUrl} 
               alt="LabSync Logo" 
-              className="h-16 w-auto"
+              className="h-20 w-auto"
             />
           </div>
         </div>
