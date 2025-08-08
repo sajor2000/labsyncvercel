@@ -25,23 +25,39 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// Enums
+// Enhanced Enums for Lab Roles
 export const userRoleEnum = pgEnum("user_role", [
+  // Leadership
+  "PRINCIPAL_INVESTIGATOR",      // PI - Lab head, grant holder
+  "CO_PRINCIPAL_INVESTIGATOR",   // Co-PI - Shares leadership
+  
+  // Data & Analytics Team
+  "DATA_SCIENTIST",              // Advanced analytics, ML/AI
+  "DATA_ANALYST",                // Data processing, statistics
+  
+  // Coordination & Management
+  "CLINICAL_RESEARCH_COORDINATOR", // CRC - Patient-facing, trial management
+  "REGULATORY_COORDINATOR",        // IRB, compliance, documentation
+  "STAFF_COORDINATOR",            // General lab operations
+  "LAB_ADMINISTRATOR",            // System admin, access control
+  
+  // Training Positions
+  "FELLOW",                       // Post-doc or clinical fellow
+  "MEDICAL_STUDENT",             // Medical school trainee
+  
+  // Research Support
+  "RESEARCH_ASSISTANT",          // Full/part-time RA
+  "VOLUNTEER_RESEARCH_ASSISTANT", // Volunteer RA
+  
+  // External
+  "EXTERNAL_COLLABORATOR",       // Outside institution
+  
+  // Legacy roles for backward compatibility
   "PI",
   "RESEARCH_COORDINATOR", 
-  "DATA_ANALYST",
   "RESEARCHER",
   "STUDENT",
-  "ADMIN",
-  "PRINCIPAL_INVESTIGATOR",
-  "DATA_SCIENTIST",
-  "CLINICAL_RESEARCH_COORDINATOR",
-  "REGULATORY_COORDINATOR",
-  "STAFF_COORDINATOR",
-  "FELLOW",
-  "MEDICAL_STUDENT",
-  "VOLUNTEER_RESEARCH_ASSISTANT",
-  "RESEARCH_ASSISTANT"
+  "ADMIN"
 ]);
 
 export const studyStatusEnum = pgEnum("study_status", [
@@ -210,32 +226,78 @@ export const deadlineTypeEnum = pgEnum("deadline_type", [
   "OTHER"
 ]);
 
-// User storage table (required for Replit Auth)
+// Enhanced User model with comprehensive professional information
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
+  
+  // Name fields
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  name: varchar("name"),
-  role: userRoleEnum("role").default("RESEARCHER"),
+  middleName: varchar("middle_name"),
+  name: varchar("name"), // Full display name
+  initials: varchar("initials", { length: 10 }), // Auto-generated from names
+  
+  // Professional info
+  role: userRoleEnum("role").default("RESEARCH_ASSISTANT"),
+  title: varchar("title"), // Official job title if different from role
+  department: varchar("department"), // e.g., "Rush Medical College"
+  institution: varchar("institution").default("Rush University Medical Center"),
+  
+  // Contact & profile
   phone: varchar("phone"),
-  isActive: boolean("is_active").default(true),
+  profileImageUrl: varchar("profile_image_url"),
+  avatar: varchar("avatar"), // Avatar color or image URL
+  bio: text("bio"),
+  linkedIn: varchar("linkedin_url"),
+  orcid: varchar("orcid"), // ORCID identifier for researchers
+  
+  // Work management
   capacity: decimal("capacity", { precision: 5, scale: 2 }).default("40.00"), // Hours per week
-  labId: varchar("lab_id"),
+  expertise: text("expertise").array().default(sql`'{}'`), // Array of expertise areas
+  skills: text("skills").array().default(sql`'{}'`), // Technical skills (e.g., Python, R, REDCap)
+  
+  // System fields
+  isActive: boolean("is_active").default(true),
+  isExternal: boolean("is_external").default(false), // For external collaborators
+  lastActive: timestamp("last_active"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  emailIndex: index("users_email_idx").on(table.email),
+  roleIndex: index("users_role_idx").on(table.role),
+  activeIndex: index("users_active_idx").on(table.isActive, table.lastActive),
+}));
 
+// Enhanced Lab model with comprehensive information
 export const labs = pgTable("labs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(),
+  name: varchar("name").notNull(), // "RICCC" or "RHEDAS"
+  fullName: varchar("full_name"), // "Rush Internal Critical Care Collaborative"
+  shortName: varchar("short_name").unique(), // Unique short identifier
   description: text("description"),
-  piName: varchar("pi_name"),
-  color: varchar("color").default("#3b82f6"),
+  
+  // Lab details
+  department: varchar("department"), // "Internal Medicine - Critical Care"
+  building: varchar("building"), // Physical location
+  room: varchar("room"), // Room number
+  website: varchar("website"), // Lab website URL
+  
+  // Branding
+  logo: varchar("logo"),
+  primaryColor: varchar("primary_color").default("#8B5CF6"),
+  
+  // Configuration
+  settings: jsonb("settings"), // Lab-specific settings
+  features: text("features").array().default(sql`'{}'`), // Enabled features for this lab
+  
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  shortNameIndex: index("labs_short_name_idx").on(table.shortName),
+  activeIndex: index("labs_active_idx").on(table.isActive),
+}));
 
 export const buckets = pgTable("buckets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -360,7 +422,36 @@ export const studyStatusUpdates = pgTable("study_status_updates", {
   extractedAt: timestamp("extracted_at").defaultNow(),
 });
 
-// Team Members table for lab personnel management  
+// Enhanced LabMember with role-specific permissions for multi-lab support
+export const labMembers = pgTable("lab_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  labId: varchar("lab_id").notNull().references(() => labs.id, { onDelete: "cascade" }),
+  
+  // Permissions based on role
+  isAdmin: boolean("is_admin").default(false), // Can manage lab settings
+  canCreateProjects: boolean("can_create_projects").default(false),
+  canAssignTasks: boolean("can_assign_tasks").default(false),
+  canViewAllProjects: boolean("can_view_all_projects").default(false),
+  canEditAllProjects: boolean("can_edit_all_projects").default(false),
+  canManageMembers: boolean("can_manage_members").default(false),
+  canApproveIdeas: boolean("can_approve_ideas").default(false),
+  canAccessReports: boolean("can_access_reports").default(false),
+  
+  // Status and dates
+  isActive: boolean("is_active").default(true),
+  joinedAt: timestamp("joined_at").defaultNow(),
+  leftAt: timestamp("left_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueUserLab: index("unique_user_lab").on(table.userId, table.labId),
+  labActiveIndex: index("lab_active_idx").on(table.labId, table.isActive),
+  userActiveIndex: index("user_active_idx").on(table.userId, table.isActive),
+}));
+
+// Team Members table for lab personnel management (keeping for backward compatibility)
 export const teamMembers = pgTable("team_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
@@ -549,8 +640,8 @@ export const tags = pgTable("tags", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ([
-  index("unique_lab_name").on(table.labId, table.name),
-  index("lab_active_idx").on(table.labId, table.isActive)
+  index("tags_unique_lab_name").on(table.labId, table.name),
+  index("tags_lab_active_idx").on(table.labId, table.isActive)
 ]));
 
 // Task Tags - Many-to-many relationship
@@ -702,12 +793,23 @@ export const timeEntries = pgTable("time_entries", {
   taskUserDateIndex: index("time_task_user_date_idx").on(table.taskId, table.userId, table.date)
 }));
 
+// Role-based permission matrix helper for comprehensive access control
+export const rolePermissions = pgTable("role_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  role: userRoleEnum("role").notNull(),
+  permission: varchar("permission").notNull(), // e.g., "create_project", "approve_irb", "manage_budget"
+  labId: varchar("lab_id").references(() => labs.id), // Optional: lab-specific permissions
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueRolePermissionLab: index("unique_role_permission_lab").on(table.role, table.permission, table.labId),
+  roleIndex: index("role_permissions_role_idx").on(table.role),
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
-  lab: one(labs, {
-    fields: [users.labId],
-    references: [labs.id],
-  }),
+  // Multi-lab support via labMembers instead of direct lab reference
+  labMemberships: many(labMembers),
   createdStudies: many(studies),
   assignments: many(studyAssignments),
   createdMeetings: many(standupMeetings),
@@ -734,8 +836,21 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   }),
 }));
 
+// LabMember relations for multi-lab support
+export const labMembersRelations = relations(labMembers, ({ one }) => ({
+  user: one(users, {
+    fields: [labMembers.userId],
+    references: [users.id],
+  }),
+  lab: one(labs, {
+    fields: [labMembers.labId],
+    references: [labs.id],
+  }),
+}));
+
 export const labsRelations = relations(labs, ({ many }) => ({
-  members: many(users),
+  // Multi-lab support via labMembers instead of direct user reference
+  labMemberships: many(labMembers),
   buckets: many(buckets),
   studies: many(studies),
   standupMeetings: many(standupMeetings),
@@ -853,18 +968,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   }),
 }));
 
-// Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertLabSchema = createInsertSchema(labs).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+// Insert schemas (removing duplicates to avoid conflicts)
 
 export const insertStudySchema = createInsertSchema(studies).omit({
   id: true,
@@ -896,11 +1000,7 @@ export const insertActionItemSchema = createInsertSchema(standupActionItems).omi
   updatedAt: true,
 });
 
-export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+// Moved to consolidated schema section below
 
 export const insertTeamMemberAssignmentSchema = createInsertSchema(teamMemberAssignments).omit({
   id: true,
@@ -1071,10 +1171,64 @@ export const deadlinesRelations = relations(deadlines, ({ one }) => ({
 }));
 
 // Types
+// Enhanced Type Definitions for World-Class CRUD System
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Lab types
+export type InsertLab = typeof labs.$inferInsert;
 export type Lab = typeof labs.$inferSelect;
-export type InsertLab = z.infer<typeof insertLabSchema>;
+
+// LabMember types for multi-lab support
+export type InsertLabMember = typeof labMembers.$inferInsert;
+export type LabMember = typeof labMembers.$inferSelect;
+
+// Team member types (backward compatibility)
+export type InsertTeamMember = typeof teamMembers.$inferInsert;
+export type TeamMember = typeof teamMembers.$inferSelect;
+
+// Role permission types
+export type InsertRolePermission = typeof rolePermissions.$inferInsert;
+export type RolePermission = typeof rolePermissions.$inferSelect;
+
+// Enhanced insert schemas with Zod validation
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLabSchema = createInsertSchema(labs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLabMemberSchema = createInsertSchema(labMembers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({
+  id: true,
+  createdAt: true, 
+  updatedAt: true,
+});
+
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Additional type definitions for enhanced functionality
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertStudy = z.infer<typeof insertStudySchema>;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type InsertBucket = z.infer<typeof insertBucketSchema>;
+export type InsertLabMember = z.infer<typeof insertLabMemberSchema>;
+export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
 export type Bucket = typeof buckets.$inferSelect;
 export type InsertBucket = z.infer<typeof insertBucketSchema>;
 export type Study = typeof studies.$inferSelect;

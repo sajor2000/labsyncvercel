@@ -193,7 +193,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Team member routes
+  // Enhanced Lab Member routes for multi-lab support
+  app.get("/api/lab-members", isAuthenticated, async (req, res) => {
+    try {
+      const labId = req.query.labId as string | undefined;
+      const members = await storage.getLabMembers(labId || '');
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching lab members:", error);
+      res.status(500).json({ message: "Failed to fetch lab members" });
+    }
+  });
+
+  // Team member routes (backward compatibility)
   app.get("/api/team-members", isAuthenticated, async (req, res) => {
     try {
       const members = await storage.getTeamMembers();

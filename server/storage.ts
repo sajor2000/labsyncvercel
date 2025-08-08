@@ -8,6 +8,7 @@ import {
   standupActionItems,
   teamMembers,
   teamMemberAssignments,
+  labMembers,
   projectMembers,
   taskAssignments,
   ideas,
@@ -388,7 +389,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLabMembers(labId: string): Promise<User[]> {
-    return await db.select().from(users).where(eq(users.labId, labId));
+    return await db.select({
+      id: users.id,
+      email: users.email,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      name: users.name,
+      middleName: users.middleName,
+      initials: users.initials,
+      role: users.role,
+      title: users.title,
+      department: users.department,
+      capacity: users.capacity,
+      profileImageUrl: users.profileImageUrl,
+      avatar: users.avatar,
+      expertise: users.expertise,
+      skills: users.skills,
+      institution: users.institution,
+      isExternal: users.isExternal,
+      bio: users.bio,
+      linkedinUrl: users.linkedIn,
+      orcid: users.orcid,
+      lastActive: users.lastActive,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+    .from(users)
+    .innerJoin(labMembers, eq(users.id, labMembers.userId))
+    .where(and(eq(labMembers.labId, labId), eq(labMembers.isActive, true)))
+    .orderBy(users.name);
   }
 
   // Study operations
@@ -892,13 +921,13 @@ export class DatabaseStorage implements IStorage {
   
   async validateUserLabAccess(userId: string, labId: string): Promise<boolean> {
     try {
-      const [user] = await db
-        .select({ labId: users.labId })
-        .from(users)
-        .where(eq(users.id, userId))
+      const [membership] = await db
+        .select({ labId: labMembers.labId })
+        .from(labMembers)
+        .where(and(eq(labMembers.userId, userId), eq(labMembers.labId, labId), eq(labMembers.isActive, true)))
         .limit(1);
       
-      return user?.labId === labId;
+      return !!membership;
     } catch {
       return false;
     }
