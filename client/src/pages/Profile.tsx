@@ -19,17 +19,18 @@ const userRoleOptions = [
   { value: "DATA_SCIENTIST", label: "Data Scientist" },
   { value: "DATA_ANALYST", label: "Data Analyst" },
   { value: "CLINICAL_RESEARCH_COORDINATOR", label: "Clinical Research Coordinator" },
+  { value: "REGULATORY_COORDINATOR", label: "Regulatory Coordinator" },
+  { value: "STAFF_COORDINATOR", label: "Staff Coordinator" },
   { value: "FELLOW", label: "Fellow" },
   { value: "MEDICAL_STUDENT", label: "Medical Student" },
   { value: "VOLUNTEER_RESEARCH_ASSISTANT", label: "Volunteer Research Assistant" },
   { value: "RESEARCH_ASSISTANT", label: "Research Assistant" },
-  { value: "STAFF_COORDINATOR", label: "Staff/Coordinator" },
-  { value: "ADMIN", label: "Admin" },
   // Legacy values for backward compatibility
   { value: "PI", label: "PI" },
   { value: "RESEARCH_COORDINATOR", label: "Research Coordinator" },
   { value: "RESEARCHER", label: "Researcher" },
-  { value: "STUDENT", label: "Student" }
+  { value: "STUDENT", label: "Student" },
+  { value: "ADMIN", label: "Admin" }
 ];
 
 interface UserProfile {

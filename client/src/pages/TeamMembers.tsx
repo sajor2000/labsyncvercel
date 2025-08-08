@@ -38,14 +38,14 @@ const roleOptions = [
   { value: "Data Scientist", label: "Data Scientist" },
   { value: "Data Analyst", label: "Data Analyst" },
   { value: "Clinical Research Coordinator", label: "Clinical Research Coordinator" },
+  { value: "Regulatory Coordinator", label: "Regulatory Coordinator" },
+  { value: "Staff Coordinator", label: "Staff Coordinator" },
   { value: "Fellow", label: "Fellow" },
   { value: "Medical Student", label: "Medical Student" },
   { value: "Volunteer Research Assistant", label: "Volunteer Research Assistant" },
   { value: "Research Assistant", label: "Research Assistant" },
-  { value: "Staff/Coordinator", label: "Staff/Coordinator" },
   // Legacy values for backward compatibility
   { value: "PI", label: "PI" },
-  { value: "Regulatory Coordinator", label: "Regulatory Coordinator" },
   { value: "Coordinator", label: "Coordinator" },
   { value: "Lab Intern", label: "Lab Intern" },
   { value: "Summer Intern", label: "Summer Intern" }

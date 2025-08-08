@@ -42,7 +42,7 @@ Color Scheme: Slack-inspired dark theme with professional color palette (purple 
 - **Provider**: Replit OIDC integration for seamless authentication in the Replit environment
 - **Session Storage**: PostgreSQL-backed sessions with configurable TTL
 - **User Management**: Automatic user creation and profile management
-- **Authorization**: Role-based access control with user roles (PI, Research Coordinator, Data Analyst, etc.)
+- **Authorization**: Role-based access control with comprehensive lab roles (Principal Investigator, Data Scientist, Data Analyst, Clinical Research Coordinator, Regulatory Coordinator, Staff Coordinator, Fellow, Medical Student, Volunteer Research Assistant, Research Assistant)
 
 ### File Storage & AI Integration
 - **Cloud Storage**: Google Cloud Storage integration for file uploads and document management
