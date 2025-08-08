@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Users, FlaskConical, Folder, Settings, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { Lab, Study, Bucket, InsertLab } from "@shared/schema";
+import type { Lab, Study, Bucket, InsertLab, TeamMember } from "@shared/schema";
 import { insertLabSchema } from "@shared/schema";
 
 export default function Labs() {
@@ -168,6 +169,12 @@ export default function Labs() {
     enabled: isAuthenticated,
   });
 
+  // Get team members for each lab
+  const { data: allTeamMembers = [] } = useQuery<TeamMember[]>({
+    queryKey: ['/api/team-members'],
+    enabled: isAuthenticated,
+  });
+
   // Filter labs
   const filteredLabs = labs.filter(lab =>
     lab.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -181,6 +188,10 @@ export default function Labs() {
 
   const getBucketsCount = (labId: string) => {
     return allBuckets.filter(bucket => bucket.labId === labId).length;
+  };
+
+  const getMembersCount = (labId: string) => {
+    return allTeamMembers.filter(member => member.labId === labId && member.isActive).length;
   };
 
   if (isLoading) {
@@ -310,7 +321,7 @@ export default function Labs() {
                       <div className="flex items-center justify-center">
                         <Users className="h-4 w-4 text-green-500" />
                       </div>
-                      <p className="text-sm font-medium">5</p>
+                      <p className="text-sm font-medium">{getMembersCount(lab.id)}</p>
                       <p className="text-xs text-muted-foreground">Members</p>
                     </div>
                   </div>
@@ -392,12 +403,18 @@ export default function Labs() {
                   <FormItem>
                     <FormLabel>Principal Investigator</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Enter PI name" 
-                        {...field}
-                        value={field.value || ""} 
-                        data-testid="input-lab-pi"
-                      />
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <SelectTrigger data-testid="select-lab-pi">
+                          <SelectValue placeholder="Select Principal Investigator" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allTeamMembers.map((member) => (
+                            <SelectItem key={member.id} value={member.name || member.email || ''}>
+                              {member.name || member.email} ({member.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -506,12 +523,21 @@ export default function Labs() {
                   <FormItem>
                     <FormLabel>Principal Investigator</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Enter PI name" 
-                        {...field}
-                        value={field.value || ""}
-                        data-testid="input-edit-lab-pi"
-                      />
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <SelectTrigger data-testid="select-edit-lab-pi">
+                          <SelectValue placeholder="Select Principal Investigator" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {editingLab && allTeamMembers
+                            .filter(member => member.labId === editingLab.id)
+                            .map((member) => (
+                              <SelectItem key={member.id} value={member.name || member.email || ''}>
+                                {member.name || member.email} ({member.role})
+                              </SelectItem>
+                            ))
+                          }
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
