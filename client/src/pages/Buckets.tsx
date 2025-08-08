@@ -187,7 +187,7 @@ export default function Buckets() {
       }
       toast({
         title: "Error",
-        description: "Failed to delete bucket",
+        description: (error as Error).message || "Failed to delete bucket",
         variant: "destructive",
       });
     },

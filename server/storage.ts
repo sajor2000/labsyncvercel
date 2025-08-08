@@ -517,6 +517,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteBucket(id: string): Promise<void> {
+    // Check if bucket has associated studies
+    const associatedStudies = await db.select({ id: studies.id })
+      .from(studies)
+      .where(eq(studies.bucketId, id));
+    
+    if (associatedStudies.length > 0) {
+      throw new Error(`Cannot delete bucket. It contains ${associatedStudies.length} study(ies). Please move or delete the studies first.`);
+    }
+    
     await db.delete(buckets).where(eq(buckets.id, id));
   }
 
