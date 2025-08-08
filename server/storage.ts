@@ -81,6 +81,25 @@ import {
   taskTemplates,
   recurringTasks,
   userPreferences,
+  // Phase 5: Automation imports
+  workflowTriggers,
+  automationRules,
+  workflowExecutions,
+  taskGenerationLogs,
+  automatedSchedules,
+  workflowTemplates,
+  type WorkflowTrigger,
+  type InsertWorkflowTrigger,
+  type AutomationRule,
+  type InsertAutomationRule,
+  type WorkflowExecution,
+  type InsertWorkflowExecution,
+  type TaskGenerationLog,
+  type InsertTaskGenerationLog,
+  type AutomatedSchedule,
+  type InsertAutomatedSchedule,
+  type WorkflowTemplate,
+  type InsertWorkflowTemplate,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, inArray, sql } from "drizzle-orm";
@@ -245,6 +264,52 @@ export interface IStorage {
   // User Preferences
   getUserPreferences(userId: string): Promise<UserPreferences | undefined>;
   upsertUserPreferences(preferences: InsertUserPreferences): Promise<UserPreferences>;
+  
+  // Phase 5: Automation Operations
+  // Workflow Triggers
+  getWorkflowTriggers(labId?: string): Promise<WorkflowTrigger[]>;
+  getWorkflowTrigger(id: string): Promise<WorkflowTrigger | undefined>;
+  createWorkflowTrigger(trigger: InsertWorkflowTrigger): Promise<WorkflowTrigger>;
+  updateWorkflowTrigger(id: string, trigger: Partial<InsertWorkflowTrigger>): Promise<WorkflowTrigger>;
+  deleteWorkflowTrigger(id: string): Promise<void>;
+  
+  // Automation Rules
+  getAutomationRules(labId?: string, triggerId?: string): Promise<AutomationRule[]>;
+  getAutomationRule(id: string): Promise<AutomationRule | undefined>;
+  createAutomationRule(rule: InsertAutomationRule): Promise<AutomationRule>;
+  updateAutomationRule(id: string, rule: Partial<InsertAutomationRule>): Promise<AutomationRule>;
+  deleteAutomationRule(id: string): Promise<void>;
+  
+  // Workflow Executions
+  getWorkflowExecutions(ruleId?: string, status?: string): Promise<WorkflowExecution[]>;
+  getWorkflowExecution(id: string): Promise<WorkflowExecution | undefined>;
+  createWorkflowExecution(execution: InsertWorkflowExecution): Promise<WorkflowExecution>;
+  updateWorkflowExecution(id: string, execution: Partial<InsertWorkflowExecution>): Promise<WorkflowExecution>;
+  
+  // Task Generation Logs
+  getTaskGenerationLogs(executionId?: string): Promise<TaskGenerationLog[]>;
+  createTaskGenerationLog(log: InsertTaskGenerationLog): Promise<TaskGenerationLog>;
+  
+  // Automated Schedules
+  getAutomatedSchedules(labId?: string): Promise<AutomatedSchedule[]>;
+  getAutomatedSchedule(id: string): Promise<AutomatedSchedule | undefined>;
+  createAutomatedSchedule(schedule: InsertAutomatedSchedule): Promise<AutomatedSchedule>;
+  updateAutomatedSchedule(id: string, schedule: Partial<InsertAutomatedSchedule>): Promise<AutomatedSchedule>;
+  deleteAutomatedSchedule(id: string): Promise<void>;
+  getSchedulesDue(): Promise<AutomatedSchedule[]>;
+  
+  // Workflow Templates
+  getWorkflowTemplates(labId?: string, isPublic?: boolean): Promise<WorkflowTemplate[]>;
+  getWorkflowTemplate(id: string): Promise<WorkflowTemplate | undefined>;
+  createWorkflowTemplate(template: InsertWorkflowTemplate): Promise<WorkflowTemplate>;
+  updateWorkflowTemplate(id: string, template: Partial<InsertWorkflowTemplate>): Promise<WorkflowTemplate>;
+  deleteWorkflowTemplate(id: string): Promise<void>;
+  
+  // Automation Engine Methods
+  executeAutomationRule(ruleId: string, triggeredBy?: string): Promise<WorkflowExecution>;
+  generateTaskFromTemplate(templateId: string, executionId: string, projectId?: string): Promise<TaskGenerationLog>;
+  processRecurringTasks(): Promise<void>;
+  checkTriggerConditions(triggerType: string, entityData: any): Promise<WorkflowTrigger[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1259,6 +1324,476 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return newPreferences;
+  }
+
+  // =============================================================================
+  // PHASE 5: AUTOMATION IMPLEMENTATION
+  // =============================================================================
+
+  // Workflow Triggers Implementation
+  async getWorkflowTriggers(labId?: string): Promise<WorkflowTrigger[]> {
+    if (labId) {
+      return await db.select().from(workflowTriggers)
+        .where(and(eq(workflowTriggers.labId, labId), eq(workflowTriggers.isActive, true)))
+        .orderBy(desc(workflowTriggers.createdAt));
+    }
+    return await db.select().from(workflowTriggers)
+      .where(eq(workflowTriggers.isActive, true))
+      .orderBy(desc(workflowTriggers.createdAt));
+  }
+
+  async getWorkflowTrigger(id: string): Promise<WorkflowTrigger | undefined> {
+    const [trigger] = await db.select().from(workflowTriggers).where(eq(workflowTriggers.id, id));
+    return trigger;
+  }
+
+  async createWorkflowTrigger(trigger: InsertWorkflowTrigger): Promise<WorkflowTrigger> {
+    const [newTrigger] = await db.insert(workflowTriggers).values(trigger).returning();
+    return newTrigger;
+  }
+
+  async updateWorkflowTrigger(id: string, trigger: Partial<InsertWorkflowTrigger>): Promise<WorkflowTrigger> {
+    const [updatedTrigger] = await db
+      .update(workflowTriggers)
+      .set({ ...trigger, updatedAt: new Date() })
+      .where(eq(workflowTriggers.id, id))
+      .returning();
+    return updatedTrigger;
+  }
+
+  async deleteWorkflowTrigger(id: string): Promise<void> {
+    await db.update(workflowTriggers).set({ isActive: false }).where(eq(workflowTriggers.id, id));
+  }
+
+  // Automation Rules Implementation
+  async getAutomationRules(labId?: string, triggerId?: string): Promise<AutomationRule[]> {
+    let query = db.select().from(automationRules);
+    
+    const conditions = [eq(automationRules.isActive, true)];
+    if (labId) conditions.push(eq(automationRules.labId, labId));
+    if (triggerId) conditions.push(eq(automationRules.triggerId, triggerId));
+    
+    return await query.where(and(...conditions)).orderBy(asc(automationRules.priority), desc(automationRules.createdAt));
+  }
+
+  async getAutomationRule(id: string): Promise<AutomationRule | undefined> {
+    const [rule] = await db.select().from(automationRules).where(eq(automationRules.id, id));
+    return rule;
+  }
+
+  async createAutomationRule(rule: InsertAutomationRule): Promise<AutomationRule> {
+    const [newRule] = await db.insert(automationRules).values(rule).returning();
+    return newRule;
+  }
+
+  async updateAutomationRule(id: string, rule: Partial<InsertAutomationRule>): Promise<AutomationRule> {
+    const [updatedRule] = await db
+      .update(automationRules)
+      .set({ ...rule, updatedAt: new Date() })
+      .where(eq(automationRules.id, id))
+      .returning();
+    return updatedRule;
+  }
+
+  async deleteAutomationRule(id: string): Promise<void> {
+    await db.update(automationRules).set({ isActive: false }).where(eq(automationRules.id, id));
+  }
+
+  // Workflow Executions Implementation
+  async getWorkflowExecutions(ruleId?: string, status?: string): Promise<WorkflowExecution[]> {
+    const conditions = [];
+    if (ruleId) conditions.push(eq(workflowExecutions.ruleId, ruleId));
+    if (status) conditions.push(eq(workflowExecutions.status, status as any));
+    
+    if (conditions.length > 0) {
+      return await db.select().from(workflowExecutions)
+        .where(and(...conditions))
+        .orderBy(desc(workflowExecutions.startedAt));
+    }
+    
+    return await db.select().from(workflowExecutions).orderBy(desc(workflowExecutions.startedAt));
+  }
+
+  async getWorkflowExecution(id: string): Promise<WorkflowExecution | undefined> {
+    const [execution] = await db.select().from(workflowExecutions).where(eq(workflowExecutions.id, id));
+    return execution;
+  }
+
+  async createWorkflowExecution(execution: InsertWorkflowExecution): Promise<WorkflowExecution> {
+    const [newExecution] = await db.insert(workflowExecutions).values(execution).returning();
+    return newExecution;
+  }
+
+  async updateWorkflowExecution(id: string, execution: Partial<InsertWorkflowExecution>): Promise<WorkflowExecution> {
+    const [updatedExecution] = await db
+      .update(workflowExecutions)
+      .set(execution)
+      .where(eq(workflowExecutions.id, id))
+      .returning();
+    return updatedExecution;
+  }
+
+  // Task Generation Logs Implementation
+  async getTaskGenerationLogs(executionId?: string): Promise<TaskGenerationLog[]> {
+    if (executionId) {
+      return await db.select().from(taskGenerationLogs)
+        .where(eq(taskGenerationLogs.executionId, executionId))
+        .orderBy(desc(taskGenerationLogs.generatedAt));
+    }
+    return await db.select().from(taskGenerationLogs).orderBy(desc(taskGenerationLogs.generatedAt));
+  }
+
+  async createTaskGenerationLog(log: InsertTaskGenerationLog): Promise<TaskGenerationLog> {
+    const [newLog] = await db.insert(taskGenerationLogs).values(log).returning();
+    return newLog;
+  }
+
+  // Automated Schedules Implementation
+  async getAutomatedSchedules(labId?: string): Promise<AutomatedSchedule[]> {
+    if (labId) {
+      return await db.select().from(automatedSchedules)
+        .where(and(eq(automatedSchedules.labId, labId), eq(automatedSchedules.isActive, true)))
+        .orderBy(asc(automatedSchedules.nextRunTime));
+    }
+    return await db.select().from(automatedSchedules)
+      .where(eq(automatedSchedules.isActive, true))
+      .orderBy(asc(automatedSchedules.nextRunTime));
+  }
+
+  async getAutomatedSchedule(id: string): Promise<AutomatedSchedule | undefined> {
+    const [schedule] = await db.select().from(automatedSchedules).where(eq(automatedSchedules.id, id));
+    return schedule;
+  }
+
+  async createAutomatedSchedule(schedule: InsertAutomatedSchedule): Promise<AutomatedSchedule> {
+    const [newSchedule] = await db.insert(automatedSchedules).values(schedule).returning();
+    return newSchedule;
+  }
+
+  async updateAutomatedSchedule(id: string, schedule: Partial<InsertAutomatedSchedule>): Promise<AutomatedSchedule> {
+    const [updatedSchedule] = await db
+      .update(automatedSchedules)
+      .set({ ...schedule, updatedAt: new Date() })
+      .where(eq(automatedSchedules.id, id))
+      .returning();
+    return updatedSchedule;
+  }
+
+  async deleteAutomatedSchedule(id: string): Promise<void> {
+    await db.update(automatedSchedules).set({ isActive: false }).where(eq(automatedSchedules.id, id));
+  }
+
+  async getSchedulesDue(): Promise<AutomatedSchedule[]> {
+    const now = new Date();
+    return await db.select().from(automatedSchedules)
+      .where(and(
+        eq(automatedSchedules.isActive, true),
+        sql`${automatedSchedules.nextRunTime} <= ${now}`
+      ))
+      .orderBy(asc(automatedSchedules.nextRunTime));
+  }
+
+  // Workflow Templates Implementation
+  async getWorkflowTemplates(labId?: string, isPublic?: boolean): Promise<WorkflowTemplate[]> {
+    const conditions = [];
+    if (labId) conditions.push(eq(workflowTemplates.labId, labId));
+    if (isPublic !== undefined) conditions.push(eq(workflowTemplates.isPublic, isPublic));
+    
+    if (conditions.length > 0) {
+      return await db.select().from(workflowTemplates)
+        .where(and(...conditions))
+        .orderBy(desc(workflowTemplates.usageCount), desc(workflowTemplates.createdAt));
+    }
+    
+    return await db.select().from(workflowTemplates).orderBy(desc(workflowTemplates.usageCount), desc(workflowTemplates.createdAt));
+  }
+
+  async getWorkflowTemplate(id: string): Promise<WorkflowTemplate | undefined> {
+    const [template] = await db.select().from(workflowTemplates).where(eq(workflowTemplates.id, id));
+    return template;
+  }
+
+  async createWorkflowTemplate(template: InsertWorkflowTemplate): Promise<WorkflowTemplate> {
+    const [newTemplate] = await db.insert(workflowTemplates).values(template).returning();
+    return newTemplate;
+  }
+
+  async updateWorkflowTemplate(id: string, template: Partial<InsertWorkflowTemplate>): Promise<WorkflowTemplate> {
+    const [updatedTemplate] = await db
+      .update(workflowTemplates)
+      .set({ ...template, updatedAt: new Date() })
+      .where(eq(workflowTemplates.id, id))
+      .returning();
+    return updatedTemplate;
+  }
+
+  async deleteWorkflowTemplate(id: string): Promise<void> {
+    await db.delete(workflowTemplates).where(eq(workflowTemplates.id, id));
+  }
+
+  // =============================================================================
+  // AUTOMATION ENGINE IMPLEMENTATION
+  // =============================================================================
+
+  async executeAutomationRule(ruleId: string, triggeredBy?: string): Promise<WorkflowExecution> {
+    const rule = await this.getAutomationRule(ruleId);
+    if (!rule) {
+      throw new Error(`Automation rule ${ruleId} not found`);
+    }
+
+    // Create execution record
+    const execution = await this.createWorkflowExecution({
+      ruleId,
+      triggerId: rule.triggerId,
+      status: "PENDING",
+      triggeredBy,
+      executionLog: { startTime: new Date().toISOString(), rule: rule.name },
+    });
+
+    try {
+      // Execute the automation action based on type
+      await this.performAutomationAction(rule, execution.id);
+      
+      // Mark as successful
+      return await this.updateWorkflowExecution(execution.id, {
+        status: "SUCCESS",
+        completedAt: new Date(),
+        executionLog: {
+          ...(execution.executionLog as object || {}),
+          endTime: new Date().toISOString(),
+          status: "completed"
+        }
+      });
+    } catch (error) {
+      // Mark as failed
+      return await this.updateWorkflowExecution(execution.id, {
+        status: "FAILED",
+        completedAt: new Date(),
+        error: error instanceof Error ? error.message : String(error),
+        executionLog: {
+          ...(execution.executionLog as object || {}),
+          endTime: new Date().toISOString(),
+          status: "failed",
+          error: error instanceof Error ? error.message : String(error)
+        }
+      });
+    }
+  }
+
+  private async performAutomationAction(rule: AutomationRule, executionId: string): Promise<void> {
+    const config = rule.actionConfig as any;
+    
+    switch (rule.actionType) {
+      case "CREATE_TASK":
+        if (config.templateId) {
+          await this.generateTaskFromTemplate(config.templateId, executionId, config.projectId);
+        } else {
+          // Create task directly from config
+          const newTask = await this.createTask({
+            title: config.title || "Automated Task",
+            description: config.description,
+            studyId: config.projectId,
+            priority: config.priority || "MEDIUM",
+            status: "TODO",
+            isActive: true,
+          });
+          
+          // Log the task generation
+          await this.createTaskGenerationLog({
+            executionId,
+            taskId: newTask.id,
+            projectId: config.projectId,
+            generationType: "WORKFLOW",
+            success: true,
+            metadata: { actionType: rule.actionType, config }
+          });
+        }
+        break;
+        
+      case "SEND_NOTIFICATION":
+        if (config.userId && config.message) {
+          await this.createNotification({
+            userId: config.userId,
+            type: config.notificationType || "CUSTOM_EVENT",
+            title: config.title || "Automated Notification",
+            message: config.message,
+            entityType: config.entityType,
+            entityId: config.entityId,
+          });
+        }
+        break;
+        
+      case "UPDATE_STATUS":
+        if (config.entityType === "task" && config.entityId) {
+          await this.updateTask(config.entityId, { status: config.status });
+        } else if (config.entityType === "study" && config.entityId) {
+          await this.updateStudy(config.entityId, { status: config.status });
+        }
+        break;
+        
+      // Add more action types as needed
+      default:
+        console.warn(`Unknown automation action type: ${rule.actionType}`);
+    }
+  }
+
+  async generateTaskFromTemplate(templateId: string, executionId: string, projectId?: string): Promise<TaskGenerationLog> {
+    const template = await this.getTaskTemplates(undefined, templateId).then(templates => templates[0]);
+    if (!template) {
+      const errorLog = await this.createTaskGenerationLog({
+        executionId,
+        templateId,
+        projectId: projectId || null,
+        generationType: "TEMPLATE",
+        success: false,
+        errorMessage: `Template ${templateId} not found`,
+      });
+      return errorLog;
+    }
+
+    try {
+      // Create task from template
+      const newTask = await this.createTask({
+        title: template.title,
+        description: template.description,
+        studyId: projectId || "", // This should be validated
+        priority: "MEDIUM",
+        status: "TODO",
+        isActive: true,
+        // Apply template tags and custom fields as needed
+      });
+
+      // Apply template tags if any
+      if (template.tags && template.tags.length > 0) {
+        for (const tagName of template.tags) {
+          // Find or create tag and apply to task
+          const existingTags = await this.getTags(template.labId);
+          const tag = existingTags.find(t => t.name === tagName);
+          if (tag) {
+            await this.addTaskTag({
+              taskId: newTask.id,
+              tagId: tag.id,
+              taggedById: "", // Should be the automation user
+            });
+          }
+        }
+      }
+
+      return await this.createTaskGenerationLog({
+        executionId,
+        taskId: newTask.id,
+        templateId,
+        projectId,
+        generationType: "TEMPLATE",
+        success: true,
+        metadata: { templateName: template.name, taskTitle: newTask.title }
+      });
+    } catch (error) {
+      return await this.createTaskGenerationLog({
+        executionId,
+        templateId,
+        projectId,
+        generationType: "TEMPLATE",
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  async processRecurringTasks(): Promise<void> {
+    const dueRecurringTasks = await db.select().from(recurringTasks)
+      .where(and(
+        eq(recurringTasks.isActive, true),
+        sql`${recurringTasks.nextDueDate} <= ${new Date()}`
+      ));
+
+    for (const recurringTask of dueRecurringTasks) {
+      try {
+        // Get the template if linked
+        let template = null;
+        if (recurringTask.templateId) {
+          const templates = await this.getTaskTemplates(undefined, recurringTask.templateId);
+          template = templates[0] || null;
+        }
+
+        // Generate new task instance
+        const newTask = await this.createTask({
+          title: template?.title || `Recurring Task ${new Date().toLocaleDateString()}`,
+          description: template?.description || "Recurring task",
+          studyId: "", // This needs to be fixed in the recurring task schema
+          priority: "MEDIUM",
+          status: "TODO",
+          isActive: true,
+        });
+
+        // Update recurring task for next execution
+        const nextDate = this.calculateNextDueDate(recurringTask);
+        await this.updateRecurringTask(recurringTask.id, {
+          lastCreated: new Date(),
+          nextDueDate: nextDate,
+          occurrenceCount: (parseInt(recurringTask.occurrenceCount || "0") + 1).toString()
+        });
+
+        console.log(`Generated recurring task: ${newTask.title}`);
+      } catch (error) {
+        console.error(`Failed to process recurring task ${recurringTask.id}:`, error);
+      }
+    }
+  }
+
+  private calculateNextDueDate(recurringTask: RecurringTask): Date {
+    const current = new Date(recurringTask.nextDueDate);
+    const interval = parseInt(recurringTask.interval);
+
+    switch (recurringTask.pattern) {
+      case "DAILY":
+        return new Date(current.getTime() + interval * 24 * 60 * 60 * 1000);
+      case "WEEKLY":
+        return new Date(current.getTime() + interval * 7 * 24 * 60 * 60 * 1000);
+      case "MONTHLY":
+        const nextMonth = new Date(current);
+        nextMonth.setMonth(current.getMonth() + interval);
+        return nextMonth;
+      case "QUARTERLY":
+        const nextQuarter = new Date(current);
+        nextQuarter.setMonth(current.getMonth() + interval * 3);
+        return nextQuarter;
+      default:
+        return new Date(current.getTime() + 24 * 60 * 60 * 1000); // Default to daily
+    }
+  }
+
+  async checkTriggerConditions(triggerType: string, entityData: any): Promise<WorkflowTrigger[]> {
+    const triggers = await db.select().from(workflowTriggers)
+      .where(and(
+        eq(workflowTriggers.triggerType, triggerType as any),
+        eq(workflowTriggers.isActive, true)
+      ));
+
+    const matchingTriggers: WorkflowTrigger[] = [];
+
+    for (const trigger of triggers) {
+      if (await this.evaluateTriggerConditions(trigger, entityData)) {
+        matchingTriggers.push(trigger);
+      }
+    }
+
+    return matchingTriggers;
+  }
+
+  private async evaluateTriggerConditions(trigger: WorkflowTrigger, entityData: any): Promise<boolean> {
+    if (!trigger.conditions) return true; // No conditions means always match
+
+    const conditions = trigger.conditions as any;
+    
+    // Simple condition evaluation - can be extended for complex logic
+    for (const [field, expectedValue] of Object.entries(conditions)) {
+      if (entityData[field] !== expectedValue) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
 

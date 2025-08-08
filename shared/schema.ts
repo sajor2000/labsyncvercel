@@ -1223,3 +1223,322 @@ export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
     references: [studies.id],
   }),
 }));
+
+// =============================================================================
+// PHASE 5: ADVANCED AUTOMATION FEATURES
+// =============================================================================
+
+// Automation trigger types
+export const automationTriggerTypeEnum = pgEnum("automation_trigger_type", [
+  "TASK_CREATED",
+  "TASK_COMPLETED", 
+  "TASK_OVERDUE",
+  "TASK_ASSIGNED",
+  "PROJECT_STATUS_CHANGE",
+  "DEADLINE_APPROACHING",
+  "RECURRING_SCHEDULE",
+  "CUSTOM_EVENT",
+  "TIME_BASED",
+  "WEBHOOK"
+]);
+
+// Automation action types
+export const automationActionTypeEnum = pgEnum("automation_action_type", [
+  "CREATE_TASK",
+  "ASSIGN_TASK",
+  "UPDATE_STATUS",
+  "SEND_NOTIFICATION",
+  "CREATE_PROJECT",
+  "ADD_TAG",
+  "SET_PRIORITY",
+  "SCHEDULE_REMINDER",
+  "WEBHOOK_CALL",
+  "CUSTOM_SCRIPT"
+]);
+
+// Workflow execution status
+export const workflowStatusEnum = pgEnum("workflow_status", [
+  "ACTIVE",
+  "PAUSED",
+  "DISABLED",
+  "DRAFT"
+]);
+
+// Execution status
+export const executionStatusEnum = pgEnum("execution_status", [
+  "SUCCESS",
+  "FAILED",
+  "PENDING",
+  "CANCELLED",
+  "PARTIAL_SUCCESS"
+]);
+
+// Workflow Triggers - Define when automation should run
+export const workflowTriggers = pgTable(
+  "workflow_triggers",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    labId: varchar("lab_id").notNull().references(() => labs.id),
+    name: varchar("name").notNull(),
+    description: text("description"),
+    triggerType: automationTriggerTypeEnum("trigger_type").notNull(),
+    conditions: json("conditions"), // JSON conditions for trigger matching
+    isActive: boolean("is_active").default(true),
+    createdById: varchar("created_by_id").notNull().references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("workflow_triggers_lab_idx").on(table.labId),
+    index("workflow_triggers_type_idx").on(table.triggerType),
+    index("workflow_triggers_active_idx").on(table.isActive),
+  ]
+);
+
+// Automation Rules - Define what actions to take when triggers fire
+export const automationRules = pgTable(
+  "automation_rules",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    labId: varchar("lab_id").notNull().references(() => labs.id),
+    triggerId: varchar("trigger_id").notNull().references(() => workflowTriggers.id, { onDelete: "cascade" }),
+    name: varchar("name").notNull(),
+    description: text("description"),
+    actionType: automationActionTypeEnum("action_type").notNull(),
+    actionConfig: json("action_config").notNull(), // Configuration for the action
+    priority: varchar("priority").default("MEDIUM"), // HIGH, MEDIUM, LOW
+    delayMinutes: varchar("delay_minutes").default("0"), // Delay before execution
+    conditions: json("conditions"), // Additional conditions for rule execution
+    isActive: boolean("is_active").default(true),
+    createdById: varchar("created_by_id").notNull().references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("automation_rules_lab_idx").on(table.labId),
+    index("automation_rules_trigger_idx").on(table.triggerId),
+    index("automation_rules_active_idx").on(table.isActive),
+    index("automation_rules_priority_idx").on(table.priority),
+  ]
+);
+
+// Workflow Executions - History of automation rule executions
+export const workflowExecutions = pgTable(
+  "workflow_executions",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    ruleId: varchar("rule_id").notNull().references(() => automationRules.id),
+    triggerId: varchar("trigger_id").notNull().references(() => workflowTriggers.id),
+    status: executionStatusEnum("status").notNull(),
+    startedAt: timestamp("started_at").defaultNow(),
+    completedAt: timestamp("completed_at"),
+    error: text("error"), // Error message if execution failed
+    executionLog: json("execution_log"), // Detailed execution information
+    triggeredBy: varchar("triggered_by"), // What caused the trigger (user ID, system event, etc.)
+    affectedEntities: json("affected_entities"), // List of entities created/modified
+  },
+  (table) => [
+    index("workflow_executions_rule_idx").on(table.ruleId),
+    index("workflow_executions_status_idx").on(table.status),
+    index("workflow_executions_started_idx").on(table.startedAt),
+  ]
+);
+
+// Task Generation Logs - Track automated task creation
+export const taskGenerationLogs = pgTable(
+  "task_generation_logs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    executionId: varchar("execution_id").notNull().references(() => workflowExecutions.id),
+    taskId: varchar("task_id").references(() => tasks.id), // Null if task creation failed
+    templateId: varchar("template_id").references(() => taskTemplates.id),
+    projectId: varchar("project_id").references(() => studies.id),
+    generationType: varchar("generation_type").notNull(), // TEMPLATE, RECURRING, WORKFLOW
+    success: boolean("success").notNull(),
+    errorMessage: text("error_message"),
+    generatedAt: timestamp("generated_at").defaultNow(),
+    metadata: json("metadata"), // Additional generation context
+  },
+  (table) => [
+    index("task_generation_execution_idx").on(table.executionId),
+    index("task_generation_task_idx").on(table.taskId),
+    index("task_generation_type_idx").on(table.generationType),
+    index("task_generation_date_idx").on(table.generatedAt),
+  ]
+);
+
+// Automated Schedules - Manage recurring workflows and intelligent scheduling
+export const automatedSchedules = pgTable(
+  "automated_schedules",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    labId: varchar("lab_id").notNull().references(() => labs.id),
+    name: varchar("name").notNull(),
+    description: text("description"),
+    scheduleType: varchar("schedule_type").notNull(), // CRON, RECURRING, SMART
+    cronExpression: varchar("cron_expression"), // Standard cron expression
+    recurringPattern: json("recurring_pattern"), // For recurring schedules
+    smartConfig: json("smart_config"), // For intelligent scheduling
+    triggerId: varchar("trigger_id").references(() => workflowTriggers.id),
+    nextRunTime: timestamp("next_run_time"),
+    lastRunTime: timestamp("last_run_time"),
+    runCount: varchar("run_count").default("0"),
+    maxRuns: varchar("max_runs"), // Optional limit on executions
+    isActive: boolean("is_active").default(true),
+    createdById: varchar("created_by_id").notNull().references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("automated_schedules_lab_idx").on(table.labId),
+    index("automated_schedules_next_run_idx").on(table.nextRunTime),
+    index("automated_schedules_active_idx").on(table.isActive),
+    index("automated_schedules_type_idx").on(table.scheduleType),
+  ]
+);
+
+// Workflow Templates - Reusable workflow configurations
+export const workflowTemplates = pgTable(
+  "workflow_templates",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    labId: varchar("lab_id").notNull().references(() => labs.id),
+    name: varchar("name").notNull(),
+    description: text("description"),
+    category: varchar("category"), // PROJECT_MANAGEMENT, COMPLIANCE, NOTIFICATIONS, etc.
+    triggerTemplate: json("trigger_template"), // Template for trigger configuration
+    ruleTemplates: json("rule_templates"), // Templates for automation rules
+    variables: json("variables"), // Template variables for customization
+    isPublic: boolean("is_public").default(false), // Can be used by other labs
+    usageCount: varchar("usage_count").default("0"),
+    rating: varchar("rating"), // Average user rating
+    createdById: varchar("created_by_id").notNull().references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("workflow_templates_lab_idx").on(table.labId),
+    index("workflow_templates_category_idx").on(table.category),
+    index("workflow_templates_public_idx").on(table.isPublic),
+    index("workflow_templates_usage_idx").on(table.usageCount),
+  ]
+);
+
+// Type exports for Phase 5
+export type WorkflowTrigger = typeof workflowTriggers.$inferSelect;
+export type InsertWorkflowTrigger = typeof workflowTriggers.$inferInsert;
+export type AutomationRule = typeof automationRules.$inferSelect;
+export type InsertAutomationRule = typeof automationRules.$inferInsert;
+export type WorkflowExecution = typeof workflowExecutions.$inferSelect;
+export type InsertWorkflowExecution = typeof workflowExecutions.$inferInsert;
+export type TaskGenerationLog = typeof taskGenerationLogs.$inferSelect;
+export type InsertTaskGenerationLog = typeof taskGenerationLogs.$inferInsert;
+export type AutomatedSchedule = typeof automatedSchedules.$inferSelect;
+export type InsertAutomatedSchedule = typeof automatedSchedules.$inferInsert;
+export type WorkflowTemplate = typeof workflowTemplates.$inferSelect;
+export type InsertWorkflowTemplate = typeof workflowTemplates.$inferInsert;
+
+// Zod schemas for Phase 5
+export const insertWorkflowTriggerSchema = createInsertSchema(workflowTriggers);
+export const insertAutomationRuleSchema = createInsertSchema(automationRules);
+export const insertWorkflowExecutionSchema = createInsertSchema(workflowExecutions);
+export const insertTaskGenerationLogSchema = createInsertSchema(taskGenerationLogs);
+export const insertAutomatedScheduleSchema = createInsertSchema(automatedSchedules);
+export const insertWorkflowTemplateSchema = createInsertSchema(workflowTemplates);
+
+// =============================================================================
+// PHASE 5: AUTOMATION RELATIONS
+// =============================================================================
+
+// Workflow Trigger relations
+export const workflowTriggersRelations = relations(workflowTriggers, ({ one, many }) => ({
+  lab: one(labs, {
+    fields: [workflowTriggers.labId],
+    references: [labs.id],
+  }),
+  createdBy: one(users, {
+    fields: [workflowTriggers.createdById],
+    references: [users.id],
+  }),
+  rules: many(automationRules),
+  executions: many(workflowExecutions),
+  schedules: many(automatedSchedules),
+}));
+
+// Automation Rule relations
+export const automationRulesRelations = relations(automationRules, ({ one, many }) => ({
+  lab: one(labs, {
+    fields: [automationRules.labId],
+    references: [labs.id],
+  }),
+  trigger: one(workflowTriggers, {
+    fields: [automationRules.triggerId],
+    references: [workflowTriggers.id],
+  }),
+  createdBy: one(users, {
+    fields: [automationRules.createdById],
+    references: [users.id],
+  }),
+  executions: many(workflowExecutions),
+}));
+
+// Workflow Execution relations
+export const workflowExecutionsRelations = relations(workflowExecutions, ({ one, many }) => ({
+  rule: one(automationRules, {
+    fields: [workflowExecutions.ruleId],
+    references: [automationRules.id],
+  }),
+  trigger: one(workflowTriggers, {
+    fields: [workflowExecutions.triggerId],
+    references: [workflowTriggers.id],
+  }),
+  taskGenerations: many(taskGenerationLogs),
+}));
+
+// Task Generation Log relations
+export const taskGenerationLogsRelations = relations(taskGenerationLogs, ({ one }) => ({
+  execution: one(workflowExecutions, {
+    fields: [taskGenerationLogs.executionId],
+    references: [workflowExecutions.id],
+  }),
+  task: one(tasks, {
+    fields: [taskGenerationLogs.taskId],
+    references: [tasks.id],
+  }),
+  template: one(taskTemplates, {
+    fields: [taskGenerationLogs.templateId],
+    references: [taskTemplates.id],
+  }),
+  project: one(studies, {
+    fields: [taskGenerationLogs.projectId],
+    references: [studies.id],
+  }),
+}));
+
+// Automated Schedule relations
+export const automatedSchedulesRelations = relations(automatedSchedules, ({ one }) => ({
+  lab: one(labs, {
+    fields: [automatedSchedules.labId],
+    references: [labs.id],
+  }),
+  trigger: one(workflowTriggers, {
+    fields: [automatedSchedules.triggerId],
+    references: [workflowTriggers.id],
+  }),
+  createdBy: one(users, {
+    fields: [automatedSchedules.createdById],
+    references: [users.id],
+  }),
+}));
+
+// Workflow Template relations
+export const workflowTemplatesRelations = relations(workflowTemplates, ({ one }) => ({
+  lab: one(labs, {
+    fields: [workflowTemplates.labId],
+    references: [labs.id],
+  }),
+  createdBy: one(users, {
+    fields: [workflowTemplates.createdById],
+    references: [users.id],
+  }),
+}));
