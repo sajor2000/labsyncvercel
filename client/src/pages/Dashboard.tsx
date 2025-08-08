@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { LabToggleDemo } from "@/components/LabToggleDemo";
-import { CreateSampleDataButton } from "@/components/CreateSampleDataButton";
 import { useToast } from "@/hooks/use-toast";
 import { useLabContext } from "@/hooks/useLabContext";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -101,12 +100,9 @@ export default function Dashboard() {
     <main className="flex-1 overflow-y-auto p-6">
       {/* Welcome Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Welcome back{(user as any)?.firstName ? `, ${(user as any).firstName}` : ''}!
-          </h1>
-          <CreateSampleDataButton />
-        </div>
+        <h1 className="text-3xl font-bold text-foreground mb-2">
+          Welcome back{(user as any)?.firstName ? `, ${(user as any).firstName}` : ''}!
+        </h1>
         <p className="text-muted-foreground">
           {selectedLab 
             ? `Here's an overview of ${selectedLab.name} activities`
