@@ -17,7 +17,7 @@ import {
   Lightbulb,
   Clock
 } from "lucide-react";
-import logoUrl from "@assets/FullLogo_1754662799020.png";
+import logoUrl from "@assets/Xnip2025-08-08_14-04-18_1754679867710.png";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLabContext } from "@/hooks/useLabContext";

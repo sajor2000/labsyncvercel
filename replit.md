@@ -2,7 +2,7 @@
 
 ## Overview
 
-Lab Manager is a comprehensive medical research lab management system designed to streamline the research workflow for laboratories like Rush Interdisciplinary Consortium for Critical Care Trials and Data Science (RICCC) and Rush Health Equity Data Analytics Studio (RHEDAS). The system provides study lifecycle management, AI-powered standup meetings, real-time collaboration, and task tracking capabilities. It's built as a full-stack application with a React frontend and Express backend, utilizing PostgreSQL for data persistence and integrating with external services for file storage and AI processing.
+LabSync is a comprehensive medical research lab management system designed to streamline the research workflow for laboratories like Rush Interdisciplinary Consortium for Critical Care Trials and Data Science (RICCC) and Rush Health Equity Data Analytics Studio (RHEDAS). The system provides study lifecycle management, AI-powered standup meetings, real-time collaboration, and task tracking capabilities with the tagline "Making Science Easier". It's built as a full-stack application with a React frontend and Express backend, utilizing PostgreSQL for data persistence and integrating with external services for file storage and AI processing.
 
 ## User Preferences
 
@@ -66,7 +66,8 @@ Color Scheme: Slack-inspired dark theme with professional color palette (purple 
 - **Styling**: Fixed container sizing and image constraints to prevent overlapping issues
 
 ### Theme & Styling
-- **Color Palette**: Slack-inspired professional theme with purple primary (#8B5FE6), green accent (#22C55E), and neutral grays
+- **Branding**: LabSync logo with teal network design and "Making Science Easier" tagline
+- **Color Palette**: Teal-based professional theme with teal primary (#0D9488), purple accent (#8B5FE6), and neutral grays
 - **Dark Mode**: Default dark theme with proper contrast ratios and accessibility considerations
 - **Scrollbars**: Custom Slack-style scrollbar design for better visual consistency
 - **Focus States**: Enhanced accessibility with proper focus indicators
