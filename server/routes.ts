@@ -69,7 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Bucket deleted successfully" });
     } catch (error) {
       console.error("Error deleting bucket:", error);
-      res.status(500).json({ message: "Failed to delete bucket" });
+      res.status(500).json({ message: (error as Error).message || "Failed to delete bucket" });
     }
   });
 
