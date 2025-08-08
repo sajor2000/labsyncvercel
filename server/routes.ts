@@ -111,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Study deleted successfully" });
     } catch (error) {
       console.error("Error deleting study:", error);
-      res.status(500).json({ message: "Failed to delete study" });
+      res.status(500).json({ message: (error as Error).message || "Failed to delete study" });
     }
   });
 
