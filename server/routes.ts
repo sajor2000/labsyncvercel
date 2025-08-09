@@ -224,10 +224,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Task routes
+  // Enhanced Task routes with full CRUD and drag-drop support
   app.get("/api/tasks", isAuthenticated, async (req, res) => {
     try {
-      const tasks = await storage.getTasks();
+      const studyId = req.query.studyId as string;
+      const tasks = await storage.getTasks(studyId);
       res.json(tasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -237,7 +238,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tasks", isAuthenticated, async (req, res) => {
     try {
-      const task = await storage.createTask(req.body);
+      const taskData = {
+        ...req.body,
+        createdBy: (req.user as any)?.claims?.sub
+      };
+      const task = await storage.createTask(taskData);
       res.json(task);
     } catch (error) {
       console.error("Error creating task:", error);
@@ -252,6 +257,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating task:", error);
       res.status(500).json({ message: "Failed to update task" });
+    }
+  });
+
+  app.delete("/api/tasks/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteTask(req.params.id);
+      res.json({ message: "Task deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      res.status(500).json({ message: "Failed to delete task" });
+    }
+  });
+
+  // Enhanced task operations for project board
+  app.patch("/api/tasks/:id/move", isAuthenticated, async (req, res) => {
+    try {
+      const { newStatus, newPosition, newStudyId } = req.body;
+      const task = await storage.updateTask(req.params.id, {
+        status: newStatus,
+        position: newPosition,
+        studyId: newStudyId
+      });
+      res.json(task);
+    } catch (error) {
+      console.error("Error moving task:", error);
+      res.status(500).json({ message: "Failed to move task" });
+    }
+  });
+
+  app.patch("/api/tasks/:id/status", isAuthenticated, async (req, res) => {
+    try {
+      const { status } = req.body;
+      const task = await storage.updateTask(req.params.id, { status });
+      res.json(task);
+    } catch (error) {
+      console.error("Error updating task status:", error);
+      res.status(500).json({ message: "Failed to update task status" });
+    }
+  });
+
+  app.patch("/api/tasks/:id/assign", isAuthenticated, async (req, res) => {
+    try {
+      const { assigneeId } = req.body;
+      const task = await storage.updateTask(req.params.id, { assigneeId });
+      res.json(task);
+    } catch (error) {
+      console.error("Error assigning task:", error);
+      res.status(500).json({ message: "Failed to assign task" });
     }
   });
 

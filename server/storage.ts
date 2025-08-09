@@ -492,6 +492,14 @@ export class DatabaseStorage implements IStorage {
     return updatedTask;
   }
 
+  async deleteTask(id: string): Promise<void> {
+    await db.delete(tasks).where(eq(tasks.id, id));
+  }
+
+  async moveTask(id: string, updates: { status?: string; position?: string; studyId?: string }): Promise<Task> {
+    return this.updateTask(id, updates);
+  }
+
   // Standup operations
   async getStandupMeetings(labId: string): Promise<StandupMeeting[]> {
     return await db

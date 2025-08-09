@@ -8,7 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Filter, Search, Edit, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Filter, Search, Edit, Trash2, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -22,6 +22,25 @@ import { ChevronsUpDown } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { Study, Lab, Bucket, TeamMember, Task } from "@shared/schema";
 
 const priorityColors = {
@@ -59,6 +78,100 @@ const fundingColors = {
   NONE: "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
 };
 
+// Sortable Task Row Component for drag and drop
+function SortableTaskRow({ task, assignee, onEdit, onDelete }: {
+  task: Task;
+  assignee?: TeamMember;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className={`hover:bg-muted/25 border-l-4 border-l-muted ${isDragging ? 'z-50' : ''}`}
+    >
+      <TableCell className="pl-8">
+        <div className="flex items-center gap-2">
+          <div
+            className="cursor-grab active:cursor-grabbing p-1"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-3 w-3 text-muted-foreground" />
+          </div>
+          <div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div>
+        </div>
+      </TableCell>
+      <TableCell className="font-medium pl-4">
+        <div className="flex flex-col gap-1">
+          <span className="text-sm">{task.title}</span>
+          {task.description && (
+            <span className="text-xs text-muted-foreground line-clamp-1">
+              {task.description}
+            </span>
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <span className="text-xs text-muted-foreground">Subtask</span>
+      </TableCell>
+      <TableCell>
+        <Badge className={statusColors[task.status as keyof typeof statusColors] || statusColors.TODO} variant="secondary">
+          {task.status?.replace('_', ' ') || 'TODO'}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        <Badge className={priorityColors[task.priority as keyof typeof priorityColors] || priorityColors.MEDIUM} variant="outline">
+          {task.priority || 'MEDIUM'}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        {assignee ? (
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs">
+              {(assignee.user?.firstName?.[0] || assignee.user?.email?.[0] || '?').toUpperCase()}
+            </div>
+            <span className="text-xs">
+              {assignee.user?.firstName || assignee.user?.email || assignee.userId}
+            </span>
+          </div>
+        ) : (
+          <span className="text-xs text-muted-foreground">Unassigned</span>
+        )}
+      </TableCell>
+      <TableCell>
+        <span className="text-xs text-muted-foreground">Task</span>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={onEdit}>
+            <Edit className="h-3 w-3" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-destructive" onClick={onDelete}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 // Quick task form schema
 const quickTaskSchema = z.object({
   title: z.string().min(1, "Task title is required"),
@@ -81,6 +194,14 @@ export default function TaskManagement() {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [expandedStudies, setExpandedStudies] = useState<Set<string>>(new Set());
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -124,7 +245,7 @@ export default function TaskManagement() {
     },
   });
 
-  // Create task mutation  
+  // Task operations mutations
   const createTaskMutation = useMutation({
     mutationFn: async (data: QuickTaskFormValues) => {
       return apiRequest('/api/tasks', 'POST', {
@@ -161,6 +282,77 @@ export default function TaskManagement() {
       });
     },
   });
+
+  const moveTaskMutation = useMutation({
+    mutationFn: async ({ taskId, newStatus, newPosition, newStudyId }: {
+      taskId: string;
+      newStatus?: string;
+      newPosition?: string;
+      newStudyId?: string;
+    }) => {
+      return apiRequest(`/api/tasks/${taskId}/move`, 'PATCH', {
+        newStatus,
+        newPosition,
+        newStudyId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      toast({
+        title: "Success",
+        description: "Task moved successfully",
+      });
+    },
+    onError: (error) => {
+      console.error("Move task error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to move task",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      return apiRequest(`/api/tasks/${taskId}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      toast({
+        title: "Success",
+        description: "Task deleted successfully",
+      });
+    },
+    onError: (error) => {
+      console.error("Delete task error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete task",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const activeTask = tasks.find(task => task.id === active.id);
+    if (!activeTask) return;
+
+    // For now, just update position within same study
+    const overTask = tasks.find(task => task.id === over.id);
+    if (overTask && activeTask.studyId === overTask.studyId) {
+      moveTaskMutation.mutate({
+        taskId: activeTask.id,
+        newPosition: String(Date.now()),
+      });
+    }
+  };
 
   // Filter studies by lab context
   const labFilteredStudies = contextLab ? studies.filter(study => study.labId === contextLab.id) : studies;
@@ -431,20 +623,29 @@ export default function TaskManagement() {
               ))}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12"></TableHead>
-                  <TableHead className="min-w-[200px]">Project/Study Name</TableHead>
-                  <TableHead>Study Type</TableHead>
-                  <TableHead>Study Status</TableHead>
-                  <TableHead>Funding</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Tasks</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12"></TableHead>
+                    <TableHead className="min-w-[200px]">Project/Study Name</TableHead>
+                    <TableHead>Study Type</TableHead>
+                    <TableHead>Study Status</TableHead>
+                    <TableHead>Funding</TableHead>
+                    <TableHead>Team</TableHead>
+                    <TableHead>Tasks</TableHead>
+                    <TableHead className="w-20">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <SortableContext
+                    items={filteredTasks.map(task => task.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
                 {labFilteredStudies.map((study) => {
                   const studyTasks = tasksByStudy[study.id] || [];
                   const filteredStudyTasks = studyTasks.filter(task => {
@@ -554,66 +755,18 @@ export default function TaskManagement() {
                         </div>
                       </TableCell>
                     </TableRow>,
-                    // Task rows (only shown when expanded)
+                    // Task rows (only shown when expanded) - now with drag and drop
                     ...(isExpanded ? filteredStudyTasks.map((task) => {
                       const assignee = teamMembers.find(m => m.userId === task.assigneeId);
                       
                       return (
-                        <TableRow key={task.id} className="hover:bg-muted/25 border-l-4 border-l-muted">
-                          <TableCell className="pl-8">
-                            <div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div>
-                          </TableCell>
-                          <TableCell className="font-medium pl-4">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-sm">{task.title}</span>
-                              {task.description && (
-                                <span className="text-xs text-muted-foreground line-clamp-1">
-                                  {task.description}
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-xs text-muted-foreground">Subtask</span>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={statusColors[task.status as keyof typeof statusColors] || statusColors.TODO} variant="secondary">
-                              {task.status?.replace('_', ' ') || 'TODO'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={priorityColors[task.priority as keyof typeof priorityColors] || priorityColors.MEDIUM} variant="outline">
-                              {task.priority || 'MEDIUM'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {assignee ? (
-                              <div className="flex items-center gap-2">
-                                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs">
-                                  {(assignee.user?.firstName?.[0] || assignee.user?.email?.[0] || '?').toUpperCase()}
-                                </div>
-                                <span className="text-xs">
-                                  {assignee.user?.firstName || assignee.user?.email || assignee.userId}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">Unassigned</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-xs text-muted-foreground">Task</span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-destructive">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                        <SortableTaskRow
+                          key={`task-${task.id}`}
+                          task={task}
+                          assignee={assignee}
+                          onEdit={() => console.log('Edit task:', task.id)}
+                          onDelete={() => deleteTaskMutation.mutate(task.id)}
+                        />
                       );
                     }) : [])
                   ];
@@ -634,8 +787,10 @@ export default function TaskManagement() {
                     </TableCell>
                   </TableRow>
                 )}
-              </TableBody>
-            </Table>
+                  </SortableContext>
+                </TableBody>
+              </Table>
+            </DndContext>
           )}
         </CardContent>
       </Card>
