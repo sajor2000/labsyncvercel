@@ -2,11 +2,28 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import multer from "multer";
 
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+
+  // Configure multer for file uploads (audio files)
+  const upload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 25 * 1024 * 1024, // 25MB limit for audio files
+    },
+    fileFilter: (req, file, cb) => {
+      // Accept audio files
+      if (file.mimetype.startsWith('audio/') || file.mimetype.includes('webm')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only audio files are allowed'));
+      }
+    }
+  });
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -532,6 +549,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error during cleanup:", error);
       res.status(500).json({ message: "Failed to cleanup old meetings" });
+    }
+  });
+
+  // Audio transcription endpoint using OpenAI Whisper
+  app.post('/api/transcribe', isAuthenticated, upload.single('audio'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "Audio file is required" });
+      }
+
+      const audioFile = req.file;
+      
+      // Import OpenAI
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
+      // Create a temporary file from the buffer
+      const fs = await import('fs');
+      const path = await import('path');
+      const { randomUUID } = await import('crypto');
+      
+      const tempDir = path.join(process.cwd(), 'temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      const tempFilePath = path.join(tempDir, `${randomUUID()}.webm`);
+      fs.writeFileSync(tempFilePath, audioFile.buffer);
+
+      try {
+        // Transcribe using OpenAI Whisper
+        const transcription = await openai.audio.transcriptions.create({
+          file: fs.createReadStream(tempFilePath),
+          model: "whisper-1",
+          language: "en",
+          response_format: "text"
+        });
+
+        // Clean up temp file
+        fs.unlinkSync(tempFilePath);
+
+        res.json({ transcript: transcription });
+      } catch (transcriptionError) {
+        // Clean up temp file on error
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath);
+        }
+        throw transcriptionError;
+      }
+      
+    } catch (error) {
+      console.error("Error transcribing audio:", error);
+      res.status(500).json({ message: "Failed to transcribe audio" });
     }
   });
 

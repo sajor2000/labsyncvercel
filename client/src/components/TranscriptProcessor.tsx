@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Mic, FileText, Users, Clock, Mail, Send } from "lucide-react";
+import { Loader2, Mic, MicOff, FileText, Users, Clock, Mail, Send, Play, Square, Volume2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,9 +27,53 @@ export function TranscriptProcessor() {
   const [transcript, setTranscript] = useState("");
   const [processedResult, setProcessedResult] = useState<ProcessedResult | null>(null);
   const [emailRecipients, setEmailRecipients] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { selectedLab } = useLabContext();
+
+  const transcribeMutation = useMutation({
+    mutationFn: async (audioBlob: Blob) => {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.wav');
+      
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Transcription failed');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (result) => {
+      setTranscript(result.transcript);
+      setIsTranscribing(false);
+      toast({
+        title: "Success",
+        description: "Audio transcribed successfully",
+      });
+    },
+    onError: (error) => {
+      setIsTranscribing(false);
+      toast({
+        title: "Error",
+        description: "Failed to transcribe audio",
+        variant: "destructive",
+      });
+      console.error("Transcription error:", error);
+    },
+  });
 
   const processMutation = useMutation({
     mutationFn: async (data: { transcript: string; labId?: string }) => {
@@ -78,6 +122,97 @@ export function TranscriptProcessor() {
     },
   });
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
+      });
+      
+      streamRef.current = stream;
+      
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      const chunks: BlobPart[] = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm;codecs=opus' });
+        setAudioBlob(blob);
+        
+        // Clean up stream
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+      };
+      
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+      // Start timer
+      intervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      
+      toast({
+        title: "Recording Started",
+        description: "Speak clearly for best transcription quality",
+      });
+      
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      toast({
+        title: "Error",
+        description: "Failed to start recording. Please check microphone permissions.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      
+      toast({
+        title: "Recording Stopped",
+        description: "Processing audio for transcription...",
+      });
+    }
+  };
+
+  const transcribeAudio = () => {
+    if (!audioBlob) {
+      toast({
+        title: "Error",
+        description: "No audio recording found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTranscribing(true);
+    transcribeMutation.mutate(audioBlob);
+  };
+
   const handleProcess = () => {
     if (!transcript.trim()) {
       toast({
@@ -98,6 +233,13 @@ export function TranscriptProcessor() {
     setTranscript("");
     setProcessedResult(null);
     setEmailRecipients("");
+    setAudioBlob(null);
+    setRecordingTime(0);
+    
+    // Stop recording if active
+    if (isRecording) {
+      stopRecording();
+    }
   };
 
   const handleSendEmail = () => {
@@ -140,13 +282,101 @@ export function TranscriptProcessor() {
     });
   };
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="space-y-6">
+      {/* Recording Section */}
+      <Card className="border-2 border-dashed border-blue-300 dark:border-blue-700">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {isRecording ? (
+              <MicOff className="h-5 w-5 text-red-500 animate-pulse" />
+            ) : (
+              <Mic className="h-5 w-5 text-blue-500" />
+            )}
+            Live Audio Recording
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-center p-8 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg">
+            <div className="text-center space-y-4">
+              {!isRecording && !audioBlob ? (
+                <Button
+                  onClick={startRecording}
+                  size="lg"
+                  className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg"
+                  data-testid="button-start-recording"
+                >
+                  <Mic className="h-6 w-6 mr-2" />
+                  Start Recording
+                </Button>
+              ) : isRecording ? (
+                <div className="space-y-4">
+                  <div className="text-red-600 dark:text-red-400 font-semibold text-lg">
+                    Recording: {formatTime(recordingTime)}
+                  </div>
+                  <div className="flex gap-4 justify-center">
+                    <Button
+                      onClick={stopRecording}
+                      size="lg"
+                      variant="destructive"
+                      className="px-8 py-4"
+                      data-testid="button-stop-recording"
+                    >
+                      <Square className="h-6 w-6 mr-2" />
+                      Stop Recording
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground animate-pulse">
+                    Speak clearly for best transcription quality...
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 justify-center text-green-600 dark:text-green-400">
+                    <Volume2 className="h-5 w-5" />
+                    <span>Recording Complete ({formatTime(recordingTime)})</span>
+                  </div>
+                  <div className="flex gap-4 justify-center">
+                    <Button
+                      onClick={transcribeAudio}
+                      disabled={isTranscribing}
+                      className="bg-blue-600 hover:bg-blue-700"
+                      data-testid="button-transcribe"
+                    >
+                      {isTranscribing ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <FileText className="h-4 w-4 mr-2" />
+                      )}
+                      {isTranscribing ? "Transcribing..." : "Transcribe with Whisper"}
+                    </Button>
+                    <Button
+                      onClick={startRecording}
+                      variant="outline"
+                      data-testid="button-record-again"
+                    >
+                      <Mic className="h-4 w-4 mr-2" />
+                      Record Again
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Input Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Mic className="h-5 w-5" />
+            <FileText className="h-5 w-5" />
             AI-Powered Meeting Transcript Processor
           </CardTitle>
         </CardHeader>
@@ -157,7 +387,7 @@ export function TranscriptProcessor() {
             </label>
             <Textarea
               id="transcript"
-              placeholder="Paste your meeting transcript here... The AI will automatically extract tasks, timelines, and action items from the conversation."
+              placeholder="Paste your meeting transcript here or use the recording feature above... The AI will automatically extract tasks, timelines, and action items from the conversation."
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
               rows={8}
@@ -187,7 +417,7 @@ export function TranscriptProcessor() {
               disabled={processMutation.isPending}
               data-testid="button-clear-transcript"
             >
-              Clear
+              Clear All
             </Button>
           </div>
         </CardContent>
