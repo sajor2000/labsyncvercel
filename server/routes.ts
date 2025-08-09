@@ -447,6 +447,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Task Assignment routes
+  app.get("/api/task-assignments/:taskId", isAuthenticated, async (req, res) => {
+    try {
+      const assignments = await storage.getTaskAssignments(req.params.taskId);
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching task assignments:", error);
+      res.status(500).json({ message: "Failed to fetch task assignments" });
+    }
+  });
+
+  app.post("/api/task-assignments", isAuthenticated, async (req, res) => {
+    try {
+      const assignment = await storage.assignUserToTask(req.body);
+      res.json(assignment);
+    } catch (error) {
+      console.error("Error creating task assignment:", error);
+      res.status(500).json({ message: "Failed to create task assignment" });
+    }
+  });
+
+  app.delete("/api/task-assignments/:taskId/:userId", isAuthenticated, async (req, res) => {
+    try {
+      await storage.removeTaskAssignment(req.params.taskId, req.params.userId);
+      res.json({ message: "Task assignment removed successfully" });
+    } catch (error) {
+      console.error("Error removing task assignment:", error);
+      res.status(500).json({ message: "Failed to remove task assignment" });
+    }
+  });
+
   // =============================================================================
   // PHASE 5: AUTOMATION API ENDPOINTS
   // =============================================================================

@@ -8,16 +8,19 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MoreHorizontal, User, Calendar, Flag, Folder, ArrowRight, GripVertical } from "lucide-react";
+import { Plus, MoreHorizontal, User, Calendar, Flag, Folder, ArrowRight, GripVertical, Check, ChevronsUpDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertTaskSchema, type InsertTask } from "@shared/schema";
+import { insertTaskSchema, type InsertTask, type User as SchemaUser, type ProjectMember } from "@shared/schema";
 import { z } from "zod";
 import {
   DndContext,
@@ -138,6 +141,7 @@ function DraggableTaskCard({ task }: { task: Task }) {
               {task.assigneeId && (
                 <div className="flex items-center">
                   <User className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs ml-1">Assigned</span>
                 </div>
               )}
             </div>
@@ -246,6 +250,7 @@ export default function KanbanBoard() {
   const [selectedStudy, setSelectedStudy] = useState("");
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
 
   // DND Kit sensors
   const sensors = useSensors(
@@ -305,6 +310,12 @@ export default function KanbanBoard() {
     },
   });
 
+  // Fetch project members for assignment
+  const { data: projectMembers = [] } = useQuery<ProjectMember[]>({
+    queryKey: ['/api/project-members', selectedStudy],
+    enabled: isAuthenticated && !!selectedStudy,
+  });
+
   // Task form schema
   const taskFormSchema = insertTaskSchema.extend({
     title: z.string().min(1, "Title is required"),
@@ -340,15 +351,30 @@ export default function KanbanBoard() {
         studyId: selectedStudy,
         createdBy: "current-user", // This would come from auth context
       };
-      return apiRequest('/api/tasks', 'POST', taskData);
+      const newTask = await apiRequest('/api/tasks', 'POST', taskData);
+      
+      // Create task assignments if any assignees selected
+      if (selectedAssignees.length > 0) {
+        const assignmentPromises = selectedAssignees.map(userId =>
+          apiRequest('/api/task-assignments', 'POST', {
+            taskId: newTask.id,
+            userId,
+            projectId: selectedStudy,
+          })
+        );
+        await Promise.all(assignmentPromises);
+      }
+      
+      return newTask;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       setIsCreateTaskOpen(false);
+      setSelectedAssignees([]);
       taskForm.reset();
       toast({
         title: "Success",
-        description: "Task created successfully",
+        description: `Task created and assigned to ${selectedAssignees.length} ${selectedAssignees.length === 1 ? 'person' : 'people'}`,
       });
     },
     onError: (error) => {
@@ -728,6 +754,85 @@ export default function KanbanBoard() {
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {/* Assignment Field */}
+              <div>
+                <FormLabel>Assign to Team Members</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between"
+                      data-testid="button-select-assignees"
+                    >
+                      {selectedAssignees.length === 0
+                        ? "Select team members..."
+                        : selectedAssignees.length === 1
+                        ? `1 member selected`
+                        : `${selectedAssignees.length} members selected`}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search team members..." />
+                      <CommandList>
+                        <CommandEmpty>No team members found.</CommandEmpty>
+                        <CommandGroup>
+                          {projectMembers.map((member) => (
+                            <CommandItem
+                              key={member.userId}
+                              onSelect={() => {
+                                setSelectedAssignees(prev =>
+                                  prev.includes(member.userId)
+                                    ? prev.filter(id => id !== member.userId)
+                                    : [...prev, member.userId]
+                                );
+                              }}
+                              data-testid={`option-assignee-${member.userId}`}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  checked={selectedAssignees.includes(member.userId)}
+                                  className="mr-2"
+                                />
+                                <div>
+                                  <p className="text-sm font-medium">
+                                    {member.user?.firstName || member.user?.email || member.userId}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {member.role}
+                                  </p>
+                                </div>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {selectedAssignees.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {selectedAssignees.map((userId) => {
+                      const member = projectMembers.find(m => m.userId === userId);
+                      return (
+                        <Badge key={userId} variant="secondary" className="text-xs">
+                          {member?.user?.firstName || member?.user?.email || userId}
+                          <button
+                            type="button"
+                            className="ml-1 text-muted-foreground hover:text-foreground"
+                            onClick={() => setSelectedAssignees(prev => prev.filter(id => id !== userId))}
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               
               <div className="flex justify-end space-x-2">

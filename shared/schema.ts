@@ -1222,25 +1222,12 @@ export const insertRolePermissionSchema = createInsertSchema(rolePermissions).om
   updatedAt: true,
 });
 
-// Additional type definitions for enhanced functionality
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type InsertStudy = z.infer<typeof insertStudySchema>;
-export type InsertTask = z.infer<typeof insertTaskSchema>;
-export type InsertBucket = z.infer<typeof insertBucketSchema>;
-export type InsertLabMember = z.infer<typeof insertLabMemberSchema>;
-export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+// Additional core types
 export type Bucket = typeof buckets.$inferSelect;
-export type InsertBucket = z.infer<typeof insertBucketSchema>;
 export type Study = typeof studies.$inferSelect;
-export type InsertStudy = z.infer<typeof insertStudySchema>;
 export type Task = typeof tasks.$inferSelect;
-export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type StandupMeeting = typeof standupMeetings.$inferSelect;
-export type InsertStandupMeeting = z.infer<typeof insertStandupMeetingSchema>;
 export type ActionItem = typeof standupActionItems.$inferSelect;
-export type InsertActionItem = z.infer<typeof insertActionItemSchema>;
-export type TeamMember = typeof teamMembers.$inferSelect;
-export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 export type TeamMemberAssignment = typeof teamMemberAssignments.$inferSelect;
 export type InsertTeamMemberAssignment = z.infer<typeof insertTeamMemberAssignmentSchema>;
 export type Idea = typeof ideas.$inferSelect;
@@ -1251,6 +1238,14 @@ export type ProjectMember = typeof projectMembers.$inferSelect;
 export type InsertProjectMember = z.infer<typeof insertProjectMemberSchema>;
 export type TaskAssignment = typeof taskAssignments.$inferSelect;
 export type InsertTaskAssignment = z.infer<typeof insertTaskAssignmentSchema>;
+
+// Additional insert types
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertStudy = z.infer<typeof insertStudySchema>;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type InsertBucket = z.infer<typeof insertBucketSchema>;
+export type InsertStandupMeeting = z.infer<typeof insertStandupMeetingSchema>;
+export type InsertActionItem = z.infer<typeof insertActionItemSchema>;
 
 // PHASE 1: NEW TYPES
 export type BucketMember = typeof bucketMembers.$inferSelect;
