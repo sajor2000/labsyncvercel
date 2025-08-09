@@ -158,6 +158,7 @@ export const updateTypeEnum = pgEnum("update_type", [
 
 export const teamMemberRoleEnum = pgEnum("team_member_role", [
   "PI",
+  "CO_PRINCIPAL_INVESTIGATOR",
   "Data Scientist", 
   "Data Analyst",
   "Regulatory Coordinator",

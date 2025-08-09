@@ -7,7 +7,7 @@ export const RICCC_TEAM_MEMBERS: TeamMemberData[] = [
   {
     name: "Kevin Buell",
     email: "Kevin_Buell@rush.edu",
-    role: "PI",
+    role: "CO_PRINCIPAL_INVESTIGATOR",
     isActive: true,
     avatarUrl: null,
     phoneNumber: null,
@@ -15,9 +15,9 @@ export const RICCC_TEAM_MEMBERS: TeamMemberData[] = [
     startDate: new Date(),
   },
   {
-    name: "Juan Rojas",
+    name: "Juan Carlos Rojas",
     email: "juan_rojas@rush.edu", 
-    role: "PI",
+    role: "CO_PRINCIPAL_INVESTIGATOR",
     isActive: true,
     avatarUrl: null,
     phoneNumber: null,

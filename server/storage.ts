@@ -357,7 +357,7 @@ export class DatabaseStorage implements IStorage {
         {
           name: "Rush Interdisciplinary Consortium for Critical Care Trials and Data Science (RICCC)",
           description: "Focused on cancer research and clinical trials",
-          piName: "Dr. Sarah Johnson",
+          piName: "Dr. Kevin Buell & Dr. Juan Carlos Rojas (Co-PIs)",
           color: "#3b82f6",
         },
         {

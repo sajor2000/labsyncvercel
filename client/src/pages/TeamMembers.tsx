@@ -35,6 +35,7 @@ type CreateTeamMemberFormData = z.infer<typeof createTeamMemberFormSchema>;
 // Role options for team members  
 const roleOptions = [
   { value: "Principal Investigator", label: "Principal Investigator" },
+  { value: "CO_PRINCIPAL_INVESTIGATOR", label: "Co-Principal Investigator" },
   { value: "Data Scientist", label: "Data Scientist" },
   { value: "Data Analyst", label: "Data Analyst" },
   { value: "Clinical Research Coordinator", label: "Clinical Research Coordinator" },

@@ -34,6 +34,7 @@ import { z } from "zod";
 // Enhanced role options for comprehensive research lab roles
 const roleOptions = [
   { value: "PRINCIPAL_INVESTIGATOR", label: "Principal Investigator" },
+  { value: "CO_PRINCIPAL_INVESTIGATOR", label: "Co-Principal Investigator" },
   { value: "DATA_SCIENTIST", label: "Data Scientist" },
   { value: "DATA_ANALYST", label: "Data Analyst" },
   { value: "CLINICAL_RESEARCH_COORDINATOR", label: "Clinical Research Coordinator" },
