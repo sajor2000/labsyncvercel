@@ -8,9 +8,26 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MoreHorizontal, User, Calendar, Flag, Folder, ArrowRight } from "lucide-react";
+import { Plus, MoreHorizontal, User, Calendar, Flag, Folder, ArrowRight, GripVertical } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCorners,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { Task, Study, Lab, Bucket } from "@shared/schema";
 
 const statusColumns = [
@@ -28,6 +45,153 @@ const priorityColors = {
   URGENT: "text-red-600 dark:text-red-400",
 };
 
+// Draggable Task Card Component
+function DraggableTaskCard({ task }: { task: Task }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-all ${
+        isDragging ? 'shadow-lg ring-2 ring-primary/20' : ''
+      }`}
+      data-testid={`task-${task.id}`}
+    >
+      <CardContent className="p-3">
+        <div className="space-y-2">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-2 flex-1">
+              <div
+                {...attributes}
+                {...listeners}
+                className="mt-1 p-1 hover:bg-muted/50 rounded cursor-grab active:cursor-grabbing"
+              >
+                <GripVertical className="h-3 w-3 text-muted-foreground" />
+              </div>
+              <h4 className="font-medium text-sm line-clamp-2 flex-1">{task.title}</h4>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  <MoreHorizontal className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>Edit</DropdownMenuItem>
+                <DropdownMenuItem>Assign</DropdownMenuItem>
+                <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          
+          {task.description && (
+            <p className="text-xs text-muted-foreground line-clamp-2 ml-6">
+              {task.description}
+            </p>
+          )}
+
+          <div className="flex items-center justify-between text-xs ml-6">
+            <div className="flex items-center gap-2">
+              {task.priority && (
+                <div className="flex items-center">
+                  <Flag className={`h-3 w-3 ${priorityColors[task.priority]}`} />
+                </div>
+              )}
+              {task.assigneeId && (
+                <div className="flex items-center">
+                  <User className="h-3 w-3 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+            {task.dueDate && (
+              <div className="flex items-center text-muted-foreground">
+                <Calendar className="h-3 w-3 mr-1" />
+                <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Droppable Column Component  
+function DroppableColumn({ 
+  column, 
+  tasks, 
+  tasksLoading 
+}: { 
+  column: typeof statusColumns[0];
+  tasks: Task[];
+  tasksLoading: boolean;
+}) {
+  return (
+    <div className="flex flex-col">
+      {/* Column Header */}
+      <div className={`${column.color} p-3 rounded-t-lg border-b`}>
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium text-foreground">{column.title}</h3>
+          <Badge variant="secondary" className="text-xs">
+            {tasks.length}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Column Content */}
+      <div className="flex-1 bg-muted/20 p-3 rounded-b-lg overflow-y-auto min-h-[500px]">
+        <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-3">
+            {tasksLoading ? (
+              [...Array(3)].map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="p-3">
+                    <div className="space-y-2">
+                      <div className="h-4 w-full bg-muted animate-pulse rounded"></div>
+                      <div className="h-3 w-2/3 bg-muted animate-pulse rounded"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : tasks.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-2xl mb-2">📋</div>
+                <p className="text-sm text-muted-foreground">Drop tasks here</p>
+              </div>
+            ) : (
+              tasks.map((task) => <DraggableTaskCard key={task.id} task={task} />)
+            )}
+          </div>
+        </SortableContext>
+
+        {/* Add Task Button */}
+        <Button
+          variant="ghost"
+          className="w-full mt-3 border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50"
+          data-testid={`button-add-task-${column.id.toLowerCase()}`}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Task
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function KanbanBoard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -35,6 +199,16 @@ export default function KanbanBoard() {
   const queryClient = useQueryClient();
   const [selectedBucket, setSelectedBucket] = useState("");
   const [selectedStudy, setSelectedStudy] = useState("");
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  // DND Kit sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -94,7 +268,7 @@ export default function KanbanBoard() {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       toast({
         title: "Success",
-        description: "Task status updated successfully",
+        description: "Task moved successfully",
       });
     },
     onError: (error) => {
@@ -111,11 +285,71 @@ export default function KanbanBoard() {
       }
       toast({
         title: "Error",
-        description: "Failed to update task status",
+        description: "Failed to move task",
         variant: "destructive",
       });
     },
   });
+
+  // Drag and drop handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const task = tasks.find(t => t.id === event.active.id);
+    setActiveTask(task || null);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    
+    if (!over) return;
+    
+    const activeTask = tasks.find(t => t.id === active.id);
+    const overId = over.id.toString();
+    
+    // Check if dragging over a column
+    const targetColumn = statusColumns.find(col => overId.endsWith(col.id));
+    if (targetColumn && activeTask && activeTask.status !== targetColumn.id) {
+      // Optimistically update the UI
+      queryClient.setQueryData(['/api/tasks', selectedStudy], (oldTasks: Task[]) => {
+        return oldTasks?.map(task => 
+          task.id === activeTask.id 
+            ? { ...task, status: targetColumn.id }
+            : task
+        ) || [];
+      });
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveTask(null);
+    
+    if (!over) return;
+    
+    const activeTask = tasks.find(t => t.id === active.id);
+    const overId = over.id.toString();
+    
+    // Determine the target status
+    let targetStatus: string | null = null;
+    
+    // Check if dropped on a column
+    const targetColumn = statusColumns.find(col => overId.endsWith(col.id));
+    if (targetColumn) {
+      targetStatus = targetColumn.id;
+    } else {
+      // Check if dropped on another task
+      const targetTask = tasks.find(t => t.id === overId);
+      if (targetTask) {
+        targetStatus = targetTask.status;
+      }
+    }
+    
+    if (activeTask && targetStatus && activeTask.status !== targetStatus) {
+      updateTaskMutation.mutate({
+        taskId: activeTask.id,
+        status: targetStatus,
+      });
+    }
+  };
 
   // Group tasks by status
   const tasksByStatus = statusColumns.reduce((acc, column) => {
@@ -250,127 +484,46 @@ export default function KanbanBoard() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 h-[calc(100vh-12rem)]">
-          {statusColumns.map((column) => (
-            <div key={column.id} className="flex flex-col">
-              {/* Column Header */}
-              <div className={`${column.color} p-3 rounded-t-lg border-b`}>
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium text-foreground">{column.title}</h3>
-                  <Badge variant="secondary" className="text-xs">
-                    {tasksByStatus[column.id]?.length || 0}
-                  </Badge>
-                </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 h-[calc(100vh-12rem)]">
+            {statusColumns.map((column) => (
+              <div key={`column-${column.id}`} id={`droppable-${column.id}`}>
+                <DroppableColumn
+                  column={column}
+                  tasks={tasksByStatus[column.id] || []}
+                  tasksLoading={tasksLoading}
+                />
               </div>
-
-              {/* Column Content */}
-              <div className="flex-1 bg-muted/20 p-3 rounded-b-lg overflow-y-auto">
-                <div className="space-y-3">
-                  {tasksLoading ? (
-                    [...Array(3)].map((_, i) => (
-                      <Card key={i}>
-                        <CardContent className="p-3">
-                          <div className="space-y-2">
-                            <div className="h-4 w-full bg-muted animate-pulse rounded"></div>
-                            <div className="h-3 w-2/3 bg-muted animate-pulse rounded"></div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  ) : tasksByStatus[column.id]?.length === 0 ? (
-                    <div className="text-center py-4">
-                      <p className="text-sm text-muted-foreground">No tasks</p>
+            ))}
+          </div>
+          
+          {/* Drag Overlay */}
+          <DragOverlay>
+            {activeTask ? (
+              <Card className="cursor-grabbing shadow-lg ring-2 ring-primary/20 rotate-3">
+                <CardContent className="p-3">
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <GripVertical className="h-3 w-3 text-muted-foreground mt-1" />
+                      <h4 className="font-medium text-sm line-clamp-2">{activeTask.title}</h4>
                     </div>
-                  ) : (
-                    tasksByStatus[column.id]?.map((task) => (
-                      <Card key={task.id} className="cursor-move hover:shadow-md transition-shadow" data-testid={`task-${task.id}`}>
-                        <CardContent className="p-3">
-                          <div className="space-y-2">
-                            <div className="flex items-start justify-between">
-                              <h4 className="font-medium text-sm line-clamp-2">{task.title}</h4>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                    <MoreHorizontal className="h-3 w-3" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>Edit</DropdownMenuItem>
-                                  <DropdownMenuItem>Assign</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                            
-                            {task.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                {task.description}
-                              </p>
-                            )}
-
-                            <div className="flex items-center justify-between text-xs">
-                              <div className="flex items-center gap-2">
-                                {task.priority && (
-                                  <div className="flex items-center">
-                                    <Flag className={`h-3 w-3 ${priorityColors[task.priority]}`} />
-                                  </div>
-                                )}
-                                {task.assigneeId && (
-                                  <div className="flex items-center">
-                                    <User className="h-3 w-3 text-muted-foreground" />
-                                  </div>
-                                )}
-                              </div>
-                              {task.dueDate && (
-                                <div className="flex items-center text-muted-foreground">
-                                  <Calendar className="h-3 w-3 mr-1" />
-                                  <span>{new Date(task.dueDate).toLocaleDateString()}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Status Change Buttons */}
-                            <div className="flex gap-1 pt-2">
-                              {statusColumns
-                                .filter(col => col.id !== task.status)
-                                .slice(0, 2)
-                                .map((targetColumn) => (
-                                  <Button
-                                    key={targetColumn.id}
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs px-2 py-1 h-6"
-                                    onClick={() => updateTaskMutation.mutate({ 
-                                      taskId: task.id, 
-                                      status: targetColumn.id 
-                                    })}
-                                    disabled={updateTaskMutation.isPending}
-                                    data-testid={`button-move-to-${targetColumn.id.toLowerCase()}`}
-                                  >
-                                    → {targetColumn.title}
-                                  </Button>
-                                ))}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
-
-                {/* Add Task Button */}
-                <Button
-                  variant="ghost"
-                  className="w-full mt-3 border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50"
-                  data-testid={`button-add-task-${column.id.toLowerCase()}`}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Task
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
+                    {activeTask.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 ml-6">
+                        {activeTask.description}
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
     </main>
   );
