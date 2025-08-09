@@ -25,7 +25,9 @@ export default function Labs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
   const [editingLab, setEditingLab] = useState<Lab | null>(null);
+  const [viewingLab, setViewingLab] = useState<Lab | null>(null);
 
   // Form for creating new lab
   const form = useForm<InsertLab>({
@@ -122,6 +124,11 @@ export default function Labs() {
     setShowEditDialog(true);
   };
 
+  const handleViewLab = (lab: Lab) => {
+    setViewingLab(lab);
+    setShowViewDialog(true);
+  };
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -190,8 +197,16 @@ export default function Labs() {
     return allBuckets.filter(bucket => bucket.labId === labId).length;
   };
 
-  const getMembersCount = (labId: string) => {
+  const getTeamMembersCount = (labId: string) => {
     return allTeamMembers.filter(member => member.labId === labId && member.isActive).length;
+  };
+
+  const getLabTeamMembers = (labId: string) => {
+    return allTeamMembers.filter(member => member.labId === labId && member.isActive);
+  };
+
+  const getLabStudies = (labId: string) => {
+    return allStudies.filter(study => study.labId === labId);
   };
 
   if (isLoading) {
@@ -321,14 +336,20 @@ export default function Labs() {
                       <div className="flex items-center justify-center">
                         <Users className="h-4 w-4 text-green-500" />
                       </div>
-                      <p className="text-sm font-medium">{getMembersCount(lab.id)}</p>
+                      <p className="text-sm font-medium">{getTeamMembersCount(lab.id)}</p>
                       <p className="text-xs text-muted-foreground">Members</p>
                     </div>
                   </div>
 
                   {/* Actions */}
                   <div className="flex gap-2 pt-2">
-                    <Button variant="outline" size="sm" className="flex-1" data-testid={`button-view-lab-${lab.id}`}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1" 
+                      onClick={() => handleViewLab(lab)}
+                      data-testid={`button-view-lab-${lab.id}`}
+                    >
                       <Eye className="h-3 w-3 mr-1" />
                       View
                     </Button>
@@ -589,6 +610,123 @@ export default function Labs() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Lab Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div 
+                className="w-4 h-4 rounded-full" 
+                style={{ backgroundColor: viewingLab?.color || "#3b82f6" }}
+              />
+              {viewingLab?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Lab overview and statistics
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewingLab && (
+            <div className="space-y-6">
+              {/* Lab Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Principal Investigator</h4>
+                  <p className="text-sm">{viewingLab.piName || "Not assigned"}</p>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Created</h4>
+                  <p className="text-sm">
+                    {viewingLab.createdAt ? new Date(viewingLab.createdAt).toLocaleDateString() : 'Unknown'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Description */}
+              {viewingLab.description && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Description</h4>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{viewingLab.description}</p>
+                </div>
+              )}
+
+              {/* Statistics */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">{getStudiesCount(viewingLab.id)}</div>
+                  <div className="text-xs text-muted-foreground">Studies</div>
+                </div>
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">{getBucketsCount(viewingLab.id)}</div>
+                  <div className="text-xs text-muted-foreground">Buckets</div>
+                </div>
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">{getTeamMembersCount(viewingLab.id)}</div>
+                  <div className="text-xs text-muted-foreground">Team Members</div>
+                </div>
+              </div>
+
+              {/* Team Members Preview */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">Team Members</h4>
+                <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
+                  {getLabTeamMembers(viewingLab.id).slice(0, 10).map(member => (
+                    <Badge key={member.id} variant="secondary" className="text-xs">
+                      {member.name || member.email} ({member.role})
+                    </Badge>
+                  ))}
+                  {getLabTeamMembers(viewingLab.id).length > 10 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{getLabTeamMembers(viewingLab.id).length - 10} more
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Recent Studies */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">Recent Studies</h4>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {getLabStudies(viewingLab.id).slice(0, 5).map(study => (
+                    <div key={study.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs">
+                      <span className="font-medium">{study.title}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {study.status}
+                      </Badge>
+                    </div>
+                  ))}
+                  {getLabStudies(viewingLab.id).length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">No studies yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div className="flex justify-end space-x-2 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setShowViewDialog(false)}
+              data-testid="button-close-view-lab"
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                setShowViewDialog(false);
+                if (viewingLab) {
+                  handleOpenEditDialog(viewingLab);
+                }
+              }}
+              data-testid="button-edit-from-view"
+            >
+              <Settings className="h-4 w-4 mr-1" />
+              Edit Lab
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </main>
