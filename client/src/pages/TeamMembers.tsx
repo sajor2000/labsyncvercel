@@ -261,38 +261,6 @@ export default function TeamMembers() {
     },
   });
 
-  // Load sample team data mutation
-  const loadSampleDataMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('POST', '/api/load-sample-team-data', {});
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Sample team data loaded successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error as Error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to load sample team data",
-        variant: "destructive",
-      });
-    },
-  });
-
   const onSubmit = (data: CreateTeamMemberFormData) => {
     createMemberMutation.mutate(data);
   };
@@ -359,19 +327,6 @@ export default function TeamMembers() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => loadSampleDataMutation.mutate()}
-            disabled={loadSampleDataMutation.isPending}
-            data-testid="button-load-sample-data"
-          >
-            {loadSampleDataMutation.isPending ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-            ) : (
-              <Users className="h-4 w-4 mr-2" />
-            )}
-            Load Sample Data
-          </Button>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-create-member">

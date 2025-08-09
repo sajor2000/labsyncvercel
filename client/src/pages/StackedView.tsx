@@ -25,7 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import StudyDetailModal from "./StudyDetailModal";
-import { CreateSampleDataButton } from "@/components/CreateSampleDataButton";
+
 import { 
   Plus, 
   Users, 
@@ -409,7 +409,7 @@ export default function StackedView() {
         
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          <CreateSampleDataButton />
+
           <RecentlyDeletedModal>
             <Button variant="outline" size="sm" data-testid="button-recently-deleted">
               <Archive className="h-4 w-4 mr-2" />

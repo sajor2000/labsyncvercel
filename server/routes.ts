@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { createSampleData } from "./sampleData";
+
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -143,17 +143,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error archiving task:", error);
       res.status(500).json({ message: "Failed to archive task" });
-    }
-  });
-
-  // Sample data creation route
-  app.post("/api/create-sample-data", isAuthenticated, async (req: any, res) => {
-    try {
-      await createSampleData();
-      res.json({ message: "Sample data created successfully" });
-    } catch (error) {
-      console.error("Error creating sample data:", error);
-      res.status(500).json({ message: "Failed to create sample data" });
     }
   });
 
