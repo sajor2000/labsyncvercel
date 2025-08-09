@@ -139,7 +139,7 @@ export default function Studies() {
         labId: contextLab?.id || "",
         assignees: data.assignees || [],
       };
-      return apiRequest('/api/studies', 'POST', studyData);
+      return apiRequest('POST', '/api/studies', studyData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
@@ -179,7 +179,7 @@ export default function Studies() {
         ...data,
         assignees: data.assignees || [],
       };
-      return apiRequest(`/api/studies/${editingStudy.id}`, 'PUT', studyData);
+      return apiRequest('PUT', `/api/studies/${editingStudy.id}`, studyData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
@@ -214,7 +214,7 @@ export default function Studies() {
   // Delete study mutation
   const deleteStudyMutation = useMutation({
     mutationFn: async (studyId: string) => {
-      return apiRequest(`/api/studies/${studyId}`, 'DELETE');
+      return apiRequest('DELETE', `/api/studies/${studyId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
