@@ -158,13 +158,20 @@ function DraggableTaskCard({ task }: { task: Task }) {
 function DroppableColumn({ 
   column, 
   tasks, 
-  tasksLoading 
+  tasksLoading,
+  selectedStudy,
+  taskForm,
+  setIsCreateTaskOpen,
+  toast
 }: { 
   column: typeof statusColumns[0];
   tasks: Task[];
   tasksLoading: boolean;
+  selectedStudy: string;
+  taskForm: any;
+  setIsCreateTaskOpen: (open: boolean) => void;
+  toast: any;
 }) {
-  const { toast } = useToast();
   return (
     <div className="flex flex-col">
       {/* Column Header */}
@@ -209,10 +216,17 @@ function DroppableColumn({
           className="w-full mt-3 border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50"
           data-testid={`button-add-task-${column.id.toLowerCase()}`}
           onClick={() => {
-            toast({
-              title: "Add Task",
-              description: `Create new task in ${column.title} column. Task creation interface coming soon.`,
-            });
+            if (!selectedStudy) {
+              toast({
+                title: "Select Project/Study",
+                description: "Please select a project/study first to create tasks.",
+                variant: "destructive",
+              });
+              return;
+            }
+            // Set default status to the column's status
+            taskForm.setValue("status", column.id);
+            setIsCreateTaskOpen(true);
           }}
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -326,7 +340,7 @@ export default function KanbanBoard() {
         studyId: selectedStudy,
         createdBy: "current-user", // This would come from auth context
       };
-      return apiRequest('POST', '/api/tasks', taskData);
+      return apiRequest('/api/tasks', 'POST', taskData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
@@ -597,6 +611,10 @@ export default function KanbanBoard() {
                   column={column}
                   tasks={tasksByStatus[column.id] || []}
                   tasksLoading={tasksLoading}
+                  selectedStudy={selectedStudy}
+                  taskForm={taskForm}
+                  setIsCreateTaskOpen={setIsCreateTaskOpen}
+                  toast={toast}
                 />
               </div>
             ))}
@@ -654,7 +672,7 @@ export default function KanbanBoard() {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Enter task description..." {...field} data-testid="textarea-task-description" />
+                      <Textarea placeholder="Enter task description..." {...field} value={field.value || ""} data-testid="textarea-task-description" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -668,7 +686,7 @@ export default function KanbanBoard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Priority</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value || "MEDIUM"}>
                         <FormControl>
                           <SelectTrigger data-testid="select-task-priority">
                             <SelectValue placeholder="Select priority" />
@@ -692,7 +710,7 @@ export default function KanbanBoard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Initial Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value || "TODO"}>
                         <FormControl>
                           <SelectTrigger data-testid="select-task-status">
                             <SelectValue placeholder="Select status" />

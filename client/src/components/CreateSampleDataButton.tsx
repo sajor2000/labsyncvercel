@@ -14,7 +14,7 @@ export function CreateSampleDataButton() {
 
   const createSampleDataMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('POST', '/api/create-sample-data', {});
+      return apiRequest('/api/create-sample-data', 'POST', {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
