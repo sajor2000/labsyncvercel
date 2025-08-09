@@ -112,6 +112,31 @@ export default function StandupRecording() {
     enabled: !!selectedMeetingId && showEmailPreview,
   });
 
+  // Auto-select core RICCC team members when lab switches to RICCC
+  useEffect(() => {
+    if (teamMembers && teamMembers.length > 0 && selectedLab?.id === '400b6659-bce2-4fa0-b297-daebd110c31b') {
+      // Core RICCC team members names to pre-select
+      const coreRicccMembers = [
+        'Hoda Masteri',
+        'J.C. Rojas', 
+        'Kevin Buell',
+        'Mia Mcclintic',
+        'Vaishvik Chaudhari'
+      ];
+      
+      const coreTeamIds = (teamMembers as TeamMember[])
+        .filter((member: TeamMember) => coreRicccMembers.includes(member.name))
+        .map((member: TeamMember) => member.id);
+      
+      if (coreTeamIds.length > 0) {
+        setSelectedAttendees(coreTeamIds);
+      }
+    } else if (selectedLab?.id === '069efa27-bbf8-4c27-8c1e-3800148e4985') {
+      // Reset selection for RHEDAS or other labs
+      setSelectedAttendees([]);
+    }
+  }, [teamMembers, selectedLab?.id]);
+
   const createMeetingMutation = useMutation({
     mutationFn: async (meetingData: any) => {
       const response = await fetch('/api/standups/meetings', {
