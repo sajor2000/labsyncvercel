@@ -555,11 +555,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get meetings for preview
   app.get('/api/standups/meetings', isAuthenticated, async (req: any, res) => {
     try {
-      const meetings = await storage.getStandupMeetings();
+      const labId = req.query.labId;
+      let meetings;
+      if (labId) {
+        meetings = await storage.getStandupMeetingsByLab(labId);
+      } else {
+        meetings = await storage.getStandupMeetings();
+      }
       res.json(meetings);
     } catch (error) {
       console.error("Error fetching meetings:", error);
       res.status(500).json({ message: "Failed to fetch meetings" });
+    }
+  });
+
+  // Create standup meeting with AI processing
+  app.post('/api/standups/meetings', isAuthenticated, async (req: any, res) => {
+    try {
+      const { transcript, labId, meetingType = 'standup' } = req.body;
+      const userId = req.user?.claims?.sub;
+
+      if (!transcript) {
+        return res.status(400).json({ message: "Transcript is required" });
+      }
+
+      // Process with AI
+      const { meetingRecorderService } = await import('./meetingRecorder');
+      const processedMeeting = await meetingRecorderService.processTranscriptAndCreateMeeting(
+        transcript,
+        labId || null,
+        userId,
+        meetingType
+      );
+
+      res.json(processedMeeting);
+    } catch (error) {
+      console.error("Error creating meeting:", error);
+      res.status(500).json({ message: "Failed to create meeting" });
     }
   });
 

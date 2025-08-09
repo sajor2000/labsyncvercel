@@ -15,8 +15,7 @@ import StackedView from "@/pages/StackedView";
 import TeamMembersEnhanced from "@/pages/TeamMembersEnhanced";
 import Ideas from "@/pages/Ideas";
 import Deadlines from "@/pages/Deadlines";
-import Standups from "@/pages/Standups";
-import AITranscription from "@/pages/AITranscription";
+import StandupRecording from "@/pages/StandupRecording";
 import MeetingPreview from "@/pages/MeetingPreview";
 import Calendar from "@/pages/Calendar";
 import Analytics from "@/pages/Analytics";
@@ -44,8 +43,8 @@ function Router() {
           <Route path="/deadlines" component={() => <Layout><Deadlines /></Layout>} />
           <Route path="/labs" component={() => <Layout><Labs /></Layout>} />
           <Route path="/buckets" component={() => <Layout><Buckets /></Layout>} />
-          <Route path="/standups" component={() => <Layout><Standups /></Layout>} />
-          <Route path="/ai-transcription" component={() => <Layout><AITranscription /></Layout>} />
+          <Route path="/standups" component={() => <Layout><StandupRecording /></Layout>} />
+          <Route path="/ai-transcription" component={() => <Layout><StandupRecording /></Layout>} />
           <Route path="/meeting-preview" component={() => <Layout><MeetingPreview /></Layout>} />
           <Route path="/calendar" component={() => <Layout><Calendar /></Layout>} />
           <Route path="/analytics" component={() => <Layout><Analytics /></Layout>} />

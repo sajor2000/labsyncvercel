@@ -89,7 +89,7 @@ export default function Analytics() {
       }
       return acc;
     }, 0) / tasks.filter((t: any) => t.completedAt).length) : 0,
-    studyCompletionRate: studies.length > 0 ? Math.round((analytics.completedStudies / studies.length) * 100) : 0,
+    studyCompletionRate: 0, // Will be calculated after analytics object is created
     totalBuckets: buckets.length,
     activeBuckets: buckets.filter((b: any) => b.isActive !== false).length,
     totalIdeas: ideas.length,
@@ -99,6 +99,9 @@ export default function Analytics() {
       return meetingDate > thirtyDaysAgo;
     }).length,
   };
+
+  // Fix circular dependency by calculating this after analytics object is created
+  analytics.studyCompletionRate = studies.length > 0 ? Math.round((analytics.completedStudies / studies.length) * 100) : 0;
 
   const isLoading = studiesLoading || tasksLoading || teamLoading || deadlinesLoading || 
                    standupsLoading || bucketsLoading || ideasLoading || meetingsLoading;
