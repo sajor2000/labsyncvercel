@@ -125,16 +125,19 @@ Return both HTML summary and JSON structure.`;
   ): Promise<string> {
     try {
       // Create meeting record
+      const currentDate = new Date();
       const [meeting] = await db
         .insert(standupMeetings)
         .values({
+          labId: labId,
           createdBy: "system", // This should come from authenticated user
-          meetingDate: new Date(),
-          title: `Standup Meeting - ${new Date().toLocaleDateString()}`,
+          meetingDate: currentDate,
+          scheduledDate: currentDate, // Required field
+          startTime: currentDate, // Required field
+          endTime: currentDate,
           transcript,
-          summary: processedNotes,
+          aiSummary: { processedNotes, extractedTaskCount: extractedTasks.length },
           participants: attendees,
-          status: "COMPLETED",
         })
         .returning();
 
@@ -144,10 +147,10 @@ Return both HTML summary and JSON structure.`;
           db.insert(standupActionItems).values({
             meetingId: meeting.id,
             description: task.task || "No description",
-            assignee: task.member || "Unassigned",
+            // Note: assigneeId should be a user ID, but we only have member name
             dueDate: task.due_date ? new Date(task.due_date) : null,
-            status: task.status === "completed" ? "COMPLETED" : "IN_PROGRESS",
-            notes: task.blocker ? `Blocker: ${task.blocker}` : undefined,
+            status: task.status === "completed" ? "COMPLETED" : "OPEN",
+            createdFromAI: true,
           })
         );
 
@@ -226,7 +229,7 @@ Return both HTML summary and JSON structure.`;
         return { success: false, error: "Meeting not found" };
       }
 
-      const meetingDate = new Date(meeting.createdAt).toLocaleDateString();
+      const meetingDate = new Date(meeting.meetingDate).toLocaleDateString();
       
       // Create HTML email content
       const htmlContent = this.generateEmailHTML(meeting, actionItems, meetingDate, labName);
@@ -396,7 +399,7 @@ Return both HTML summary and JSON structure.`;
     <div class="section">
         <h2>📝 Meeting Summary</h2>
         <div class="summary-content">
-            ${meeting.summary || 'No summary available'}
+            ${meeting.aiSummary?.processedNotes || meeting.transcript || 'No summary available'}
         </div>
     </div>
 
@@ -404,7 +407,7 @@ Return both HTML summary and JSON structure.`;
         <h2>🎙️ Meeting Details</h2>
         <p><strong>Meeting ID:</strong> ${meeting.id}</p>
         <p><strong>Date:</strong> ${meetingDate}</p>
-        <p><strong>Status:</strong> <span class="badge">${meeting.status}</span></p>
+        <p><strong>Type:</strong> <span class="badge">${meeting.meetingType}</span></p>
         ${meeting.participants && meeting.participants.length > 0 ? `
         <p><strong>Participants:</strong> ${meeting.participants.join(', ')}</p>
         ` : ''}
