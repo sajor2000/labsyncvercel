@@ -232,7 +232,7 @@ Return both HTML summary and JSON structure.`;
       const htmlContent = this.generateEmailHTML(meeting, actionItems, meetingDate, labName);
 
       const response = await this.resend.emails.send({
-        from: "LabSync <onboarding@resend.dev>",
+        from: "LabSync <jcrojas@clif-icu.org>",
         to: recipients,
         subject: `${labName} Standup Meeting Summary - ${meetingDate}`,
         html: htmlContent,

@@ -48,8 +48,9 @@ Color Scheme: Slack-inspired dark theme with professional color palette (purple 
 ### File Storage & AI Integration
 - **Cloud Storage**: Google Cloud Storage integration for file uploads and document management
 - **File Upload**: Uppy.js integration for robust file upload experience with drag-and-drop support
-- **AI Processing**: Placeholder architecture for AI-powered standup meeting transcription and analysis
+- **AI Processing**: OpenAI GPT-4o-mini integration for intelligent meeting transcription and task extraction
 - **Audio Processing**: Framework ready for OpenAI Whisper integration for meeting transcription
+- **Email Automation**: Resend API integration for automated meeting summary distribution
 
 ### Real-time Features
 - **WebSocket Connection**: Custom WebSocket implementation for live collaboration
@@ -109,9 +110,14 @@ Color Scheme: Slack-inspired dark theme with professional color palette (purple 
 - **Typography**: Google Fonts (Inter) for consistent typography
 - **File Upload**: Uppy.js ecosystem for advanced file upload capabilities
 
+### Active Integrations
+- **AI Services**: OpenAI GPT-4o-mini for meeting transcript analysis and task extraction (ACTIVE)
+- **Email System**: Resend API for automated meeting summary distribution (ACTIVE)
+- **Authentication**: Replit OIDC system with PostgreSQL session storage (ACTIVE)
+- **Database**: PostgreSQL with Drizzle ORM for all data persistence (ACTIVE)
+
 ### Planned Integrations
-- **AI Services**: OpenAI Whisper for audio transcription and OpenRouter/Claude for meeting analysis
-- **Notification System**: Framework ready for email/SMS notification integration
+- **Audio Processing**: OpenAI Whisper for real-time meeting transcription
 - **Calendar Integration**: Architecture prepared for calendar system integration
 - **Export Systems**: Ready for document generation and data export functionality
 
