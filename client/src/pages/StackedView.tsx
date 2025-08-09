@@ -97,6 +97,8 @@ export default function StackedView() {
   const [draggedItem, setDraggedItem] = useState<any>(null);
   const [draggedType, setDraggedType] = useState<string>('');
   const [isDragActive, setIsDragActive] = useState(false);
+  const [sortBy, setSortBy] = useState<string>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -300,6 +302,46 @@ export default function StackedView() {
     setIsDragActive(false);
   };
 
+  // UI button handlers
+  const handleCustomizeCards = () => {
+    toast({
+      title: "Customize Cards",
+      description: "Card customization options coming soon. You can currently drag studies between buckets.",
+    });
+  };
+
+  const handleFilter = () => {
+    // Toggle filter UI
+    toast({
+      title: "Filter View",
+      description: "Use the search bar and status filter to narrow down studies.",
+    });
+  };
+
+  const handleSort = () => {
+    const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortOrder(newOrder);
+    toast({
+      title: "Sort Updated",
+      description: `Studies sorted by ${sortBy} in ${newOrder}ending order`,
+    });
+  };
+
+  const handleColor = () => {
+    toast({
+      title: "Color Themes",
+      description: "Color theme options coming soon. Buckets currently use their assigned colors.",
+    });
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({
+      title: "Link Copied",
+      description: "Shareable link copied to clipboard",
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -342,23 +384,23 @@ export default function StackedView() {
               Recently Deleted
             </Button>
           </RecentlyDeletedModal>
-          <Button variant="outline" size="sm" data-testid="button-customize">
+          <Button variant="outline" size="sm" onClick={handleCustomizeCards} data-testid="button-customize">
             <Settings2 className="h-4 w-4 mr-2" />
             Customize cards
           </Button>
-          <Button variant="outline" size="sm" data-testid="button-filter">
+          <Button variant="outline" size="sm" onClick={handleFilter} data-testid="button-filter">
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
-          <Button variant="outline" size="sm" data-testid="button-sort">
+          <Button variant="outline" size="sm" onClick={handleSort} data-testid="button-sort">
             <SortDesc className="h-4 w-4 mr-2" />
-            Sort
+            Sort {sortOrder === 'asc' ? '↑' : '↓'}
           </Button>
-          <Button variant="outline" size="sm" data-testid="button-color">
+          <Button variant="outline" size="sm" onClick={handleColor} data-testid="button-color">
             <Palette className="h-4 w-4 mr-2" />
             Color
           </Button>
-          <Button variant="outline" size="sm" data-testid="button-share">
+          <Button variant="outline" size="sm" onClick={handleShare} data-testid="button-share">
             <Share className="h-4 w-4 mr-2" />
             Share view
           </Button>

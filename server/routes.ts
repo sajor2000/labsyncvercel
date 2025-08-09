@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { createSampleData } from "./sampleData";
+import { createSampleData } from "./sampleData";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -115,6 +116,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Soft delete routes
+  app.patch("/api/buckets/:id/soft-delete", isAuthenticated, async (req, res) => {
+    try {
+      await storage.softDeleteBucket(req.params.id);
+      res.json({ message: "Bucket archived successfully" });
+    } catch (error) {
+      console.error("Error archiving bucket:", error);
+      res.status(500).json({ message: "Failed to archive bucket" });
+    }
+  });
+
+  app.patch("/api/studies/:id/soft-delete", isAuthenticated, async (req, res) => {
+    try {
+      await storage.softDeleteStudy(req.params.id);
+      res.json({ message: "Study archived successfully" });
+    } catch (error) {
+      console.error("Error archiving study:", error);
+      res.status(500).json({ message: "Failed to archive study" });
+    }
+  });
+
+  app.patch("/api/tasks/:id/soft-delete", isAuthenticated, async (req, res) => {
+    try {
+      await storage.softDeleteTask(req.params.id);
+      res.json({ message: "Task archived successfully" });
+    } catch (error) {
+      console.error("Error archiving task:", error);
+      res.status(500).json({ message: "Failed to archive task" });
+    }
+  });
+
+  // Sample data creation route
+  app.post("/api/create-sample-data", isAuthenticated, async (req: any, res) => {
+    try {
+      await createSampleData();
+      res.json({ message: "Sample data created successfully" });
+    } catch (error) {
+      console.error("Error creating sample data:", error);
+      res.status(500).json({ message: "Failed to create sample data" });
+    }
+  });
+
   // Avatar and object storage routes
   app.post("/api/upload/avatar", isAuthenticated, async (req, res) => {
     try {
@@ -202,6 +245,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching lab members:", error);
       res.status(500).json({ message: "Failed to fetch lab members" });
+    }
+  });
+
+  // Project Member routes
+  app.get("/api/project-members", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = req.query.projectId as string;
+      const members = await storage.getProjectMembers(projectId);
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching project members:", error);
+      res.status(500).json({ message: "Failed to fetch project members" });
+    }
+  });
+
+  app.post("/api/project-members", isAuthenticated, async (req, res) => {
+    try {
+      const member = await storage.addProjectMember(req.body);
+      res.json(member);
+    } catch (error) {
+      console.error("Error creating project member:", error);
+      res.status(500).json({ message: "Failed to create project member" });
+    }
+  });
+
+  app.delete("/api/project-members/:projectId/:userId", isAuthenticated, async (req, res) => {
+    try {
+      await storage.removeProjectMember(req.params.projectId, req.params.userId);
+      res.json({ message: "Project member removed successfully" });
+    } catch (error) {
+      console.error("Error removing project member:", error);
+      res.status(500).json({ message: "Failed to remove project member" });
     }
   });
 

@@ -104,7 +104,7 @@ export function ProjectTeamManager({ study, children }: ProjectTeamManagerProps)
 
   const filteredTeamMembers = teamMembers.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.email.toLowerCase().includes(searchTerm.toLowerCase());
+                         (member.email && member.email.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesRole = selectedRole === "all" || member.role.toLowerCase() === selectedRole.toLowerCase();
     return matchesSearch && matchesRole;
   });
@@ -115,6 +115,7 @@ export function ProjectTeamManager({ study, children }: ProjectTeamManagerProps)
 
   const handleAddMember = (teamMember: TeamMember) => {
     addMemberMutation.mutate({
+      labId: study.labId,
       projectId: study.id,
       userId: teamMember.id,
       role: teamMember.role,

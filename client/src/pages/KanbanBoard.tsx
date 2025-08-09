@@ -47,6 +47,7 @@ const priorityColors = {
 
 // Draggable Task Card Component
 function DraggableTaskCard({ task }: { task: Task }) {
+  const { toast } = useToast();
   const {
     attributes,
     listeners,
@@ -91,9 +92,24 @@ function DraggableTaskCard({ task }: { task: Task }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>Edit</DropdownMenuItem>
-                <DropdownMenuItem>Assign</DropdownMenuItem>
-                <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  toast({
+                    title: "Edit Task",
+                    description: "Task editing interface coming soon",
+                  });
+                }}>Edit</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  toast({
+                    title: "Assign Task",
+                    description: "Task assignment interface coming soon",
+                  });
+                }}>Assign</DropdownMenuItem>
+                <DropdownMenuItem className="text-red-600" onClick={() => {
+                  toast({
+                    title: "Delete Task",
+                    description: "Task deletion interface coming soon",
+                  });
+                }}>Delete</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -140,6 +156,7 @@ function DroppableColumn({
   tasks: Task[];
   tasksLoading: boolean;
 }) {
+  const { toast } = useToast();
   return (
     <div className="flex flex-col">
       {/* Column Header */}
@@ -183,6 +200,12 @@ function DroppableColumn({
           variant="ghost"
           className="w-full mt-3 border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50"
           data-testid={`button-add-task-${column.id.toLowerCase()}`}
+          onClick={() => {
+            toast({
+              title: "Add Task",
+              description: `Create new task in ${column.title} column. Task creation interface coming soon.`,
+            });
+          }}
         >
           <Plus className="h-4 w-4 mr-2" />
           Add Task
