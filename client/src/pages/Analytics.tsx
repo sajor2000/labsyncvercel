@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, TrendingUp, Users, Calendar, CheckCircle, Clock, Target, Zap } from "lucide-react";
+import { BarChart3, TrendingUp, Users, Calendar, CheckCircle, Clock, Target, Zap, FlaskConical, FolderOpen, AlertTriangle, Activity } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -18,271 +18,458 @@ interface AnalyticsData {
   standupCompletionRate: number;
   averageTaskCompletionTime: number;
   studyCompletionRate: number;
+  totalBuckets: number;
+  activeBuckets: number;
+  totalIdeas: number;
+  recentMeetings: number;
 }
 
 export default function Analytics() {
   const { selectedLab } = useLabContext();
 
-  const { data: studies = [] } = useQuery({
+  const { data: studies = [], isLoading: studiesLoading } = useQuery({
     queryKey: ['/api/studies', selectedLab?.id],
     enabled: !!selectedLab?.id,
   });
 
-  const { data: tasks = [] } = useQuery({
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ['/api/tasks'],
   });
 
-  const { data: teamMembers = [] } = useQuery({
+  const { data: teamMembers = [], isLoading: teamLoading } = useQuery({
     queryKey: ['/api/team-members'],
   });
 
-  const { data: deadlines = [] } = useQuery({
+  const { data: deadlines = [], isLoading: deadlinesLoading } = useQuery({
     queryKey: ['/api/deadlines', selectedLab?.id],
     enabled: !!selectedLab?.id,
   });
 
-  const { data: standups = [] } = useQuery({
+  const { data: standups = [], isLoading: standupsLoading } = useQuery({
     queryKey: ['/api/standups', selectedLab?.id],
     enabled: !!selectedLab?.id,
   });
 
-  // Calculate analytics
+  const { data: buckets = [], isLoading: bucketsLoading } = useQuery({
+    queryKey: ['/api/buckets'],
+  });
+
+  const { data: ideas = [], isLoading: ideasLoading } = useQuery({
+    queryKey: ['/api/ideas'],
+  });
+
+  const { data: meetings = [], isLoading: meetingsLoading } = useQuery({
+    queryKey: ['/api/standups/meetings', selectedLab?.id],
+    enabled: !!selectedLab?.id,
+  });
+
+  // Calculate analytics from real data
   const analytics: AnalyticsData = {
     totalStudies: studies.length,
-    activeStudies: studies.filter((s: any) => s.status === 'active').length,
+    activeStudies: studies.filter((s: any) => s.status === 'active' || s.status === 'ongoing').length,
     completedStudies: studies.filter((s: any) => s.status === 'completed').length,
     totalTasks: tasks.length,
-    completedTasks: tasks.filter((t: any) => t.status === 'completed').length,
+    completedTasks: tasks.filter((t: any) => t.status === 'completed' || t.status === 'done').length,
     overdueTasks: tasks.filter((t: any) => {
-      return t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed';
+      return t.dueDate && new Date(t.dueDate) < new Date() && !['completed', 'done'].includes(t.status);
     }).length,
     totalTeamMembers: teamMembers.length,
-    activeTeamMembers: teamMembers.filter((m: any) => m.status === 'active').length,
+    activeTeamMembers: teamMembers.filter((m: any) => m.status !== 'inactive').length,
     upcomingDeadlines: deadlines.filter((d: any) => {
       const dueDate = new Date(d.dueDate);
       const now = new Date();
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       return dueDate > now && dueDate <= thirtyDaysFromNow;
     }).length,
-    standupCompletionRate: standups.length > 0 
-      ? (standups.filter((s: any) => s.status === 'completed').length / standups.length) * 100 
-      : 0,
-    averageTaskCompletionTime: 5.2, // Mock data - would be calculated from actual task data
-    studyCompletionRate: studies.length > 0 
-      ? (analytics.completedStudies / studies.length) * 100 
-      : 0,
+    standupCompletionRate: standups.length > 0 ? Math.round((standups.filter((s: any) => s.status === 'completed').length / standups.length) * 100) : 0,
+    averageTaskCompletionTime: tasks.length > 0 ? Math.round(tasks.reduce((acc: number, task: any) => {
+      if (task.completedAt && task.createdAt) {
+        const completionTime = new Date(task.completedAt).getTime() - new Date(task.createdAt).getTime();
+        return acc + (completionTime / (1000 * 60 * 60 * 24)); // Days
+      }
+      return acc;
+    }, 0) / tasks.filter((t: any) => t.completedAt).length) : 0,
+    studyCompletionRate: studies.length > 0 ? Math.round((analytics.completedStudies / studies.length) * 100) : 0,
+    totalBuckets: buckets.length,
+    activeBuckets: buckets.filter((b: any) => b.isActive !== false).length,
+    totalIdeas: ideas.length,
+    recentMeetings: meetings.filter((m: any) => {
+      const meetingDate = new Date(m.createdAt);
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      return meetingDate > thirtyDaysAgo;
+    }).length,
   };
 
-  const metricCards = [
-    {
-      title: "Total Studies",
-      value: analytics.totalStudies,
-      change: "+12%",
-      changeType: "positive" as const,
-      icon: BarChart3,
-      description: `${analytics.activeStudies} active, ${analytics.completedStudies} completed`,
-    },
-    {
-      title: "Task Completion",
-      value: `${analytics.completedTasks}/${analytics.totalTasks}`,
-      change: "+8%",
-      changeType: "positive" as const,
-      icon: CheckCircle,
-      description: `${analytics.overdueTasks} overdue tasks`,
-    },
-    {
-      title: "Team Members",
-      value: analytics.activeTeamMembers,
-      change: "0%",
-      changeType: "neutral" as const,
-      icon: Users,
-      description: `${analytics.totalTeamMembers} total members`,
-    },
-    {
-      title: "Upcoming Deadlines",
-      value: analytics.upcomingDeadlines,
-      change: "-5%",
-      changeType: "positive" as const,
-      icon: Calendar,
-      description: "Next 30 days",
-    },
-  ];
+  const isLoading = studiesLoading || tasksLoading || teamLoading || deadlinesLoading || 
+                   standupsLoading || bucketsLoading || ideasLoading || meetingsLoading;
 
-  const progressMetrics = [
-    {
-      title: "Study Completion Rate",
-      value: analytics.studyCompletionRate,
-      target: 85,
-      icon: Target,
-      color: "bg-blue-500",
-    },
-    {
-      title: "Standup Completion Rate",
-      value: analytics.standupCompletionRate,
-      target: 90,
-      icon: Zap,
-      color: "bg-green-500",
-    },
-    {
-      title: "Task Progress",
-      value: analytics.totalTasks > 0 ? (analytics.completedTasks / analytics.totalTasks) * 100 : 0,
-      target: 75,
-      icon: Clock,
-      color: "bg-purple-500",
-    },
-  ];
-
-  if (!selectedLab) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Please select a lab to view analytics.</p>
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-6 w-6 text-teal-600" />
+          <h1 className="text-3xl font-bold">Lab Analytics Dashboard</h1>
+        </div>
+        <div className="text-center py-12">Loading analytics data...</div>
       </div>
     );
   }
 
+  if (!selectedLab) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-6 w-6 text-teal-600" />
+          <h1 className="text-3xl font-bold">Lab Analytics Dashboard</h1>
+        </div>
+        <Card>
+          <CardContent className="text-center py-12">
+            <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-lg text-muted-foreground">Please select a lab to view analytics</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const taskCompletionPercentage = analytics.totalTasks > 0 ? 
+    Math.round((analytics.completedTasks / analytics.totalTasks) * 100) : 0;
+
+  const studyProgressPercentage = analytics.totalStudies > 0 ? 
+    Math.round((analytics.activeStudies / analytics.totalStudies) * 100) : 0;
+
+  const teamUtilizationPercentage = analytics.totalTeamMembers > 0 ? 
+    Math.round((analytics.activeTeamMembers / analytics.totalTeamMembers) * 100) : 0;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Analytics</h1>
-        <p className="text-muted-foreground">Track lab performance and research progress</p>
+    <div className="container mx-auto p-6 space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-6 w-6 text-teal-600" />
+          <h1 className="text-3xl font-bold">Lab Analytics Dashboard</h1>
+        </div>
+        <Badge variant="outline" className="text-sm">
+          {selectedLab?.name} • Real-time Data
+        </Badge>
       </div>
 
-      {/* Key Metrics */}
+      {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {metricCards.map((metric, index) => {
-          const Icon = metric.icon;
-          return (
-            <Card key={index} data-testid={`metric-card-${index}`}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid={`metric-value-${index}`}>
-                  {metric.value}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Badge 
-                    variant={metric.changeType === "positive" ? "default" : "secondary"}
-                    className={
-                      metric.changeType === "positive" 
-                        ? "bg-green-500 text-white" 
-                        : metric.changeType === "negative"
-                        ? "bg-red-500 text-white"
-                        : "bg-gray-500 text-white"
-                    }
-                  >
-                    {metric.changeType === "positive" && <TrendingUp className="mr-1 h-3 w-3" />}
-                    {metric.change}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">{metric.description}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Studies</CardTitle>
+            <FlaskConical className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics.totalStudies}</div>
+            <div className="flex items-center text-xs text-muted-foreground mt-1">
+              <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
+              {analytics.completedStudies} completed • {analytics.activeStudies} active
+            </div>
+            <Progress value={studyProgressPercentage} className="mt-2" />
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Task Progress</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics.completedTasks}/{analytics.totalTasks}</div>
+            <div className="flex items-center text-xs text-muted-foreground mt-1">
+              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+              {taskCompletionPercentage}% completion rate
+              {analytics.overdueTasks > 0 && (
+                <span className="ml-2 text-red-500">• {analytics.overdueTasks} overdue</span>
+              )}
+            </div>
+            <Progress value={taskCompletionPercentage} className="mt-2" />
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Team Members</CardTitle>
+            <Users className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics.activeTeamMembers}</div>
+            <div className="flex items-center text-xs text-muted-foreground mt-1">
+              <Activity className="h-3 w-3 mr-1 text-purple-500" />
+              {teamUtilizationPercentage}% active • {analytics.totalTeamMembers} total
+            </div>
+            <Progress value={teamUtilizationPercentage} className="mt-2" />
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-orange-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Upcoming Deadlines</CardTitle>
+            <Clock className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics.upcomingDeadlines}</div>
+            <div className="flex items-center text-xs text-muted-foreground mt-1">
+              <Calendar className="h-3 w-3 mr-1 text-orange-500" />
+              Next 30 days
+              {analytics.overdueTasks > 0 && (
+                <span className="ml-2 text-red-500">• {analytics.overdueTasks} overdue tasks</span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Progress Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {progressMetrics.map((metric, index) => {
-          const Icon = metric.icon;
-          const percentage = Math.min(metric.value, 100);
-          const isOnTarget = percentage >= metric.target;
-          
-          return (
-            <Card key={index} data-testid={`progress-card-${index}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold" data-testid={`progress-value-${index}`}>
-                      {percentage.toFixed(1)}%
-                    </span>
-                    <Badge variant={isOnTarget ? "default" : "secondary"}>
-                      Target: {metric.target}%
-                    </Badge>
-                  </div>
-                  <Progress 
-                    value={percentage} 
-                    className="w-full"
-                    data-testid={`progress-bar-${index}`}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {isOnTarget ? "✓ On target" : `${(metric.target - percentage).toFixed(1)}% below target`}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Recent Activity Summary */}
+      {/* Detailed Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Research Progress */}
         <Card>
           <CardHeader>
-            <CardTitle>Study Status Overview</CardTitle>
-            <CardDescription>Current status of all studies in the lab</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-teal-600" />
+              Research Progress Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Study Completion</span>
+                  <span className="text-sm text-muted-foreground">
+                    {analytics.completedStudies} of {analytics.totalStudies}
+                  </span>
+                </div>
+                <Progress value={analytics.studyCompletionRate} />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Task Completion</span>
+                  <span className="text-sm text-muted-foreground">
+                    {analytics.completedTasks} of {analytics.totalTasks}
+                  </span>
+                </div>
+                <Progress value={taskCompletionPercentage} />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Standup Completion</span>
+                  <span className="text-sm text-muted-foreground">
+                    {analytics.standupCompletionRate}%
+                  </span>
+                </div>
+                <Progress value={analytics.standupCompletionRate} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Resource Utilization */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-yellow-600" />
+              Resource Utilization
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {['planning', 'active', 'on_hold', 'completed'].map((status) => {
-                const count = studies.filter((s: any) => s.status === status).length;
-                const percentage = studies.length > 0 ? (count / studies.length) * 100 : 0;
-                
-                return (
-                  <div key={status} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium capitalize">
-                        {status.replace('_', ' ')}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {count} ({percentage.toFixed(1)}%)
-                      </span>
-                    </div>
-                    <Progress value={percentage} className="h-2" />
-                  </div>
-                );
-              })}
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <FolderOpen className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm font-medium">Active Buckets</span>
+                </div>
+                <Badge variant="outline">{analytics.activeBuckets} / {analytics.totalBuckets}</Badge>
+              </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Users className="h-4 w-4 text-green-500" />
+                  <span className="text-sm font-medium">Team Utilization</span>
+                </div>
+                <Badge variant="outline">{teamUtilizationPercentage}%</Badge>
+              </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Activity className="h-4 w-4 text-purple-500" />
+                  <span className="text-sm font-medium">Recent Meetings</span>
+                </div>
+                <Badge variant="outline">{analytics.recentMeetings} this month</Badge>
+              </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-4 w-4 text-teal-500" />
+                  <span className="text-sm font-medium">Ideas Generated</span>
+                </div>
+                <Badge variant="outline">{analytics.totalIdeas} total</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Performance Metrics */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Lab Performance</CardTitle>
+            <CardDescription>Key performance indicators</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Overall Health</span>
+              <Badge className={`${
+                taskCompletionPercentage > 80 ? 'bg-green-100 text-green-800' : 
+                taskCompletionPercentage > 60 ? 'bg-yellow-100 text-yellow-800' : 
+                'bg-red-100 text-red-800'
+              }`}>
+                {taskCompletionPercentage > 80 ? 'Excellent' : 
+                 taskCompletionPercentage > 60 ? 'Good' : 'Needs Attention'}
+              </Badge>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Avg. Task Time</span>
+              <span className="text-sm font-medium">
+                {analytics.averageTaskCompletionTime > 0 ? 
+                  `${analytics.averageTaskCompletionTime} days` : 'N/A'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Meeting Cadence</span>
+              <span className="text-sm font-medium">
+                {analytics.recentMeetings > 0 ? 'Active' : 'Low'}
+              </span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Task Distribution</CardTitle>
-            <CardDescription>Tasks across different stages</CardDescription>
+            <CardTitle className="text-lg">Risk Indicators</CardTitle>
+            <CardDescription>Areas requiring attention</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {['todo', 'in_progress', 'review', 'completed'].map((status) => {
-                const count = tasks.filter((t: any) => t.status === status).length;
-                const percentage = tasks.length > 0 ? (count / tasks.length) * 100 : 0;
-                
-                return (
-                  <div key={status} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium capitalize">
-                        {status.replace('_', ' ')}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {count} ({percentage.toFixed(1)}%)
-                      </span>
-                    </div>
-                    <Progress value={percentage} className="h-2" />
-                  </div>
-                );
-              })}
+          <CardContent className="space-y-4">
+            {analytics.overdueTasks > 0 && (
+              <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-950/20 rounded border-l-2 border-red-500">
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+                <span className="text-sm text-red-700 dark:text-red-400">
+                  {analytics.overdueTasks} overdue tasks
+                </span>
+              </div>
+            )}
+
+            {analytics.upcomingDeadlines > 5 && (
+              <div className="flex items-center gap-2 p-2 bg-yellow-50 dark:bg-yellow-950/20 rounded border-l-2 border-yellow-500">
+                <Clock className="h-4 w-4 text-yellow-500" />
+                <span className="text-sm text-yellow-700 dark:text-yellow-400">
+                  {analytics.upcomingDeadlines} deadlines approaching
+                </span>
+              </div>
+            )}
+
+            {analytics.standupCompletionRate < 60 && (
+              <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-950/20 rounded border-l-2 border-orange-500">
+                <Activity className="h-4 w-4 text-orange-500" />
+                <span className="text-sm text-orange-700 dark:text-orange-400">
+                  Low standup completion rate
+                </span>
+              </div>
+            )}
+
+            {analytics.overdueTasks === 0 && analytics.upcomingDeadlines <= 5 && analytics.standupCompletionRate >= 60 && (
+              <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950/20 rounded border-l-2 border-green-500">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span className="text-sm text-green-700 dark:text-green-400">
+                  All systems operating normally
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Growth Metrics</CardTitle>
+            <CardDescription>Lab expansion and development</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Research Portfolio</span>
+              <span className="text-sm font-medium">{analytics.totalStudies} studies</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Team Size</span>
+              <span className="text-sm font-medium">{analytics.totalTeamMembers} members</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Project Organization</span>
+              <span className="text-sm font-medium">{analytics.totalBuckets} buckets</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Innovation Pipeline</span>
+              <span className="text-sm font-medium">{analytics.totalIdeas} ideas</span>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Lab Goals Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-teal-600" />
+            {selectedLab?.name} Goals & Objectives
+          </CardTitle>
+          <CardDescription>
+            Real-time progress tracking for {selectedLab?.name}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+            <div className="p-4 border rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{analytics.totalStudies}</div>
+              <div className="text-sm text-muted-foreground mt-1">Research Studies</div>
+              <div className="text-xs text-green-600 mt-1">
+                {analytics.completedStudies} completed
+              </div>
+            </div>
+
+            <div className="p-4 border rounded-lg">
+              <div className="text-2xl font-bold text-green-600">{taskCompletionPercentage}%</div>
+              <div className="text-sm text-muted-foreground mt-1">Task Completion</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {analytics.completedTasks} of {analytics.totalTasks} tasks
+              </div>
+            </div>
+
+            <div className="p-4 border rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">{analytics.totalTeamMembers}</div>
+              <div className="text-sm text-muted-foreground mt-1">Team Members</div>
+              <div className="text-xs text-green-600 mt-1">
+                {analytics.activeTeamMembers} active
+              </div>
+            </div>
+
+            <div className="p-4 border rounded-lg">
+              <div className="text-2xl font-bold text-orange-600">{analytics.recentMeetings}</div>
+              <div className="text-sm text-muted-foreground mt-1">Recent Meetings</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Last 30 days
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
