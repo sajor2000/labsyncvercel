@@ -11,6 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, MoreHorizontal, User, Calendar, Flag, Folder, ArrowRight, GripVertical } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertTaskSchema, type InsertTask } from "@shared/schema";
+import { z } from "zod";
 import {
   DndContext,
   DragEndEvent,
@@ -223,6 +231,7 @@ export default function KanbanBoard() {
   const [selectedBucket, setSelectedBucket] = useState("");
   const [selectedStudy, setSelectedStudy] = useState("");
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
 
   // DND Kit sensors
   const sensors = useSensors(
@@ -279,6 +288,72 @@ export default function KanbanBoard() {
         return false;
       }
       return failureCount < 3;
+    },
+  });
+
+  // Task form schema
+  const taskFormSchema = insertTaskSchema.extend({
+    title: z.string().min(1, "Title is required"),
+    studyId: z.string().min(1, "Study ID is required"),
+  });
+
+  type TaskFormValues = z.infer<typeof taskFormSchema>;
+
+  // Task form
+  const taskForm = useForm<TaskFormValues>({
+    resolver: zodResolver(taskFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      status: "TODO",
+      priority: "MEDIUM",
+      studyId: "",
+    },
+  });
+
+  // Update studyId when selectedStudy changes
+  useEffect(() => {
+    if (selectedStudy) {
+      taskForm.setValue("studyId", selectedStudy);
+    }
+  }, [selectedStudy, taskForm]);
+
+  // Create task mutation
+  const createTaskMutation = useMutation({
+    mutationFn: async (data: TaskFormValues) => {
+      const taskData = {
+        ...data,
+        studyId: selectedStudy,
+        createdBy: "current-user", // This would come from auth context
+      };
+      return apiRequest('POST', '/api/tasks', taskData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      setIsCreateTaskOpen(false);
+      taskForm.reset();
+      toast({
+        title: "Success",
+        description: "Task created successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized", 
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create task",
+        variant: "destructive",
+      });
     },
   });
 
@@ -428,6 +503,7 @@ export default function KanbanBoard() {
         <Button 
           data-testid="button-create-task"
           disabled={!selectedStudy}
+          onClick={() => setIsCreateTaskOpen(true)}
         >
           <Plus className="h-4 w-4 mr-2" />
           New Subtask
@@ -548,6 +624,106 @@ export default function KanbanBoard() {
           </DragOverlay>
         </DndContext>
       )}
+
+      {/* Task Creation Dialog */}
+      <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create New Subtask</DialogTitle>
+          </DialogHeader>
+          <Form {...taskForm}>
+            <form onSubmit={taskForm.handleSubmit((data) => createTaskMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={taskForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Task Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter task title..." {...field} data-testid="input-task-title" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={taskForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Enter task description..." {...field} data-testid="textarea-task-description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={taskForm.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-task-priority">
+                            <SelectValue placeholder="Select priority" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="LOW">Low</SelectItem>
+                          <SelectItem value="MEDIUM">Medium</SelectItem>
+                          <SelectItem value="HIGH">High</SelectItem>
+                          <SelectItem value="URGENT">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={taskForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Initial Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-task-status">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="TODO">To Do</SelectItem>
+                          <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                          <SelectItem value="REVIEW">Review</SelectItem>
+                          <SelectItem value="DONE">Done</SelectItem>
+                          <SelectItem value="BLOCKED">Blocked</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => setIsCreateTaskOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createTaskMutation.isPending} data-testid="button-save-task">
+                  {createTaskMutation.isPending ? "Creating..." : "Create Task"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
