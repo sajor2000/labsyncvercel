@@ -155,9 +155,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   ).slice(0, 5);
 
   const filteredMembers = teamMembers.filter((member: TeamMember) => 
-    member.user?.firstName?.toLowerCase().includes(inputValue.toLowerCase()) ||
-    member.user?.lastName?.toLowerCase().includes(inputValue.toLowerCase()) ||
-    member.user?.email?.toLowerCase().includes(inputValue.toLowerCase())
+    member.name?.toLowerCase().includes(inputValue.toLowerCase()) ||
+    member.email?.toLowerCase().includes(inputValue.toLowerCase())
   ).slice(0, 5);
 
   return (
@@ -267,9 +266,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               <CommandGroup heading="Team Members">
                 {filteredMembers.map((member) => (
                   <CommandItem
-                    key={member.userId}
+                    key={member.id}
                     onSelect={() => {
-                      window.location.hash = `/team?member=${member.userId}`;
+                      window.location.hash = `/team?member=${member.id}`;
                       onOpenChange(false);
                       toast({ title: `Viewing member profile` });
                     }}
@@ -278,9 +277,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                     <Users className="h-4 w-4" />
                     <div className="flex flex-col">
                       <span className="font-medium">
-                        {member.user?.firstName && member.user?.lastName 
-                          ? `${member.user.firstName} ${member.user.lastName}` 
-                          : member.user?.firstName || member.user?.email || member.userId}
+                        {member.name || member.email || member.id}
                       </span>
                       <span className="text-xs text-muted-foreground">{member.role}</span>
                     </div>

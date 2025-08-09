@@ -147,13 +147,11 @@ function SortableTaskRow({ task, assignee, onEdit, onDelete, onPreview }: {
         {assignee ? (
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs">
-              {(assignee.user?.firstName?.[0] || assignee.user?.email?.[0] || '?').toUpperCase()}
+              {(assignee.name?.[0] || assignee.email?.[0] || '?').toUpperCase()}
             </div>
             <div className="flex flex-col">
               <span className="text-xs">
-                {assignee.user?.firstName && assignee.user?.lastName 
-                  ? `${assignee.user.firstName} ${assignee.user.lastName}` 
-                  : assignee.user?.firstName || assignee.user?.email || assignee.userId}
+                {assignee.name || assignee.email || assignee.id}
               </span>
               {assignee.role && (
                 <span className="text-xs text-muted-foreground">{assignee.role}</span>
@@ -255,13 +253,11 @@ function TaskCard({ task, assignee, onEdit, onDelete, onPreview }: {
         {assignee && (
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
-              {(assignee.user?.firstName?.[0] || assignee.user?.email?.[0] || '?').toUpperCase()}
+              {(assignee.name?.[0] || assignee.email?.[0] || '?').toUpperCase()}
             </div>
             <div className="flex flex-col">
               <span className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                {assignee.user?.firstName && assignee.user?.lastName 
-                  ? `${assignee.user.firstName} ${assignee.user.lastName}` 
-                  : assignee.user?.firstName || assignee.user?.email || assignee.userId}
+                {assignee.name || assignee.email || assignee.id}
               </span>
               <span className="text-xs text-gray-500">{assignee.role}</span>
             </div>
@@ -364,15 +360,13 @@ function TaskPreviewPanel({ task, assignee, onClose, onEdit, onDelete }: {
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Assignee</label>
             <div className="mt-1 flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
-                {(assignee.user?.firstName?.[0] || assignee.user?.email?.[0] || '?').toUpperCase()}
+                {(assignee.name?.[0] || assignee.email?.[0] || '?').toUpperCase()}
               </div>
               <div className="flex flex-col">
                 <span className="text-gray-900 dark:text-gray-100 font-medium">
-                  {assignee.user?.firstName && assignee.user?.lastName 
-                    ? `${assignee.user.firstName} ${assignee.user.lastName}` 
-                    : assignee.user?.firstName || assignee.user?.email || assignee.userId}
+                  {assignee.name || assignee.email || assignee.id}
                 </span>
-                <span className="text-sm text-gray-500">{assignee.role} • {assignee.user?.email}</span>
+                <span className="text-sm text-gray-500">{assignee.role} • {assignee.email}</span>
               </div>
             </div>
           </div>
@@ -483,11 +477,10 @@ export default function TaskManagement() {
     enabled: isAuthenticated,
   });
 
-  const { data: teamMembers = [] } = useQuery<TeamMember[]>({
+  const { data: teamMembers = [] } = useQuery({
     queryKey: ['/api/team-members', contextLab?.id],
-    queryFn: () => apiRequest(`/api/team-members?labId=${contextLab?.id}`, 'GET'),
     enabled: isAuthenticated && !!contextLab,
-  });
+  }) as { data: TeamMember[] };
 
   // Quick task form
   const quickForm = useForm<QuickTaskFormValues>({
@@ -805,15 +798,13 @@ export default function TaskManagement() {
                         <SelectContent>
                           <SelectItem value="">Unassigned</SelectItem>
                           {teamMembers.map((member) => (
-                            <SelectItem key={member.userId} value={member.userId}>
+                            <SelectItem key={member.id} value={member.id}>
                               <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
-                                  {(member.user?.firstName?.[0] || member.user?.email?.[0] || '?').toUpperCase()}
+                                  {(member.name?.[0] || member.email?.[0] || '?').toUpperCase()}
                                 </div>
                                 <span>
-                                  {member.user?.firstName && member.user?.lastName 
-                                    ? `${member.user.firstName} ${member.user.lastName}` 
-                                    : member.user?.firstName || member.user?.email || member.userId}
+                                  {member.name || member.email || member.id}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
                                   ({member.role})
@@ -909,15 +900,13 @@ export default function TaskManagement() {
               <SelectItem value="ALL">All Assignees</SelectItem>
               <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
               {teamMembers.map((member) => (
-                <SelectItem key={member.userId} value={member.userId}>
+                <SelectItem key={member.id} value={member.id}>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center text-xs">
-                      {(member.user?.firstName?.[0] || member.user?.email?.[0] || '?').toUpperCase()}
+                      {(member.name?.[0] || member.email?.[0] || '?').toUpperCase()}
                     </div>
                     <span>
-                      {member.user?.firstName && member.user?.lastName 
-                        ? `${member.user.firstName} ${member.user.lastName}` 
-                        : member.user?.firstName || member.user?.email || member.userId}
+                      {member.name || member.email || member.id}
                     </span>
                   </div>
                 </SelectItem>
@@ -1055,14 +1044,14 @@ export default function TaskManagement() {
                             <>
                               <div className="flex -space-x-1">
                                 {study.assignees.slice(0, 3).map((assigneeId, index) => {
-                                  const member = teamMembers.find(m => m.userId === assigneeId);
+                                  const member = teamMembers.find(m => m.id === assigneeId);
                                   return (
                                     <div 
                                       key={assigneeId}
                                       className="w-6 h-6 rounded-full bg-primary/10 border-2 border-background flex items-center justify-center text-xs font-medium"
-                                      title={member?.user?.firstName || member?.user?.email || assigneeId}
+                                      title={member?.name || member?.email || assigneeId}
                                     >
-                                      {(member?.user?.firstName?.[0] || member?.user?.email?.[0] || '?').toUpperCase()}
+                                      {(member?.name?.[0] || member?.email?.[0] || '?').toUpperCase()}
                                     </div>
                                   );
                                 })}
@@ -1110,7 +1099,7 @@ export default function TaskManagement() {
                     </TableRow>,
                     // Task rows (only shown when expanded) - now with drag and drop
                     ...(isExpanded ? filteredStudyTasks.map((task) => {
-                      const assignee = teamMembers.find(m => m.userId === task.assigneeId);
+                      const assignee = teamMembers.find(m => m.id === task.assigneeId);
                       
                       return (
                         <SortableTaskRow
@@ -1191,7 +1180,7 @@ export default function TaskManagement() {
                           {filteredTasks
                             .filter(task => task.status === status)
                             .map((task) => {
-                              const assignee = teamMembers.find(m => m.userId === task.assigneeId);
+                              const assignee = teamMembers.find(m => m.id === task.assigneeId);
                               return (
                                 <TaskCard
                                   key={task.id}
@@ -1227,7 +1216,7 @@ export default function TaskManagement() {
       {showPreviewPanel && selectedTask && (
         <TaskPreviewPanel
           task={selectedTask}
-          assignee={teamMembers.find(m => m.userId === selectedTask.assigneeId)}
+          assignee={teamMembers.find(m => m.id === selectedTask.assigneeId)}
           onClose={() => {
             setShowPreviewPanel(false);
             setSelectedTask(null);
