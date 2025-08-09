@@ -285,11 +285,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Team member routes (backward compatibility)
+  // Team member routes (lab-filtered)
   app.get("/api/team-members", isAuthenticated, async (req, res) => {
     try {
-      const members = await storage.getTeamMembers();
-      res.json(members);
+      const labId = req.query.labId as string | undefined;
+      if (labId) {
+        // Filter by lab ID when provided
+        const members = await storage.getLabMembers(labId);
+        res.json(members);
+      } else {
+        // Return all team members if no lab ID specified
+        const members = await storage.getTeamMembers();
+        res.json(members);
+      }
     } catch (error) {
       console.error("Error fetching team members:", error);
       res.status(500).json({ message: "Failed to fetch team members" });
