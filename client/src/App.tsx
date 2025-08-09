@@ -16,6 +16,7 @@ import TeamMembersEnhanced from "@/pages/TeamMembersEnhanced";
 import Ideas from "@/pages/Ideas";
 import Deadlines from "@/pages/Deadlines";
 import Standups from "@/pages/Standups";
+import AITranscription from "@/pages/AITranscription";
 import Calendar from "@/pages/Calendar";
 import Analytics from "@/pages/Analytics";
 import Profile from "@/pages/Profile";
@@ -43,6 +44,7 @@ function Router() {
           <Route path="/labs" component={() => <Layout><Labs /></Layout>} />
           <Route path="/buckets" component={() => <Layout><Buckets /></Layout>} />
           <Route path="/standups" component={() => <Layout><Standups /></Layout>} />
+          <Route path="/ai-transcription" component={() => <Layout><AITranscription /></Layout>} />
           <Route path="/calendar" component={() => <Layout><Calendar /></Layout>} />
           <Route path="/analytics" component={() => <Layout><Analytics /></Layout>} />
           <Route path="/profile" component={() => <Layout><Profile /></Layout>} />

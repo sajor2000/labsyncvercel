@@ -10,6 +10,7 @@ import {
   LogOut,
   Building2,
   Mic,
+  Brain,
   FileText,
   KanbanSquare,
   LayoutGrid,
@@ -39,6 +40,7 @@ const navigationItems = [
   { name: "Deadlines", href: "/deadlines", icon: Clock },
   { name: "Team Members", href: "/team-members", icon: Users },
   { name: "Standups", href: "/standups", icon: Mic },
+  { name: "AI Transcription", href: "/ai-transcription", icon: Brain },
   { name: "Calendar", href: "/calendar", icon: Calendar },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
 ];

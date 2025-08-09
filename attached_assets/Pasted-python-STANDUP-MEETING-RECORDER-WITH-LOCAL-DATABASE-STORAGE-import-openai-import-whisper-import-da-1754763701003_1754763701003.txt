@@ -1,0 +1,481 @@
+python# STANDUP MEETING RECORDER WITH LOCAL DATABASE STORAGE
+
+import openai
+import whisper
+import datetime
+import resend
+import sounddevice as sd
+import numpy as np
+import wave
+import json
+import sqlite3
+import os
+from pathlib import Path
+import schedule
+import threading
+import time
+
+class StandupRecorder:
+   def __init__(self, openai_api_key, resend_api_key, db_path="meeting_logs.db"):
+       self.openai_api_key = openai_api_key
+       openai.api_key = openai_api_key
+       resend.api_key = resend_api_key
+       self.whisper_model = whisper.load_model("base")
+       self.db_path = db_path
+       self.init_database()
+       
+   def init_database(self):
+       """Initialize SQLite database for meeting storage"""
+       conn = sqlite3.connect(self.db_path)
+       cursor = conn.cursor()
+       
+       cursor.execute('''
+           CREATE TABLE IF NOT EXISTS meetings (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               meeting_date DATE NOT NULL,
+               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+               transcript TEXT,
+               processed_notes TEXT,
+               audio_file_path TEXT,
+               attendees TEXT,
+               tasks_json TEXT,
+               email_sent BOOLEAN DEFAULT 0
+           )
+       ''')
+       
+       cursor.execute('''
+           CREATE TABLE IF NOT EXISTS tasks (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               meeting_id INTEGER,
+               member_name TEXT,
+               task_description TEXT,
+               start_date DATE,
+               due_date DATE,
+               status TEXT,
+               blocker TEXT,
+               FOREIGN KEY (meeting_id) REFERENCES meetings (id)
+           )
+       ''')
+       
+       conn.commit()
+       conn.close()
+       
+   def record_meeting(self, duration_seconds=600):
+       """Record audio from microphone"""
+       print("Recording started...")
+       fs = 44100
+       recording = sd.rec(int(duration_seconds * fs), 
+                         samplerate=fs, channels=1)
+       sd.wait()
+       
+       # Create storage directory
+       storage_dir = Path("meeting_recordings")
+       storage_dir.mkdir(exist_ok=True)
+       
+       # Save to WAV
+       timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+       filename = storage_dir / f"standup_{timestamp}.wav"
+       
+       with wave.open(str(filename), 'wb') as wf:
+           wf.setnchannels(1)
+           wf.setsampwidth(2)
+           wf.setframerate(fs)
+           wf.writeframes(recording.tobytes())
+       
+       return str(filename)
+   
+   def transcribe_audio(self, audio_file):
+       """Use Whisper for transcription"""
+       result = self.whisper_model.transcribe(audio_file)
+       return result["text"]
+   
+   def process_with_gpt4mini(self, transcript):
+       """Process transcript using GPT-4o-mini with task extraction prompt"""
+       
+       system_prompt = """
+       SYSTEM PROMPT: Task & Timeline Tracker for Lab Members
+       
+       PURPOSE: Document what each lab member is working on with clear timelines. 
+       Blockers are rare but must be flagged when mentioned.
+       
+       CAPTURE PER MEMBER:
+       [Name]:
+       - TASK: [What they're doing]
+       - TIMELINE: [When started/expected completion]
+       - STATUS: [% complete or milestone reached]
+       - BLOCKER: [Only if explicitly mentioned]
+       
+       PROCESSING RULES:
+       1. Task Extraction:
+          - Focus on WHAT is being done (analysis type, dataset, experiment)
+          - Extract any mentioned deliverables
+          - Link to project/paper if referenced
+       
+       2. Timeline Parsing:
+          - Convert all time references to dates (today is {date})
+          - Flag vague timelines ("soon", "later") for clarification
+          - Calculate days until deadline
+          - Mark overdue items
+       
+       3. Auto-Standardization:
+          - "Working on..." → Task name
+          - "Should be done by..." → Deadline
+          - "Started last..." → Start date
+          - "X% done" or "halfway" → Progress
+       
+       4. Output Format:
+          Create an HTML table with columns: MEMBER | TASK | START | DUE | DAYS_LEFT | STATUS
+          
+       5. Also return a JSON structure with extracted tasks for database storage:
+          {{
+            "tasks": [
+              {{
+                "member": "name",
+                "task": "description",
+                "start_date": "YYYY-MM-DD",
+                "due_date": "YYYY-MM-DD",
+                "status": "percentage or phase",
+                "blocker": "if any"
+              }}
+            ],
+            "summary": {{
+              "tasks_due_this_week": [],
+              "overdue_tasks": [],
+              "blockers": []
+            }}
+          }}
+          
+       Return both HTML for email and JSON for database.
+       """.format(date=datetime.datetime.now().strftime("%Y-%m-%d"))
+       
+       response = openai.ChatCompletion.create(
+           model="gpt-4o-mini",
+           messages=[
+               {"role": "system", "content": system_prompt},
+               {"role": "user", "content": f"Process this standup meeting transcript:\n\n{transcript}"}
+           ],
+           temperature=0.1
+       )
+       
+       return response.choices[0].message.content
+   
+   def save_to_database(self, transcript, processed_notes, audio_file, attendees):
+       """Save meeting data to SQLite database"""
+       conn = sqlite3.connect(self.db_path)
+       cursor = conn.cursor()
+       
+       meeting_date = datetime.datetime.now().strftime("%Y-%m-%d")
+       
+       # Extract JSON data from processed notes (if GPT returns it)
+       try:
+           # Parse JSON from processed_notes if included
+           import re
+           json_match = re.search(r'\{.*"tasks".*\}', processed_notes, re.DOTALL)
+           tasks_json = json_match.group() if json_match else "{}"
+           tasks_data = json.loads(tasks_json)
+       except:
+           tasks_data = {"tasks": []}
+       
+       # Insert meeting record
+       cursor.execute('''
+           INSERT INTO meetings 
+           (meeting_date, transcript, processed_notes, audio_file_path, attendees, tasks_json)
+           VALUES (?, ?, ?, ?, ?, ?)
+       ''', (meeting_date, transcript, processed_notes, audio_file, 
+             json.dumps(attendees), json.dumps(tasks_data)))
+       
+       meeting_id = cursor.lastrowid
+       
+       # Insert individual tasks
+       for task in tasks_data.get("tasks", []):
+           cursor.execute('''
+               INSERT INTO tasks 
+               (meeting_id, member_name, task_description, start_date, due_date, status, blocker)
+               VALUES (?, ?, ?, ?, ?, ?, ?)
+           ''', (meeting_id, 
+                 task.get("member"),
+                 task.get("task"),
+                 task.get("start_date"),
+                 task.get("due_date"),
+                 task.get("status"),
+                 task.get("blocker")))
+       
+       conn.commit()
+       conn.close()
+       
+       print(f"Meeting saved to database with ID: {meeting_id}")
+       return meeting_id
+   
+   def get_recent_meetings(self, days=14):
+       """Retrieve meetings from the last N days"""
+       conn = sqlite3.connect(self.db_path)
+       cursor = conn.cursor()
+       
+       cutoff_date = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime("%Y-%m-%d")
+       
+       cursor.execute('''
+           SELECT id, meeting_date, created_at, attendees
+           FROM meetings
+           WHERE meeting_date >= ?
+           ORDER BY meeting_date DESC
+       ''', (cutoff_date,))
+       
+       meetings = cursor.fetchall()
+       conn.close()
+       
+       return meetings
+   
+   def get_meeting_details(self, meeting_id):
+       """Get full details of a specific meeting"""
+       conn = sqlite3.connect(self.db_path)
+       cursor = conn.cursor()
+       
+       cursor.execute('''
+           SELECT * FROM meetings WHERE id = ?
+       ''', (meeting_id,))
+       
+       meeting = cursor.fetchone()
+       
+       cursor.execute('''
+           SELECT * FROM tasks WHERE meeting_id = ?
+       ''', (meeting_id,))
+       
+       tasks = cursor.fetchall()
+       
+       conn.close()
+       
+       return meeting, tasks
+   
+   def cleanup_old_meetings(self):
+       """Delete meetings older than 2 weeks"""
+       conn = sqlite3.connect(self.db_path)
+       cursor = conn.cursor()
+       
+       cutoff_date = (datetime.datetime.now() - datetime.timedelta(days=14)).strftime("%Y-%m-%d")
+       
+       # Get audio files to delete
+       cursor.execute('''
+           SELECT audio_file_path FROM meetings
+           WHERE meeting_date < ?
+       ''', (cutoff_date,))
+       
+       audio_files = cursor.fetchall()
+       
+       # Delete from database
+       cursor.execute('''
+           DELETE FROM tasks WHERE meeting_id IN (
+               SELECT id FROM meetings WHERE meeting_date < ?
+           )
+       ''', (cutoff_date,))
+       
+       cursor.execute('''
+           DELETE FROM meetings WHERE meeting_date < ?
+       ''', (cutoff_date,))
+       
+       deleted_count = cursor.rowcount
+       conn.commit()
+       conn.close()
+       
+       # Delete audio files
+       for (audio_file,) in audio_files:
+           if audio_file and os.path.exists(audio_file):
+               os.remove(audio_file)
+               print(f"Deleted audio file: {audio_file}")
+       
+       print(f"Cleaned up {deleted_count} meetings older than 2 weeks")
+       return deleted_count
+   
+   def send_with_resend(self, processed_notes, recipients, meeting_date):
+       """Send meeting notes via Resend API"""
+       
+       html_content = f"""
+       <!DOCTYPE html>
+       <html>
+       <head>
+           <style>
+               body {{ font-family: Arial, sans-serif; }}
+               h1 {{ color: #333; }}
+               table {{
+                   border-collapse: collapse;
+                   width: 100%;
+                   margin: 20px 0;
+               }}
+               th, td {{
+                   border: 1px solid #ddd;
+                   padding: 12px;
+                   text-align: left;
+               }}
+               th {{
+                   background-color: #4CAF50;
+                   color: white;
+               }}
+               tr:nth-child(even) {{ background-color: #f2f2f2; }}
+               .overdue {{ color: red; font-weight: bold; }}
+               .summary {{ 
+                   background-color: #f0f8ff; 
+                   padding: 15px;
+                   border-radius: 5px;
+                   margin-top: 20px;
+               }}
+           </style>
+       </head>
+       <body>
+           <h1>Lab Standup Meeting Summary</h1>
+           <p><strong>Date:</strong> {meeting_date}</p>
+           
+           {processed_notes}
+           
+           <hr>
+           <p style="color: #666; font-size: 12px;">
+               This is an automated summary generated from the meeting recording.
+               Meeting logs are stored for 2 weeks for review.
+           </p>
+       </body>
+       </html>
+       """
+       
+       try:
+           response = resend.Emails.send({
+               "from": "Lab Recorder <recorder@yourdomain.com>",
+               "to": recipients,
+               "subject": f"Standup Meeting Notes - {meeting_date}",
+               "html": html_content
+           })
+           
+           print(f"Email sent successfully! ID: {response['id']}")
+           return response
+           
+       except Exception as e:
+           print(f"Error sending email: {e}")
+           return None
+
+# AUTOMATED CLEANUP SCHEDULER
+class DatabaseCleaner:
+   def __init__(self, db_path="meeting_logs.db"):
+       self.db_path = db_path
+       self.recorder = StandupRecorder(None, None, db_path)
+       
+   def start_cleanup_scheduler(self):
+       """Run cleanup daily at 2 AM"""
+       schedule.every().day.at("02:00").do(self.recorder.cleanup_old_meetings)
+       
+       def run_scheduler():
+           while True:
+               schedule.run_pending()
+               time.sleep(60)
+       
+       scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+       scheduler_thread.start()
+       print("Cleanup scheduler started (runs daily at 2 AM)")
+
+# MAIN EXECUTION SCRIPT
+def run_standup_meeting():
+   # Configuration
+   OPENAI_API_KEY = "sk-..."  # Your OpenAI API key
+   RESEND_API_KEY = "re_..."  # Your Resend API key
+   
+   # Lab member emails
+   recipients = [
+       "member1@lab.edu",
+       "member2@lab.edu", 
+       "pi@lab.edu"
+   ]
+   
+   # Initialize recorder
+   recorder = StandupRecorder(OPENAI_API_KEY, RESEND_API_KEY)
+   
+   # Start cleanup scheduler
+   cleaner = DatabaseCleaner()
+   cleaner.start_cleanup_scheduler()
+   
+   # Record meeting
+   print("=== STANDUP MEETING RECORDER ===")
+   print("Press Enter to start recording (10 min max)...")
+   input()
+   
+   try:
+       audio_file = recorder.record_meeting(duration_seconds=600)
+       print("Recording complete!")
+       
+       # Process
+       print("Transcribing audio...")
+       transcript = recorder.transcribe_audio(audio_file)
+       
+       print("Processing with GPT-4o-mini...")
+       processed_notes = recorder.process_with_gpt4mini(transcript)
+       
+       # Save to database
+       meeting_id = recorder.save_to_database(
+           transcript, processed_notes, audio_file, recipients
+       )
+       
+       # Send email
+       meeting_date = datetime.datetime.now().strftime("%Y-%m-%d")
+       recorder.send_with_resend(processed_notes, recipients, meeting_date)
+       
+       print(f"\n✓ Meeting saved (ID: {meeting_id})")
+       print(f"✓ Email sent to {len(recipients)} recipients")
+       print(f"✓ Data will be retained for 14 days")
+       
+       return processed_notes
+       
+   except Exception as e:
+       print(f"Error: {e}")
+
+# QUERY PAST MEETINGS
+def review_past_meetings():
+   """CLI to review past meetings"""
+   recorder = StandupRecorder(None, None)
+   
+   print("\n=== PAST MEETINGS (Last 14 days) ===")
+   meetings = recorder.get_recent_meetings()
+   
+   for meeting in meetings:
+       print(f"ID: {meeting[0]} | Date: {meeting[1]} | Created: {meeting[2]}")
+   
+   meeting_id = input("\nEnter meeting ID to view details (or 'q' to quit): ")
+   
+   if meeting_id != 'q':
+       meeting, tasks = recorder.get_meeting_details(int(meeting_id))
+       print(f"\n=== Meeting Details ===")
+       print(f"Date: {meeting[1]}")
+       print(f"Attendees: {meeting[5]}")
+       print(f"\nTasks:")
+       for task in tasks:
+           print(f"- {task[2]}: {task[3]} (Due: {task[5]}, Status: {task[6]})")
+
+if __name__ == "__main__":
+   import sys
+   
+   if len(sys.argv) > 1 and sys.argv[1] == "review":
+       review_past_meetings()
+   else:
+       run_standup_meeting()
+Features added:
+
+SQLite Database Storage:
+
+Stores meetings for 14 days
+Tracks individual tasks per member
+Searchable meeting history
+
+
+Automatic Cleanup:
+
+Runs daily at 2 AM
+Deletes meetings older than 2 weeks
+Removes audio files to save space
+
+
+Review Past Meetings:
+bashpython standup_recorder.py review
+
+Storage Structure:
+
+meeting_recordings/ - Audio files
+meeting_logs.db - SQLite database
+Auto-cleanup after 14 days
+
+
+
+The system maintains a 2-week rolling window of meeting data for review while automatically cleaning up old records.

@@ -447,6 +447,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI-powered transcript processing
+  app.post('/api/standups/process-transcript', isAuthenticated, async (req: any, res) => {
+    try {
+      const { transcript, labId } = req.body;
+      if (!transcript) {
+        return res.status(400).json({ message: "Transcript is required" });
+      }
+
+      const { meetingRecorderService } = await import('./meetingRecorder');
+      const result = await meetingRecorderService.processTranscript(
+        transcript,
+        new Date().toISOString().split('T')[0]
+      );
+
+      // Save to database if labId provided
+      let meetingId = null;
+      if (labId) {
+        meetingId = await meetingRecorderService.saveMeetingToDatabase(
+          labId,
+          transcript,
+          result.processedNotes,
+          [], // attendees would come from frontend
+          result.extractedTasks
+        );
+      }
+
+      res.json({
+        meetingId,
+        processedNotes: result.processedNotes,
+        extractedTasks: result.extractedTasks
+      });
+    } catch (error) {
+      console.error("Error processing transcript:", error);
+      res.status(500).json({ message: "Failed to process transcript" });
+    }
+  });
+
+  // Get meeting details with action items
+  app.get('/api/standups/:meetingId/details', isAuthenticated, async (req: any, res) => {
+    try {
+      const { meetingId } = req.params;
+      const { meetingRecorderService } = await import('./meetingRecorder');
+      
+      const result = await meetingRecorderService.getMeetingDetails(meetingId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching meeting details:", error);
+      res.status(500).json({ message: "Failed to fetch meeting details" });
+    }
+  });
+
+  // Cleanup old meetings
+  app.post('/api/standups/cleanup', isAuthenticated, async (req: any, res) => {
+    try {
+      const { days = 14 } = req.body;
+      const { meetingRecorderService } = await import('./meetingRecorder');
+      
+      const deletedCount = await meetingRecorderService.cleanupOldMeetings(days);
+      res.json({ deletedCount, message: `Cleaned up ${deletedCount} old meetings` });
+    } catch (error) {
+      console.error("Error during cleanup:", error);
+      res.status(500).json({ message: "Failed to cleanup old meetings" });
+    }
+  });
+
   // Task Assignment routes
   app.get("/api/task-assignments/:taskId", isAuthenticated, async (req, res) => {
     try {
