@@ -1,0 +1,554 @@
+typescript// standup-recorder.ts - Web App for Standup Meeting Recording
+
+import { useState, useRef, useEffect } from 'react';
+import OpenAI from 'openai';
+import { Resend } from 'resend';
+
+// Types
+interface Task {
+ member: string;
+ task: string;
+ start_date: string;
+ due_date: string;
+ status: string;
+ blocker?: string;
+}
+
+interface Meeting {
+ id?: number;
+ meeting_date: string;
+ created_at: string;
+ transcript: string;
+ processed_notes: string;
+ audio_blob?: Blob;
+ attendees: string[];
+ tasks: Task[];
+ email_sent: boolean;
+}
+
+interface ProcessedNotes {
+ html: string;
+ tasks: Task[];
+ summary: {
+   tasks_due_this_week: string[];
+   overdue_tasks: string[];
+   blockers: string[];
+ };
+}
+
+// API Configuration
+const OPENAI_API_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY!;
+const RESEND_API_KEY = process.env.RESEND_API_KEY!; // Server-side only
+
+// IndexedDB for local storage
+class MeetingDatabase {
+ private dbName = 'StandupMeetings';
+ private version = 1;
+ private db: IDBDatabase | null = null;
+
+ async init(): Promise<void> {
+   return new Promise((resolve, reject) => {
+     const request = indexedDB.open(this.dbName, this.version);
+
+     request.onerror = () => reject(request.error);
+     request.onsuccess = () => {
+       this.db = request.result;
+       resolve();
+     };
+
+     request.onupgradeneeded = (event) => {
+       const db = (event.target as IDBOpenDBRequest).result;
+       
+       if (!db.objectStoreNames.contains('meetings')) {
+         const meetingStore = db.createObjectStore('meetings', { 
+           keyPath: 'id', 
+           autoIncrement: true 
+         });
+         meetingStore.createIndex('meeting_date', 'meeting_date', { unique: false });
+         meetingStore.createIndex('created_at', 'created_at', { unique: false });
+       }
+
+       if (!db.objectStoreNames.contains('tasks')) {
+         const taskStore = db.createObjectStore('tasks', { 
+           keyPath: 'id', 
+           autoIncrement: true 
+         });
+         taskStore.createIndex('meeting_id', 'meeting_id', { unique: false });
+         taskStore.createIndex('member', 'member', { unique: false });
+       }
+     };
+   });
+ }
+
+ async saveMeeting(meeting: Meeting): Promise<number> {
+   if (!this.db) await this.init();
+   
+   const transaction = this.db!.transaction(['meetings'], 'readwrite');
+   const store = transaction.objectStore('meetings');
+   
+   const request = store.add({
+     ...meeting,
+     created_at: new Date().toISOString()
+   });
+
+   return new Promise((resolve, reject) => {
+     request.onsuccess = () => resolve(request.result as number);
+     request.onerror = () => reject(request.error);
+   });
+ }
+
+ async getRecentMeetings(days: number = 14): Promise<Meeting[]> {
+   if (!this.db) await this.init();
+   
+   const cutoffDate = new Date();
+   cutoffDate.setDate(cutoffDate.getDate() - days);
+   
+   const transaction = this.db!.transaction(['meetings'], 'readonly');
+   const store = transaction.objectStore('meetings');
+   const index = store.index('meeting_date');
+   
+   const range = IDBKeyRange.lowerBound(cutoffDate.toISOString());
+   const request = index.getAll(range);
+
+   return new Promise((resolve, reject) => {
+     request.onsuccess = () => resolve(request.result);
+     request.onerror = () => reject(request.error);
+   });
+ }
+
+ async cleanupOldMeetings(): Promise<number> {
+   if (!this.db) await this.init();
+   
+   const cutoffDate = new Date();
+   cutoffDate.setDate(cutoffDate.getDate() - 14);
+   
+   const meetings = await this.getRecentMeetings(15);
+   const toDelete = meetings.filter(m => 
+     new Date(m.meeting_date) < cutoffDate
+   );
+
+   const transaction = this.db!.transaction(['meetings', 'tasks'], 'readwrite');
+   const meetingStore = transaction.objectStore('meetings');
+   
+   let deletedCount = 0;
+   for (const meeting of toDelete) {
+     meetingStore.delete(meeting.id!);
+     deletedCount++;
+   }
+
+   return deletedCount;
+ }
+}
+
+// Audio Recording Hook
+const useAudioRecorder = () => {
+ const [isRecording, setIsRecording] = useState(false);
+ const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+ const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+ const chunksRef = useRef<Blob[]>([]);
+
+ const startRecording = async () => {
+   try {
+     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+     const mediaRecorder = new MediaRecorder(stream);
+     mediaRecorderRef.current = mediaRecorder;
+     chunksRef.current = [];
+
+     mediaRecorder.ondataavailable = (event) => {
+       if (event.data.size > 0) {
+         chunksRef.current.push(event.data);
+       }
+     };
+
+     mediaRecorder.onstop = () => {
+       const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+       setAudioBlob(blob);
+       stream.getTracks().forEach(track => track.stop());
+     };
+
+     mediaRecorder.start();
+     setIsRecording(true);
+
+     // Auto-stop after 10 minutes
+     setTimeout(() => {
+       if (mediaRecorderRef.current?.state === 'recording') {
+         stopRecording();
+       }
+     }, 600000);
+   } catch (error) {
+     console.error('Error accessing microphone:', error);
+   }
+ };
+
+ const stopRecording = () => {
+   if (mediaRecorderRef.current?.state === 'recording') {
+     mediaRecorderRef.current.stop();
+     setIsRecording(false);
+   }
+ };
+
+ return { isRecording, audioBlob, startRecording, stopRecording };
+};
+
+// Transcription Service
+class TranscriptionService {
+ private openai: OpenAI;
+
+ constructor(apiKey: string) {
+   this.openai = new OpenAI({ 
+     apiKey,
+     dangerouslyAllowBrowser: true // Only for development
+   });
+ }
+
+ async transcribeAudio(audioBlob: Blob): Promise<string> {
+   const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+   
+   const response = await this.openai.audio.transcriptions.create({
+     file,
+     model: 'whisper-1',
+   });
+
+   return response.text;
+ }
+
+ async processWithGPT(transcript: string): Promise<ProcessedNotes> {
+   const today = new Date().toISOString().split('T')[0];
+   
+   const systemPrompt = `
+     SYSTEM PROMPT: Task & Timeline Tracker for Lab Members
+     
+     PURPOSE: Document what each lab member is working on with clear timelines. 
+     Blockers are rare but must be flagged when mentioned.
+     
+     CAPTURE PER MEMBER:
+     [Name]:
+     - TASK: [What they're doing]
+     - TIMELINE: [When started/expected completion]
+     - STATUS: [% complete or milestone reached]
+     - BLOCKER: [Only if explicitly mentioned]
+     
+     PROCESSING RULES:
+     1. Task Extraction:
+        - Focus on WHAT is being done (analysis type, dataset, experiment)
+        - Extract any mentioned deliverables
+        - Link to project/paper if referenced
+     
+     2. Timeline Parsing:
+        - Convert all time references to dates (today is ${today})
+        - Flag vague timelines ("soon", "later") for clarification
+        - Calculate days until deadline
+        - Mark overdue items
+     
+     3. Auto-Standardization:
+        - "Working on..." → Task name
+        - "Should be done by..." → Deadline
+        - "Started last..." → Start date
+        - "X% done" or "halfway" → Progress
+     
+     4. Return a JSON object with:
+        {
+          "html": "HTML formatted table and summary",
+          "tasks": [array of task objects],
+          "summary": {
+            "tasks_due_this_week": [],
+            "overdue_tasks": [],
+            "blockers": []
+          }
+        }
+   `;
+
+   const response = await this.openai.chat.completions.create({
+     model: 'gpt-4o-mini',
+     messages: [
+       { role: 'system', content: systemPrompt },
+       { role: 'user', content: `Process this standup meeting transcript:\n\n${transcript}` }
+     ],
+     temperature: 0.1,
+     response_format: { type: 'json_object' }
+   });
+
+   return JSON.parse(response.choices[0].message.content!);
+ }
+}
+
+// Email Service (API Route)
+// app/api/send-email/route.ts
+export async function POST(request: Request) {
+ const resend = new Resend(RESEND_API_KEY);
+ const { processed_notes, recipients, meeting_date } = await request.json();
+
+ const html = `
+   <!DOCTYPE html>
+   <html>
+   <head>
+     <style>
+       body { font-family: Arial, sans-serif; }
+       h1 { color: #333; }
+       table {
+         border-collapse: collapse;
+         width: 100%;
+         margin: 20px 0;
+       }
+       th, td {
+         border: 1px solid #ddd;
+         padding: 12px;
+         text-align: left;
+       }
+       th {
+         background-color: #4CAF50;
+         color: white;
+       }
+       tr:nth-child(even) { background-color: #f2f2f2; }
+       .overdue { color: red; font-weight: bold; }
+       .summary { 
+         background-color: #f0f8ff; 
+         padding: 15px;
+         border-radius: 5px;
+         margin-top: 20px;
+       }
+     </style>
+   </head>
+   <body>
+     <h1>Lab Standup Meeting Summary</h1>
+     <p><strong>Date:</strong> ${meeting_date}</p>
+     
+     ${processed_notes}
+     
+     <hr>
+     <p style="color: #666; font-size: 12px;">
+       This is an automated summary generated from the meeting recording.
+       Meeting logs are stored for 2 weeks for review.
+     </p>
+   </body>
+   </html>
+ `;
+
+ try {
+   const { data, error } = await resend.emails.send({
+     from: 'Lab Recorder <jcrojas@clif-icu.org>',
+     to: recipients,
+     subject: `Standup Meeting Notes - ${meeting_date}`,
+     html,
+   });
+
+   if (error) {
+     return Response.json({ error }, { status: 400 });
+   }
+
+   return Response.json({ data });
+ } catch (error) {
+   return Response.json({ error }, { status: 500 });
+ }
+}
+
+// Main React Component
+export default function StandupRecorder() {
+ const [isProcessing, setIsProcessing] = useState(false);
+ const [transcript, setTranscript] = useState('');
+ const [processedNotes, setProcessedNotes] = useState<ProcessedNotes | null>(null);
+ const [recentMeetings, setRecentMeetings] = useState<Meeting[]>([]);
+ const { isRecording, audioBlob, startRecording, stopRecording } = useAudioRecorder();
+ 
+ const db = useRef(new MeetingDatabase());
+ const transcriptionService = useRef(new TranscriptionService(OPENAI_API_KEY));
+
+ // Lab member emails
+ const recipients = [
+   'jcrojas@clif-icu.org',
+   'member1@lab.edu',
+   'member2@lab.edu',
+   'pi@lab.edu'
+ ];
+
+ useEffect(() => {
+   loadRecentMeetings();
+   setupCleanupSchedule();
+ }, []);
+
+ const loadRecentMeetings = async () => {
+   const meetings = await db.current.getRecentMeetings();
+   setRecentMeetings(meetings);
+ };
+
+ const setupCleanupSchedule = () => {
+   // Check for cleanup every day
+   const checkCleanup = () => {
+     const now = new Date();
+     if (now.getHours() === 2 && now.getMinutes() === 0) {
+       db.current.cleanupOldMeetings();
+     }
+   };
+   
+   setInterval(checkCleanup, 60000); // Check every minute
+ };
+
+ const processMeeting = async () => {
+   if (!audioBlob) return;
+   
+   setIsProcessing(true);
+   try {
+     // Transcribe
+     const transcriptText = await transcriptionService.current.transcribeAudio(audioBlob);
+     setTranscript(transcriptText);
+     
+     // Process with GPT
+     const notes = await transcriptionService.current.processWithGPT(transcriptText);
+     setProcessedNotes(notes);
+     
+     // Save to database
+     const meeting: Meeting = {
+       meeting_date: new Date().toISOString().split('T')[0],
+       created_at: new Date().toISOString(),
+       transcript: transcriptText,
+       processed_notes: notes.html,
+       audio_blob: audioBlob,
+       attendees: recipients,
+       tasks: notes.tasks,
+       email_sent: false
+     };
+     
+     const meetingId = await db.current.saveMeeting(meeting);
+     
+     // Send email
+     await fetch('/api/send-email', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({
+         processed_notes: notes.html,
+         recipients,
+         meeting_date: meeting.meeting_date
+       })
+     });
+     
+     await loadRecentMeetings();
+     
+   } catch (error) {
+     console.error('Error processing meeting:', error);
+   } finally {
+     setIsProcessing(false);
+   }
+ };
+
+ return (
+   <div className="max-w-6xl mx-auto p-6">
+     <h1 className="text-3xl font-bold mb-8">Lab Standup Meeting Recorder</h1>
+     
+     {/* Recording Section */}
+     <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+       <h2 className="text-xl font-semibold mb-4">Record Meeting</h2>
+       
+       <div className="flex items-center gap-4">
+         {!isRecording ? (
+           <button
+             onClick={startRecording}
+             className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600"
+           >
+             Start Recording
+           </button>
+         ) : (
+           <button
+             onClick={stopRecording}
+             className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600"
+           >
+             Stop Recording
+           </button>
+         )}
+         
+         {audioBlob && !isRecording && (
+           <button
+             onClick={processMeeting}
+             disabled={isProcessing}
+             className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+           >
+             {isProcessing ? 'Processing...' : 'Process & Send'}
+           </button>
+         )}
+       </div>
+       
+       {isRecording && (
+         <p className="mt-4 text-red-600 animate-pulse">
+           Recording in progress... (Max 10 minutes)
+         </p>
+       )}
+     </div>
+
+     {/* Processed Notes Display */}
+     {processedNotes && (
+       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+         <h2 className="text-xl font-semibold mb-4">Meeting Summary</h2>
+         <div dangerouslySetInnerHTML={{ __html: processedNotes.html }} />
+       </div>
+     )}
+
+     {/* Recent Meetings */}
+     <div className="bg-white rounded-lg shadow-md p-6">
+       <h2 className="text-xl font-semibold mb-4">Recent Meetings (Last 14 Days)</h2>
+       
+       <div className="overflow-x-auto">
+         <table className="min-w-full">
+           <thead>
+             <tr className="bg-gray-100">
+               <th className="px-4 py-2 text-left">Date</th>
+               <th className="px-4 py-2 text-left">Tasks</th>
+               <th className="px-4 py-2 text-left">Attendees</th>
+               <th className="px-4 py-2 text-left">Actions</th>
+             </tr>
+           </thead>
+           <tbody>
+             {recentMeetings.map((meeting) => (
+               <tr key={meeting.id} className="border-b">
+                 <td className="px-4 py-2">{meeting.meeting_date}</td>
+                 <td className="px-4 py-2">{meeting.tasks.length} tasks</td>
+                 <td className="px-4 py-2">{meeting.attendees.length} people</td>
+                 <td className="px-4 py-2">
+                   <button
+                     onClick={() => {/* View details */}}
+                     className="text-blue-500 hover:underline"
+                   >
+                     View Details
+                   </button>
+                 </td>
+               </tr>
+             ))}
+           </tbody>
+         </table>
+       </div>
+     </div>
+   </div>
+ );
+}
+Setup Instructions:
+
+Install dependencies:
+
+bashnpm install openai resend react
+
+Environment variables (.env.local):
+
+NEXT_PUBLIC_OPENAI_API_KEY=sk-...
+RESEND_API_KEY=re_...
+
+Configure Resend:
+
+
+Add clif-icu.org domain to Resend dashboard
+Verify DNS settings
+
+
+File structure:
+
+app/
+├── standup-recorder/
+│   └── page.tsx (main component)
+├── api/
+│   └── send-email/
+│       └── route.ts (email API)
+The web app provides:
+
+Browser-based audio recording
+Whisper transcription via OpenAI
+GPT-4o-mini processing
+IndexedDB for 2-week local storage
+Automatic cleanup of old meetings
+Email via Resend to jcrojas@clif-icu.org and team
