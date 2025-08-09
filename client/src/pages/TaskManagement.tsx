@@ -8,7 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Filter, Search, Edit, Trash2, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
+import { Plus, Filter, Search, Edit, Trash2, ChevronDown, ChevronRight, GripVertical, Table as TableIcon, Columns, Eye, Calendar, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -79,11 +79,12 @@ const fundingColors = {
 };
 
 // Sortable Task Row Component for drag and drop
-function SortableTaskRow({ task, assignee, onEdit, onDelete }: {
+function SortableTaskRow({ task, assignee, onEdit, onDelete, onPreview }: {
   task: Task;
   assignee?: TeamMember;
   onEdit: () => void;
   onDelete: () => void;
+  onPreview: () => void;
 }) {
   const {
     attributes,
@@ -119,8 +120,8 @@ function SortableTaskRow({ task, assignee, onEdit, onDelete }: {
         </div>
       </TableCell>
       <TableCell className="font-medium pl-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-sm">{task.title}</span>
+        <div className="flex flex-col gap-1 cursor-pointer" onClick={onPreview}>
+          <span className="text-sm hover:text-primary transition-colors">{task.title}</span>
           {task.description && (
             <span className="text-xs text-muted-foreground line-clamp-1">
               {task.description}
@@ -172,6 +173,228 @@ function SortableTaskRow({ task, assignee, onEdit, onDelete }: {
   );
 }
 
+// Enhanced Task Card Component for Kanban View
+function TaskCard({ task, assignee, onEdit, onDelete, onPreview }: {
+  task: Task;
+  assignee?: TeamMember;
+  onEdit: () => void;
+  onDelete: () => void;
+  onPreview: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const priorityIndicatorColors = {
+    LOW: "bg-gray-400",
+    MEDIUM: "bg-blue-400", 
+    HIGH: "bg-orange-400",
+    URGENT: "bg-red-400",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-3 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group ${isDragging ? 'rotate-2 shadow-lg' : ''}`}
+      onClick={onPreview}
+    >
+      {/* Priority Indicator Strip */}
+      <div className={`h-1 w-full rounded-full mb-3 ${priorityIndicatorColors[task.priority as keyof typeof priorityIndicatorColors] || priorityIndicatorColors.MEDIUM}`}></div>
+      
+      {/* Drag Handle */}
+      <div
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4 text-gray-400" />
+      </div>
+
+      {/* Card Content */}
+      <div className="space-y-3">
+        {/* Title */}
+        <h4 className="font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 pr-6">
+          {task.title}
+        </h4>
+
+        {/* Status Badge */}
+        <Badge className={statusColors[task.status as keyof typeof statusColors] || statusColors.TODO} variant="secondary">
+          {task.status?.replace('_', ' ') || 'TODO'}
+        </Badge>
+
+        {/* Assignee */}
+        {assignee && (
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+              {(assignee.user?.firstName?.[0] || assignee.user?.email?.[0] || '?').toUpperCase()}
+            </div>
+            <span className="text-sm text-gray-600 dark:text-gray-400 truncate">
+              {assignee.user?.firstName || assignee.user?.email || assignee.userId}
+            </span>
+          </div>
+        )}
+
+        {/* Due Date */}
+        {task.dueDate && (
+          <div className="flex items-center gap-1 text-sm text-gray-500">
+            <Calendar className="h-3 w-3" />
+            <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+          </div>
+        )}
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex items-center gap-1">
+            {task.estimatedHours && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <Clock className="h-3 w-3" />
+                <span>{task.estimatedHours}h</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+              <Edit className="h-3 w-3" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Quick Preview Panel Component
+function TaskPreviewPanel({ task, assignee, onClose, onEdit, onDelete }: {
+  task: Task | null;
+  assignee?: TeamMember;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  if (!task) return null;
+
+  return (
+    <div className="fixed inset-y-0 right-0 w-96 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-xl z-50 overflow-y-auto">
+      {/* Header */}
+      <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">Task Details</h3>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <Plus className="h-4 w-4 rotate-45" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-4 space-y-6">
+        {/* Title */}
+        <div>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
+          <p className="mt-1 text-gray-900 dark:text-gray-100">{task.title}</p>
+        </div>
+
+        {/* Description */}
+        {task.description && (
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+            <p className="mt-1 text-gray-600 dark:text-gray-400">{task.description}</p>
+          </div>
+        )}
+
+        {/* Status & Priority */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
+            <div className="mt-1">
+              <Badge className={statusColors[task.status as keyof typeof statusColors] || statusColors.TODO} variant="secondary">
+                {task.status?.replace('_', ' ') || 'TODO'}
+              </Badge>
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>
+            <div className="mt-1">
+              <Badge className={priorityColors[task.priority as keyof typeof priorityColors] || priorityColors.MEDIUM} variant="outline">
+                {task.priority || 'MEDIUM'}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        {/* Assignee */}
+        {assignee && (
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Assignee</label>
+            <div className="mt-1 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                {(assignee.user?.firstName?.[0] || assignee.user?.email?.[0] || '?').toUpperCase()}
+              </div>
+              <span className="text-gray-900 dark:text-gray-100">
+                {assignee.user?.firstName || assignee.user?.email || assignee.userId}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Due Date */}
+        {task.dueDate && (
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Due Date</label>
+            <p className="mt-1 text-gray-900 dark:text-gray-100">
+              {new Date(task.dueDate).toLocaleDateString()}
+            </p>
+          </div>
+        )}
+
+        {/* Time Tracking */}
+        {(task.estimatedHours || task.actualHours) && (
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Time Tracking</label>
+            <div className="mt-1 space-y-1">
+              {task.estimatedHours && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Estimated: {task.estimatedHours} hours
+                </p>
+              )}
+              {task.actualHours && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Actual: {task.actualHours} hours
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <Button variant="outline" onClick={onEdit} className="flex-1">
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+          <Button variant="destructive" onClick={onDelete}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Quick task form schema
 const quickTaskSchema = z.object({
   title: z.string().min(1, "Task title is required"),
@@ -194,6 +417,9 @@ export default function TaskManagement() {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [expandedStudies, setExpandedStudies] = useState<Set<string>>(new Set());
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [showPreviewPanel, setShowPreviewPanel] = useState(false);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -427,6 +653,32 @@ export default function TaskManagement() {
         </div>
       </div>
 
+      {/* View Switcher */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center border rounded-lg p-1 bg-muted/50">
+            <Button
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('table')}
+              className="flex items-center gap-2"
+            >
+              <TableIcon className="h-4 w-4" />
+              Table
+            </Button>
+            <Button
+              variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('kanban')}
+              className="flex items-center gap-2"
+            >
+              <Columns className="h-4 w-4" />
+              Kanban
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Quick Add Task Row */}
       {showQuickAdd && (
         <Card className="mb-6 border-dashed border-2 border-primary/20">
@@ -592,30 +844,32 @@ export default function TaskManagement() {
         </Select>
       </div>
 
-      {/* Monday.com-style Task Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span>Research Project Dashboard</span>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">{labFilteredStudies.length} projects</Badge>
-                <Badge variant="outline">{filteredTasks.length} tasks</Badge>
+      {/* Content Area */}
+      {viewMode === 'table' ? (
+        // Table View
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span>Research Project Dashboard</span>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{labFilteredStudies.length} projects</Badge>
+                  <Badge variant="outline">{filteredTasks.length} tasks</Badge>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-primary/20"></div>
-                <span>Projects</span>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-primary/20"></div>
+                  <span>Projects</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div>
+                  <span>Tasks</span>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div>
-                <span>Tasks</span>
-              </div>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
           {tasksLoading ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
@@ -766,6 +1020,10 @@ export default function TaskManagement() {
                           assignee={assignee}
                           onEdit={() => console.log('Edit task:', task.id)}
                           onDelete={() => deleteTaskMutation.mutate(task.id)}
+                          onPreview={() => {
+                            setSelectedTask(task);
+                            setShowPreviewPanel(true);
+                          }}
                         />
                       );
                     }) : [])
@@ -794,6 +1052,37 @@ export default function TaskManagement() {
           )}
         </CardContent>
       </Card>
+      ) : (
+        // Kanban View
+        <div className="space-y-6">
+          <div className="text-center py-12">
+            <div className="text-4xl mb-4">🏗️</div>
+            <h3 className="text-lg font-medium text-foreground mb-2">Kanban View Coming Soon</h3>
+            <p className="text-muted-foreground">Enhanced Kanban board functionality is being developed</p>
+            <Button variant="outline" className="mt-4" onClick={() => setViewMode('table')}>
+              Return to Table View
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Task Preview Panel */}
+      {showPreviewPanel && selectedTask && (
+        <TaskPreviewPanel
+          task={selectedTask}
+          assignee={teamMembers.find(m => m.userId === selectedTask.assigneeId)}
+          onClose={() => {
+            setShowPreviewPanel(false);
+            setSelectedTask(null);
+          }}
+          onEdit={() => console.log('Edit task:', selectedTask.id)}
+          onDelete={() => {
+            deleteTaskMutation.mutate(selectedTask.id);
+            setShowPreviewPanel(false);
+            setSelectedTask(null);
+          }}
+        />
+      )}
     </main>
   );
 }
