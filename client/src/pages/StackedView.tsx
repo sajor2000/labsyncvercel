@@ -247,6 +247,38 @@ export default function StackedView() {
     },
   });
 
+  // Study bucket update mutation
+  const updateStudyBucketMutation = useMutation({
+    mutationFn: async ({ studyId, bucketId, position }: { studyId: string; bucketId: string; position: string }) => {
+      return apiRequest(`/api/studies/${studyId}`, 'PUT', { bucketId, position });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
+      toast({
+        title: "Success",
+        description: "Study moved to different bucket successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to move study to bucket",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: InsertStudy) => {
     // Convert assignees string to array
     const processedData = {
@@ -658,9 +690,21 @@ export default function StackedView() {
           <DropZone
             key={bucket.id}
             onDrop={(e) => {
+              e.preventDefault();
               const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-              const position = studies.length > 0 ? generatePositionBetween(studies[studies.length - 1].position || 'z') : 'a';
-              handleDrop(data.item, data.type, position);
+              // If we're dragging a study to a different bucket, update its bucket
+              if (data.type === 'study' && data.item.bucketId !== bucket.id) {
+                // Update the study's bucket AND position
+                updateStudyBucketMutation.mutate({
+                  studyId: data.item.id,
+                  bucketId: bucket.id,
+                  position: studies.length > 0 ? generatePositionBetween(studies[studies.length - 1].position || 'z') : 'a'
+                });
+              } else {
+                // Just update position within the same bucket
+                const position = studies.length > 0 ? generatePositionBetween(studies[studies.length - 1].position || 'z') : 'a';
+                handleDrop(data.item, data.type, position);
+              }
             }}
             className="space-y-4 min-h-[200px] p-3 rounded-lg"
             label={`Drop in ${bucket.name}`}
@@ -687,6 +731,18 @@ export default function StackedView() {
                   type="study"
                   onDragStart={handleDragStart}
                   onDragOver={dragHandlers.onDragOver}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                    if (data.item.id !== study.id) {
+                      // Calculate position - drop before this study
+                      const currentIndex = studies.findIndex(s => s.id === study.id);
+                      const beforePosition = currentIndex > 0 ? studies[currentIndex - 1].position : undefined;
+                      const afterPosition = study.position;
+                      const newPosition = generatePositionBetween(beforePosition || undefined, afterPosition || undefined);
+                      handleDrop(data.item, data.type, newPosition);
+                    }
+                  }}
                   isDragging={draggedItem?.id === study.id}
                   className="border-l-4 hover:shadow-md transition-all duration-200"
                   style={{ borderLeftColor: bucket.color || '#3b82f6' }}
