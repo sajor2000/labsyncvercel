@@ -713,6 +713,15 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(standupMeetings.createdAt));
   }
 
+  async getTeamMembersByIds(ids: string[]): Promise<TeamMember[]> {
+    if (ids.length === 0) return [];
+    
+    return await db
+      .select()
+      .from(teamMembers)
+      .where(inArray(teamMembers.id, ids));
+  }
+
   async createStandup(standup: InsertStandupMeeting): Promise<StandupMeeting> {
     const [newStandup] = await db.insert(standupMeetings).values(standup).returning();
     return newStandup;

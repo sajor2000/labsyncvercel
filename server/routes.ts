@@ -572,11 +572,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create standup meeting with AI processing
   app.post('/api/standups/meetings', isAuthenticated, async (req: any, res) => {
     try {
-      const { transcript, labId, meetingType = 'standup' } = req.body;
+      const { transcript, labId, meetingType = 'standup', attendees = [] } = req.body;
       const userId = req.user?.claims?.sub;
 
       if (!transcript) {
         return res.status(400).json({ message: "Transcript is required" });
+      }
+
+      // Get attendee details for email
+      let attendeeEmails: string[] = [];
+      let attendeeNames: string[] = [];
+      
+      if (attendees.length > 0) {
+        const teamMembers = await storage.getTeamMembersByIds(attendees);
+        attendeeEmails = teamMembers.map(member => member.email).filter(Boolean);
+        attendeeNames = teamMembers.map(member => member.name).filter(Boolean);
       }
 
       // Process with AI
@@ -585,7 +595,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transcript,
         labId || null,
         userId,
-        meetingType
+        meetingType,
+        attendeeEmails,
+        attendeeNames
       );
 
       res.json(processedMeeting);

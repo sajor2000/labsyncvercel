@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLabContext } from "@/hooks/useLabContext";
 import { 
@@ -22,12 +23,14 @@ import {
   Brain,
   Zap,
   Activity,
-  Target
+  Target,
+  UserCheck,
+  Settings
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { TranscriptProcessor } from "@/components/TranscriptProcessor";
-import type { StandupMeeting, Meeting } from "@shared/schema";
+import type { StandupMeeting, TeamMember } from "@shared/schema";
 
 // RICCC and RHEDAS meeting schedules based on provided images
 const MEETING_SCHEDULES = {
@@ -68,6 +71,8 @@ export default function StandupRecording() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
+  const [showAttendeeSelection, setShowAttendeeSelection] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -89,6 +94,11 @@ export default function StandupRecording() {
     enabled: !!selectedLab?.id,
   });
 
+  const { data: teamMembers = [], isLoading: teamMembersLoading } = useQuery({
+    queryKey: ['/api/team-members', selectedLab?.id],
+    enabled: !!selectedLab?.id,
+  });
+
   const { data: meetingEmail, isLoading: emailLoading } = useQuery({
     queryKey: ['/api/standups/meeting-email', selectedMeetingId],
     enabled: !!selectedMeetingId && showEmailPreview,
@@ -96,10 +106,23 @@ export default function StandupRecording() {
 
   const createMeetingMutation = useMutation({
     mutationFn: async (meetingData: any) => {
-      return apiRequest('/api/standups/meetings', {
+      const response = await fetch('/api/standups/meetings', {
         method: 'POST',
-        body: JSON.stringify(meetingData),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...meetingData,
+          attendees: selectedAttendees,
+          labId: selectedLab?.id,
+        }),
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create meeting');
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/standups/meetings'] });
@@ -107,6 +130,8 @@ export default function StandupRecording() {
         title: "Meeting Recorded",
         description: "Standup meeting has been successfully processed and recorded.",
       });
+      setSelectedAttendees([]);
+      setShowAttendeeSelection(false);
     },
     onError: (error) => {
       toast({
@@ -222,10 +247,12 @@ export default function StandupRecording() {
     }
   };
 
-  const selectedMeeting = (meetings as Meeting[])?.find((m: Meeting) => m.id === selectedMeetingId);
-  const sortedMeetings = meetings ? [...(meetings as Meeting[])].sort((a: Meeting, b: Meeting) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  ) : [];
+  const selectedMeeting = (meetings as StandupMeeting[])?.find((m: StandupMeeting) => m.id === selectedMeetingId);
+  const sortedMeetings = meetings ? [...(meetings as StandupMeeting[])].sort((a: StandupMeeting, b: StandupMeeting) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
+  }) : [];
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -319,13 +346,79 @@ export default function StandupRecording() {
               </div>
 
               <div>
-                <h4 className="font-medium mb-2">Regular Participants:</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Meeting Attendees:</h4>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setShowAttendeeSelection(!showAttendeeSelection)}
+                    data-testid="button-select-attendees"
+                  >
+                    <UserCheck className="h-4 w-4 mr-2" />
+                    Select Attendees
+                  </Button>
+                </div>
+                
+                {showAttendeeSelection && (
+                  <div className="mb-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                    <h5 className="text-sm font-medium mb-3">Choose who's attending this meeting:</h5>
+                    {teamMembersLoading ? (
+                      <div className="text-sm text-muted-foreground">Loading team members...</div>
+                    ) : teamMembers.length > 0 ? (
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {(teamMembers as TeamMember[]).map((member: TeamMember) => (
+                          <div key={member.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={member.id}
+                              checked={selectedAttendees.includes(member.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedAttendees([...selectedAttendees, member.id]);
+                                } else {
+                                  setSelectedAttendees(selectedAttendees.filter(id => id !== member.id));
+                                }
+                              }}
+                            />
+                            <label 
+                              htmlFor={member.id} 
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {member.name} - {member.role}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        No team members found. Add team members to select attendees.
+                      </div>
+                    )}
+                    
+                    {selectedAttendees.length > 0 && (
+                      <div className="mt-3 p-2 bg-green-50 dark:bg-green-950/20 rounded border">
+                        <p className="text-sm text-green-800 dark:text-green-400">
+                          <CheckCircle className="h-4 w-4 inline mr-1" />
+                          {selectedAttendees.length} attendee{selectedAttendees.length > 1 ? 's' : ''} selected for meeting email
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex flex-wrap gap-1">
-                  {meetingSchedule.participants.map((participant, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {participant}
-                    </Badge>
-                  ))}
+                  {selectedAttendees.length > 0 ? (
+                    (teamMembers as TeamMember[])
+                      .filter((member: TeamMember) => selectedAttendees.includes(member.id))
+                      .map((member: TeamMember) => (
+                        <Badge key={member.id} className="text-xs bg-teal-100 text-teal-800 border-teal-200">
+                          {member.name}
+                        </Badge>
+                      ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground italic">
+                      Select attendees above to personalize the meeting invitation
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -417,17 +510,76 @@ export default function StandupRecording() {
 
           {/* AI Processing Section */}
           {transcript && (
-            <TranscriptProcessor
-              transcript={transcript}
-              onMeetingCreated={(meeting) => {
-                queryClient.invalidateQueries({ queryKey: ['/api/standups/meetings'] });
-                setSelectedMeetingId(meeting.id);
-                toast({
-                  title: "Meeting Processed",
-                  description: "AI has successfully analyzed your meeting and extracted action items.",
-                });
-              }}
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-purple-600" />
+                  AI Processing & Meeting Summary
+                </CardTitle>
+                <CardDescription>
+                  Process the transcript with AI to generate meeting summary and action items
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {selectedAttendees.length === 0 && (
+                  <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-400 flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>Select meeting attendees above to personalize the email summary and ensure proper distribution.</span>
+                    </p>
+                  </div>
+                )}
+                
+                <div className="p-4 border rounded-lg bg-white dark:bg-gray-900">
+                  <h5 className="font-medium mb-3">Meeting Transcript:</h5>
+                  <div className="max-h-48 overflow-y-auto p-3 bg-gray-50 dark:bg-gray-800 rounded border text-sm">
+                    {transcript}
+                  </div>
+                  
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      onClick={() => {
+                        // Process transcript with AI
+                        fetch('/api/standups/meetings', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            transcript,
+                            attendees: selectedAttendees,
+                            labId: selectedLab?.id,
+                            meetingType: 'standup'
+                          }),
+                        })
+                        .then(response => response.json())
+                        .then((meeting: StandupMeeting) => {
+                          queryClient.invalidateQueries({ queryKey: ['/api/standups/meetings'] });
+                          setSelectedMeetingId(meeting.id);
+                          toast({
+                            title: "Meeting Processed",
+                            description: "AI has successfully analyzed your meeting and extracted action items.",
+                          });
+                        })
+                        .catch((error) => {
+                          toast({
+                            title: "Processing Failed",
+                            description: "Failed to process meeting. Please try again.",
+                            variant: "destructive",
+                          });
+                        });
+                      }}
+                      disabled={selectedAttendees.length === 0}
+                      className="bg-purple-600 hover:bg-purple-700"
+                      data-testid="button-process-transcript"
+                    >
+                      <Brain className="h-4 w-4 mr-2" />
+                      Process with AI & Generate Email
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
 
@@ -446,7 +598,7 @@ export default function StandupRecording() {
                 <div className="text-center py-4">Loading meetings...</div>
               ) : sortedMeetings.length > 0 ? (
                 <div className="space-y-3">
-                  {sortedMeetings.slice(0, 5).map((meeting: Meeting) => (
+                  {sortedMeetings.slice(0, 5).map((meeting: StandupMeeting) => (
                     <div 
                       key={meeting.id}
                       className={`p-3 border rounded-lg cursor-pointer transition-colors ${
@@ -464,7 +616,7 @@ export default function StandupRecording() {
                             {meetingSchedule.name}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {new Date(meeting.createdAt).toLocaleDateString()}
+                            {meeting.createdAt ? new Date(meeting.createdAt).toLocaleDateString() : 'Unknown date'}
                           </div>
                         </div>
                         <Badge variant="secondary" className="text-xs">
@@ -500,7 +652,8 @@ export default function StandupRecording() {
               <div className="flex items-center justify-between">
                 <span className="text-sm">This Month</span>
                 <Badge variant="outline">
-                  {sortedMeetings.filter((m: Meeting) => {
+                  {sortedMeetings.filter((m: StandupMeeting) => {
+                    if (!m.createdAt) return false;
                     const meetingDate = new Date(m.createdAt);
                     const currentMonth = new Date().getMonth();
                     return meetingDate.getMonth() === currentMonth;
@@ -539,7 +692,7 @@ export default function StandupRecording() {
                 {showEmailPreview && meetingEmail && (
                   <div className="mt-4 border rounded-lg p-4 bg-white dark:bg-gray-900 max-h-96 overflow-y-auto">
                     <div 
-                      dangerouslySetInnerHTML={{ __html: (meetingEmail as any)?.html || '' }}
+                      dangerouslySetInnerHTML={{ __html: String((meetingEmail as any)?.html || '') }}
                       className="text-sm"
                     />
                   </div>
