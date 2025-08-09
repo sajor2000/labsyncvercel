@@ -32,9 +32,22 @@ import { useToast } from "@/hooks/use-toast";
 import { TranscriptProcessor } from "@/components/TranscriptProcessor";
 import type { StandupMeeting, TeamMember } from "@shared/schema";
 
-// RICCC and RHEDAS meeting schedules based on provided images
+// RICCC and RHEDAS meeting schedules - SWAPPED per user request
 const MEETING_SCHEDULES = {
   'riccc': {
+    name: 'Data Analytics Studio Weekly Check In',  
+    schedule: 'Thursday, 2:30 PM - 3:00 PM',
+    duration: '30 minutes',
+    frequency: 'Weekly',
+    participants: ['Jada Sherrod', 'Jason Stanghelle', 'Juan Rojas', 'Meher Sapna Masanpally'],
+    agenda: [
+      'Project Updates and sprint review/Timeline Check-in',
+      'Additional resources needed', 
+      'Challenges/Hurdles',
+      'Discuss shared work opportunities'
+    ]
+  },
+  'rhedas': {
     name: 'RICCC Lab Biweekly Check-In',
     schedule: 'Tuesday & Thursday, 12:30 PM - 1:00 PM',
     duration: '30 minutes',
@@ -46,19 +59,6 @@ const MEETING_SCHEDULES = {
       'Data collection review',
       'Upcoming milestones',
       'Resource needs and blockers'
-    ]
-  },
-  'rhedas': {
-    name: 'Data Analytics Studio Weekly Check In',  
-    schedule: 'Thursday, 2:30 PM - 3:00 PM',
-    duration: '30 minutes',
-    frequency: 'Weekly',
-    participants: ['Jada Sherrod', 'Jason Stanghelle', 'Juan Rojas', 'Meher Sapna Masanpally'],
-    agenda: [
-      'Project Updates and sprint review/Timeline Check-in',
-      'Additional resources needed', 
-      'Challenges/Hurdles',
-      'Discuss shared work opportunities'
     ]
   }
 };
