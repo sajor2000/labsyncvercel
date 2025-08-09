@@ -7,7 +7,7 @@ LabSync is a comprehensive medical research lab management system designed to st
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
-UI/UX Structure: Bucket → Project/Study → Subtasks hierarchy for organization and Kanban board workflow.
+UI/UX Structure: Bucket → Project/Study → Subtasks hierarchy for organization with both Kanban board and Monday.com-style table workflows.
 Lab Management: Support for multiple separate research labs with toggle functionality.
 Team Flexibility: Allow team members to be in multiple labs (e.g., J.C. Rojas as PI in both RICCC and RHEDAS).
 Color Scheme: Slack-inspired dark theme with professional color palette (purple primary, green accent, neutral grays).
@@ -82,6 +82,7 @@ Color Scheme: Slack-inspired dark theme with professional color palette (purple 
 - **Focus States**: Enhanced accessibility with proper focus indicators
 - **Design Inspiration**: Monday.com-inspired visual task management with Airtable's flexible data views
 - **UI Patterns**: Modern glassmorphism effects, gradient accents, smooth animations, and micro-interactions
+- **Task Management UI**: Monday.com-style table interface with quick task creation, expandable study groups, and inline editing capabilities
 
 ### Development & Deployment
 - **Type Safety**: Full TypeScript implementation across frontend, backend, and shared schemas

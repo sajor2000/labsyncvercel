@@ -37,6 +37,7 @@ const navigationItems = [
   { name: "Studies", href: "/studies", icon: FlaskConical },
   { name: "Stacked by Bucket", href: "/stacked", icon: LayoutGrid },
   { name: "Task Board", href: "/kanban", icon: KanbanSquare },
+  { name: "Task Management", href: "/tasks", icon: CheckSquare },
   { name: "Ideas Board", href: "/ideas", icon: Lightbulb },
   { name: "Deadlines", href: "/deadlines", icon: Clock },
   { name: "Team Members", href: "/team-members", icon: Users },

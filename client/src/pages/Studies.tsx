@@ -818,17 +818,15 @@ export default function Studies() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Study and Associated Tasks?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <div className="space-y-2">
-                <p>
-                  <strong>Warning:</strong> This study has {confirmDelete?.taskCount} associated task{confirmDelete?.taskCount !== 1 ? 's' : ''}.
-                </p>
-                <p>
-                  Deleting "{confirmDelete?.study.name}" will also permanently delete all associated tasks. This action cannot be undone.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Alternative: You can go to the Tasks page to reassign these tasks to another study first.
-                </p>
+            <AlertDialogDescription className="space-y-2">
+              <div>
+                <strong>Warning:</strong> This study has {confirmDelete?.taskCount} associated task{confirmDelete?.taskCount !== 1 ? 's' : ''}.
+              </div>
+              <div>
+                Deleting "{confirmDelete?.study.name}" will also permanently delete all associated tasks. This action cannot be undone.
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Alternative: You can go to the Tasks page to reassign these tasks to another study first.
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

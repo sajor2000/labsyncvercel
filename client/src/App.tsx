@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import Landing from "@/pages/Landing";
 import Studies from "@/pages/Studies";
 import KanbanBoard from "@/pages/KanbanBoard";
+import TaskManagement from "@/pages/TaskManagement";
 import Labs from "@/pages/Labs";
 import Buckets from "@/pages/Buckets";
 import StackedView from "@/pages/StackedView";
@@ -37,6 +38,7 @@ function Router() {
           <Route path="/" component={() => <Layout><Dashboard /></Layout>} />
           <Route path="/studies" component={() => <Layout><Studies /></Layout>} />
           <Route path="/kanban" component={() => <Layout><KanbanBoard /></Layout>} />
+          <Route path="/tasks" component={() => <Layout><TaskManagement /></Layout>} />
           <Route path="/stacked" component={() => <Layout><StackedView /></Layout>} />
           <Route path="/team-members" component={() => <Layout><TeamMembersEnhanced /></Layout>} />
           <Route path="/ideas" component={() => <Layout><Ideas /></Layout>} />
