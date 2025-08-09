@@ -8,7 +8,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Filter, Search, Edit, Trash2, ChevronDown, ChevronRight, GripVertical, Table as TableIcon, Columns, Eye, Calendar, Clock, X } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Plus, Filter, Search, Edit, Trash2, ChevronDown, ChevronRight, GripVertical, Table as TableIcon, Columns, Eye, Calendar, Clock, X, Settings, CalendarDays } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,7 +19,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronsUpDown } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,6 +44,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Study, Lab, Bucket, TeamMember, Task } from "@shared/schema";
+import { TimelineView } from "@/components/TimelineView";
 
 const priorityColors = {
   LOW: "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
@@ -80,12 +82,15 @@ const fundingColors = {
 };
 
 // Sortable Task Row Component for drag and drop
-function SortableTaskRow({ task, assignee, onEdit, onDelete, onPreview }: {
+function SortableTaskRow({ task, assignee, onEdit, onDelete, onPreview, bulkOperationMode, isSelected, onSelect }: {
   task: Task;
   assignee?: TeamMember;
   onEdit: () => void;
   onDelete: () => void;
   onPreview: () => void;
+  bulkOperationMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: (taskId: string, isSelected: boolean) => void;
 }) {
   const {
     attributes,
@@ -108,6 +113,16 @@ function SortableTaskRow({ task, assignee, onEdit, onDelete, onPreview }: {
       style={style}
       className={`hover:bg-muted/25 border-l-4 border-l-muted ${isDragging ? 'z-50' : ''}`}
     >
+      {/* Phase 4: Bulk Operations Checkbox */}
+      {bulkOperationMode && (
+        <TableCell className="w-12">
+          <Checkbox
+            checked={isSelected || false}
+            onCheckedChange={(checked) => onSelect?.(task.id, !!checked)}
+            data-testid={`checkbox-task-${task.id}`}
+          />
+        </TableCell>
+      )}
       <TableCell className="pl-8">
         <div className="flex items-center gap-2">
           <div
@@ -439,9 +454,18 @@ export default function TaskManagement() {
   const [assigneeFilter, setAssigneeFilter] = useState<string>("ALL");
   const [expandedStudies, setExpandedStudies] = useState<Set<string>>(new Set());
   const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'timeline'>('table');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showPreviewPanel, setShowPreviewPanel] = useState(false);
+  
+  // Phase 4: Advanced Filtering
+  const [dateRangeFilter, setDateRangeFilter] = useState<{start?: Date, end?: Date}>({});
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [savedFilters, setSavedFilters] = useState<Array<{name: string, filters: any}>>([]);
+  
+  // Phase 4: Bulk Operations
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [bulkOperationMode, setBulkOperationMode] = useState(false);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -622,7 +646,7 @@ export default function TaskManagement() {
     return acc;
   }, {} as Record<string, Task[]>);
 
-  // Filter tasks
+  // Filter tasks with Phase 4 advanced filtering
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -633,11 +657,23 @@ export default function TaskManagement() {
                            (assigneeFilter === 'UNASSIGNED' && !task.assigneeId) ||
                            (assigneeFilter !== 'UNASSIGNED' && task.assigneeId === assigneeFilter);
     
+    // Phase 4: Date range filtering
+    const matchesDateRange = (() => {
+      if (!dateRangeFilter.start && !dateRangeFilter.end) return true;
+      
+      const taskDate = task.dueDate ? new Date(task.dueDate) : new Date(task.createdAt || '');
+      
+      if (dateRangeFilter.start && taskDate < dateRangeFilter.start) return false;
+      if (dateRangeFilter.end && taskDate > dateRangeFilter.end) return false;
+      
+      return true;
+    })();
+    
     // Only show tasks from the current lab's studies
     const taskStudy = studies.find(s => s.id === task.studyId);
     const matchesLab = !contextLab || !taskStudy || taskStudy.labId === contextLab.id;
     
-    return matchesSearch && matchesStatus && matchesStudy && matchesPriority && matchesAssignee && matchesLab;
+    return matchesSearch && matchesStatus && matchesStudy && matchesPriority && matchesAssignee && matchesDateRange && matchesLab;
   });
 
   const toggleStudyExpansion = (studyId: string) => {
@@ -654,6 +690,87 @@ export default function TaskManagement() {
 
   const onQuickSubmit = (data: QuickTaskFormValues) => {
     createTaskMutation.mutate(data);
+  };
+
+  // Phase 4: Bulk operations functions
+  const handleSelectTask = (taskId: string, isSelected: boolean) => {
+    setSelectedTasks(prev => {
+      const newSet = new Set(prev);
+      if (isSelected) {
+        newSet.add(taskId);
+      } else {
+        newSet.delete(taskId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllTasks = (isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedTasks(new Set(filteredTasks.map(task => task.id)));
+    } else {
+      setSelectedTasks(new Set());
+    }
+  };
+
+  const bulkUpdateStatus = useMutation({
+    mutationFn: async (status: string) => {
+      const taskIds = Array.from(selectedTasks);
+      return Promise.all(taskIds.map(taskId => 
+        apiRequest(`/api/tasks/${taskId}`, 'PATCH', { status })
+      ));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      setSelectedTasks(new Set());
+      setBulkOperationMode(false);
+      toast({
+        title: "Success",
+        description: `Updated ${selectedTasks.size} tasks`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update tasks",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkDelete = useMutation({
+    mutationFn: async () => {
+      const taskIds = Array.from(selectedTasks);
+      return Promise.all(taskIds.map(taskId => 
+        apiRequest(`/api/tasks/${taskId}`, 'DELETE')
+      ));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      setSelectedTasks(new Set());
+      setBulkOperationMode(false);
+      toast({
+        title: "Success",
+        description: `Deleted ${selectedTasks.size} tasks`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete tasks",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Clear filters function
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("ALL");
+    setStudyFilter("all");
+    setPriorityFilter("ALL");
+    setAssigneeFilter("ALL");
+    setDateRangeFilter({});
   };
 
   if (isLoading) {
@@ -677,6 +794,46 @@ export default function TaskManagement() {
           <p className="text-muted-foreground">State-of-the-art project management for research studies and tasks</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Phase 4: Bulk Operations Controls */}
+          {selectedTasks.size > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg border">
+              <span className="text-sm font-medium">{selectedTasks.size} selected</span>
+              <Separator orientation="vertical" className="h-4" />
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => bulkUpdateStatus.mutate('DONE')}
+                disabled={bulkUpdateStatus.isPending}
+              >
+                Mark Done
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => bulkUpdateStatus.mutate('IN_PROGRESS')}
+                disabled={bulkUpdateStatus.isPending}
+              >
+                In Progress
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => bulkDelete.mutate()}
+                disabled={bulkDelete.isPending}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setSelectedTasks(new Set())}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          
           <Button 
             variant="outline"
             onClick={() => setShowQuickAdd(!showQuickAdd)}
@@ -684,6 +841,15 @@ export default function TaskManagement() {
           >
             <Plus className="h-4 w-4 mr-2" />
             Quick Add Task
+          </Button>
+          
+          <Button 
+            variant="outline"
+            onClick={() => setBulkOperationMode(!bulkOperationMode)}
+            data-testid="button-toggle-bulk-mode"
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            {bulkOperationMode ? 'Exit Bulk' : 'Bulk Edit'}
           </Button>
         </div>
       </div>
@@ -710,9 +876,164 @@ export default function TaskManagement() {
               <Columns className="h-4 w-4" />
               Kanban
             </Button>
+            <Button
+              variant={viewMode === 'timeline' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('timeline')}
+              className="flex items-center gap-2"
+            >
+              <CalendarDays className="h-4 w-4" />
+              Timeline
+            </Button>
           </div>
         </div>
+        
+        {/* Phase 4: Advanced Filters Toggle */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            data-testid="button-toggle-advanced-filters"
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Advanced Filters
+          </Button>
+          
+          {(searchTerm || statusFilter !== 'ALL' || studyFilter !== 'all' || 
+            priorityFilter !== 'ALL' || assigneeFilter !== 'ALL' || 
+            dateRangeFilter.start || dateRangeFilter.end) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              data-testid="button-clear-filters"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Clear Filters
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Phase 4: Advanced Filters Panel */}
+      {showAdvancedFilters && (
+        <Card className="mb-6 border border-primary/20">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {/* Date Range Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Start Date</label>
+                <Input
+                  type="date"
+                  value={dateRangeFilter.start ? dateRangeFilter.start.toISOString().split('T')[0] : ''}
+                  onChange={(e) => setDateRangeFilter(prev => ({
+                    ...prev,
+                    start: e.target.value ? new Date(e.target.value) : undefined
+                  }))}
+                  data-testid="input-date-start"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">End Date</label>
+                <Input
+                  type="date"
+                  value={dateRangeFilter.end ? dateRangeFilter.end.toISOString().split('T')[0] : ''}
+                  onChange={(e) => setDateRangeFilter(prev => ({
+                    ...prev,
+                    end: e.target.value ? new Date(e.target.value) : undefined
+                  }))}
+                  data-testid="input-date-end"
+                />
+              </div>
+              
+              {/* Existing Filters */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger data-testid="select-status-filter">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Status</SelectItem>
+                    <SelectItem value="TODO">To Do</SelectItem>
+                    <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                    <SelectItem value="REVIEW">Review</SelectItem>
+                    <SelectItem value="DONE">Done</SelectItem>
+                    <SelectItem value="BLOCKED">Blocked</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Priority</label>
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger data-testid="select-priority-filter">
+                    <SelectValue placeholder="All Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Priority</SelectItem>
+                    <SelectItem value="LOW">Low</SelectItem>
+                    <SelectItem value="MEDIUM">Medium</SelectItem>
+                    <SelectItem value="HIGH">High</SelectItem>
+                    <SelectItem value="URGENT">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Study</label>
+                <Select value={studyFilter} onValueChange={setStudyFilter}>
+                  <SelectTrigger data-testid="select-study-filter">
+                    <SelectValue placeholder="All Studies" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Studies</SelectItem>
+                    {labFilteredStudies.map((study) => (
+                      <SelectItem key={study.id} value={study.id}>
+                        {study.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Assignee</label>
+                <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                  <SelectTrigger data-testid="select-assignee-filter">
+                    <SelectValue placeholder="All Assignees" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Assignees</SelectItem>
+                    <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
+                    {teamMembers.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name || member.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            {/* Search Bar */}
+            <div className="mt-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Search tasks and descriptions..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                  data-testid="input-search-tasks"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Add Task Row */}
       {showQuickAdd && (
@@ -973,6 +1294,16 @@ export default function TaskManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {/* Phase 4: Bulk Operations Checkbox Column */}
+                    {bulkOperationMode && (
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedTasks.size === filteredTasks.length && filteredTasks.length > 0}
+                          onCheckedChange={handleSelectAllTasks}
+                          data-testid="checkbox-select-all"
+                        />
+                      </TableHead>
+                    )}
                     <TableHead className="w-12"></TableHead>
                     <TableHead className="min-w-[200px]">Project/Study Name</TableHead>
                     <TableHead>Study Type</TableHead>
@@ -1005,6 +1336,8 @@ export default function TaskManagement() {
                   return [
                     // Study header row
                     <TableRow key={`study-${study.id}`} className="bg-muted/50 hover:bg-muted/70 border-l-4 border-l-primary">
+                      {/* Phase 4: Bulk Operations - Empty cell for study rows */}
+                      {bulkOperationMode && <TableCell></TableCell>}
                       <TableCell>
                         <Button
                           variant="ghost"
@@ -1106,6 +1439,9 @@ export default function TaskManagement() {
                           key={`task-${task.id}`}
                           task={task}
                           assignee={assignee}
+                          bulkOperationMode={bulkOperationMode}
+                          isSelected={selectedTasks.has(task.id)}
+                          onSelect={handleSelectTask}
                           onEdit={() => console.log('Edit task:', task.id)}
                           onDelete={() => deleteTaskMutation.mutate(task.id)}
                           onPreview={() => {
@@ -1140,7 +1476,7 @@ export default function TaskManagement() {
           )}
         </CardContent>
       </Card>
-      ) : (
+      ) : viewMode === 'kanban' ? (
         // Kanban View
         <div className="h-full overflow-x-auto">
           <div className="flex gap-6 min-w-max pb-6">
@@ -1210,7 +1546,16 @@ export default function TaskManagement() {
             ))}
           </div>
         </div>
-      )}
+      ) : viewMode === 'timeline' ? (
+        // Timeline/Gantt View
+        <TimelineView 
+          tasks={filteredTasks}
+          studies={labFilteredStudies}
+          teamMembers={teamMembers}
+          onTaskEdit={(task) => console.log('Edit task:', task.id)}
+          onTaskDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
+        />
+      ) : null}
 
       {/* Task Preview Panel */}
       {showPreviewPanel && selectedTask && (
