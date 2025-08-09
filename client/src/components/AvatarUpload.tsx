@@ -190,13 +190,7 @@ export function AvatarUpload({
             onChange={handleFileSelect}
             className="hidden"
           />
-          <Button
-            onClick={handleCameraClick}
-            className="h-6 w-6 rounded-full p-0 bg-accent hover:bg-accent/90 border-2 border-background shadow-md"
-            disabled={uploadingAvatar}
-          >
-            <Camera className="h-3 w-3 text-accent-foreground" />
-          </Button>
+
         </div>
       )}
 
