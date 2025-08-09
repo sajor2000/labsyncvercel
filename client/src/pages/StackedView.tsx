@@ -96,6 +96,7 @@ export default function StackedView() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState<any>(null);
   const [draggedType, setDraggedType] = useState<string>('');
+  const [isDragActive, setIsDragActive] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -175,7 +176,7 @@ export default function StackedView() {
 
   // Create study form
   const createStudyForm = useForm<InsertStudy>({
-    resolver: zodResolver(insertStudySchema.omit({ id: true, createdAt: true, updatedAt: true })),
+    resolver: zodResolver(insertStudySchema),
     defaultValues: {
       name: "",
       status: "PLANNING" as const,
@@ -263,6 +264,17 @@ export default function StackedView() {
   const handleDragStart = (e: React.DragEvent, item: any, type: string) => {
     setDraggedItem(item);
     setDraggedType(type);
+    setIsDragActive(true);
+    
+    // Add visual feedback to the drag ghost
+    e.dataTransfer.effectAllowed = 'move';
+    
+    // Create a custom drag image (optional)
+    const dragElement = e.currentTarget as HTMLElement;
+    if (dragElement) {
+      e.dataTransfer.setDragImage(dragElement, 10, 10);
+    }
+    
     dragHandlers.onDragStart(e, item, type);
   };
 
@@ -285,6 +297,7 @@ export default function StackedView() {
     // Reset drag state
     setDraggedItem(null);
     setDraggedType('');
+    setIsDragActive(false);
   };
 
   if (isLoading) {
@@ -594,7 +607,11 @@ export default function StackedView() {
       )}
 
       {/* Stacked by Bucket View with Drag and Drop */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div 
+        className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 transition-all duration-200 ${
+          isDragActive ? 'bg-muted/30 rounded-lg p-2' : ''
+        }`}
+      >
         {studiesByBucket.map(({ bucket, studies }) => (
           <DropZone
             key={bucket.id}
@@ -631,9 +648,10 @@ export default function StackedView() {
                   isDragging={draggedItem?.id === study.id}
                   className="border-l-4 hover:shadow-md transition-all duration-200"
                   style={{ borderLeftColor: bucket.color || '#3b82f6' }}
+                  showGrip={true}
                 >
                   <CardContent 
-                    className="p-4 space-y-3 relative group"
+                    className="p-4 space-y-3 relative group pl-6"
                     data-testid={`study-card-${study.id}`}
                   >
                     {/* Card Actions */}

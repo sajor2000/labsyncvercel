@@ -40,8 +40,8 @@ export function DropZone({
     <div
       data-testid="drop-zone"
       className={cn(
-        "relative transition-all duration-200",
-        isDragOver && showIndicator && "ring-2 ring-primary ring-offset-2 bg-primary/5",
+        "relative transition-all duration-200 rounded-lg",
+        isDragOver && showIndicator && "ring-2 ring-primary/40 bg-primary/5 scale-[1.01] shadow-lg",
         className
       )}
       onDragOver={handleDragOver}
@@ -50,10 +50,10 @@ export function DropZone({
     >
       {children}
       {isDragOver && showIndicator && (
-        <div className="absolute inset-0 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-lg">
-          <div className="flex items-center gap-2 text-primary font-medium">
+        <div className="absolute inset-0 flex items-center justify-center bg-primary/15 backdrop-blur-sm border-2 border-dashed border-primary/60 rounded-lg z-10">
+          <div className="flex items-center gap-2 text-primary font-semibold bg-white/90 px-3 py-1 rounded-full shadow-md">
             <Plus className="h-4 w-4" />
-            {label}
+            📋 {label}
           </div>
         </div>
       )}
