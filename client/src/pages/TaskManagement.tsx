@@ -8,7 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Filter, Search, Edit, Trash2, ChevronDown, ChevronRight, GripVertical, Table as TableIcon, Columns, Eye, Calendar, Clock } from "lucide-react";
+import { Plus, Filter, Search, Edit, Trash2, ChevronDown, ChevronRight, GripVertical, Table as TableIcon, Columns, Eye, Calendar, Clock, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -237,7 +237,16 @@ function TaskCard({ task, assignee, onEdit, onDelete, onPreview }: {
         </h4>
 
         {/* Status Badge */}
-        <Badge className={statusColors[task.status as keyof typeof statusColors] || statusColors.TODO} variant="secondary">
+        <Badge 
+          variant="secondary"
+          className={`
+            ${task.status === 'TODO' ? 'bg-gray-100 text-gray-700' :
+              task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+              task.status === 'REVIEW' ? 'bg-yellow-100 text-yellow-700' :
+              task.status === 'DONE' ? 'bg-green-100 text-green-700' :
+              'bg-gray-100 text-gray-700'}
+          `}
+        >
           {task.status?.replace('_', ' ') || 'TODO'}
         </Badge>
 
@@ -429,9 +438,10 @@ export default function TaskManagement() {
   const queryClient = useQueryClient();
   
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [studyFilter, setStudyFilter] = useState<string>("all");
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("ALL");
   const [expandedStudies, setExpandedStudies] = useState<Set<string>>(new Set());
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
@@ -578,23 +588,32 @@ export default function TaskManagement() {
     },
   });
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent, columnStatus?: string) => {
     const { active, over } = event;
-    
-    if (!over || active.id === over.id) {
+
+    if (!over) return;
+
+    const activeTask = filteredTasks.find(task => task.id === active.id);
+    if (!activeTask) return;
+
+    // Handle column-based drops (status change) for Kanban view
+    if (columnStatus && activeTask.status !== columnStatus) {
+      moveTaskMutation.mutate({
+        taskId: activeTask.id,
+        newStatus: columnStatus,
+      });
       return;
     }
 
-    const activeTask = tasks.find(task => task.id === active.id);
-    if (!activeTask) return;
-
-    // For now, just update position within same study
-    const overTask = tasks.find(task => task.id === over.id);
-    if (overTask && activeTask.studyId === overTask.studyId) {
-      moveTaskMutation.mutate({
-        taskId: activeTask.id,
-        newPosition: String(Date.now()),
-      });
+    // Handle reordering within same status/study for table view
+    if (active.id !== over.id) {
+      const overTask = tasks.find(task => task.id === over.id);
+      if (overTask && activeTask.studyId === overTask.studyId) {
+        moveTaskMutation.mutate({
+          taskId: activeTask.id,
+          newPosition: String(Date.now()),
+        });
+      }
     }
   };
 
@@ -611,16 +630,20 @@ export default function TaskManagement() {
 
   // Filter tasks
   const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
+    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         task.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter;
     const matchesStudy = studyFilter === 'all' || task.studyId === studyFilter;
-    const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+    const matchesPriority = priorityFilter === 'ALL' || task.priority === priorityFilter;
+    const matchesAssignee = assigneeFilter === 'ALL' || 
+                           (assigneeFilter === 'UNASSIGNED' && !task.assigneeId) ||
+                           (assigneeFilter !== 'UNASSIGNED' && task.assigneeId === assigneeFilter);
     
     // Only show tasks from the current lab's studies
     const taskStudy = studies.find(s => s.id === task.studyId);
     const matchesLab = !contextLab || !taskStudy || taskStudy.labId === contextLab.id;
     
-    return matchesSearch && matchesStatus && matchesStudy && matchesPriority && matchesLab;
+    return matchesSearch && matchesStatus && matchesStudy && matchesPriority && matchesAssignee && matchesLab;
   });
 
   const toggleStudyExpansion = (studyId: string) => {
@@ -822,56 +845,101 @@ export default function TaskManagement() {
         </Card>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      {/* Enhanced Filters */}
+      <div className="flex flex-col lg:flex-row gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search tasks..."
+            placeholder="Search tasks and projects..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
             data-testid="input-search-tasks"
           />
         </div>
-        <Select value={studyFilter} onValueChange={setStudyFilter}>
-          <SelectTrigger className="w-[200px]" data-testid="select-study-filter">
-            <SelectValue placeholder="All Studies" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Studies</SelectItem>
-            {labFilteredStudies.map((study) => (
-              <SelectItem key={study.id} value={study.id}>
-                {study.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]" data-testid="select-status-filter">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="TODO">To Do</SelectItem>
-            <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-            <SelectItem value="REVIEW">Review</SelectItem>
-            <SelectItem value="DONE">Done</SelectItem>
-            <SelectItem value="BLOCKED">Blocked</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-          <SelectTrigger className="w-[150px]" data-testid="select-priority-filter">
-            <SelectValue placeholder="All Priority" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Priority</SelectItem>
-            <SelectItem value="LOW">Low</SelectItem>
-            <SelectItem value="MEDIUM">Medium</SelectItem>
-            <SelectItem value="HIGH">High</SelectItem>
-            <SelectItem value="URGENT">Urgent</SelectItem>
-          </SelectContent>
-        </Select>
+        
+        <div className="flex flex-wrap gap-2">
+          <Select value={studyFilter} onValueChange={setStudyFilter}>
+            <SelectTrigger className="w-48" data-testid="select-study-filter">
+              <SelectValue placeholder="All Studies" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Studies</SelectItem>
+              {labFilteredStudies.map((study) => (
+                <SelectItem key={study.id} value={study.id}>
+                  {study.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-48" data-testid="select-status-filter">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Statuses</SelectItem>
+              <SelectItem value="TODO">To Do</SelectItem>
+              <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+              <SelectItem value="REVIEW">Review</SelectItem>
+              <SelectItem value="DONE">Done</SelectItem>
+              <SelectItem value="BLOCKED">Blocked</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="w-48" data-testid="select-priority-filter">
+              <SelectValue placeholder="Filter by priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Priorities</SelectItem>
+              <SelectItem value="LOW">Low</SelectItem>
+              <SelectItem value="MEDIUM">Medium</SelectItem>
+              <SelectItem value="HIGH">High</SelectItem>
+              <SelectItem value="URGENT">Urgent</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+            <SelectTrigger className="w-48" data-testid="select-assignee-filter">
+              <SelectValue placeholder="Filter by assignee" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Assignees</SelectItem>
+              <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
+              {teamMembers.map((member) => (
+                <SelectItem key={member.userId} value={member.userId}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center text-xs">
+                      {(member.user?.firstName?.[0] || member.user?.email?.[0] || '?').toUpperCase()}
+                    </div>
+                    <span>
+                      {member.user?.firstName && member.user?.lastName 
+                        ? `${member.user.firstName} ${member.user.lastName}` 
+                        : member.user?.firstName || member.user?.email || member.userId}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSearchTerm("");
+              setStatusFilter("ALL");
+              setPriorityFilter("ALL");
+              setAssigneeFilter("ALL");
+              setStudyFilter("all");
+            }}
+            className="whitespace-nowrap"
+          >
+            <X className="h-4 w-4 mr-2" />
+            Clear Filters
+          </Button>
+        </div>
       </div>
 
       {/* Content Area */}
@@ -1084,14 +1152,72 @@ export default function TaskManagement() {
       </Card>
       ) : (
         // Kanban View
-        <div className="space-y-6">
-          <div className="text-center py-12">
-            <div className="text-4xl mb-4">🏗️</div>
-            <h3 className="text-lg font-medium text-foreground mb-2">Kanban View Coming Soon</h3>
-            <p className="text-muted-foreground">Enhanced Kanban board functionality is being developed</p>
-            <Button variant="outline" className="mt-4" onClick={() => setViewMode('table')}>
-              Return to Table View
-            </Button>
+        <div className="h-full overflow-x-auto">
+          <div className="flex gap-6 min-w-max pb-6">
+            {/* Kanban Columns */}
+            {(['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'] as const).map((status) => (
+              <div key={status} className="flex-shrink-0 w-80">
+                <Card className="h-full">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${
+                          status === 'TODO' ? 'bg-gray-400' :
+                          status === 'IN_PROGRESS' ? 'bg-blue-500' :
+                          status === 'REVIEW' ? 'bg-yellow-500' :
+                          'bg-green-500'
+                        }`} />
+                        <h3 className="font-medium">
+                          {status.replace('_', ' ')}
+                        </h3>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        {filteredTasks.filter(task => task.status === status).length}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(event) => handleDragEnd(event, status)}
+                    >
+                      <SortableContext
+                        items={filteredTasks.filter(task => task.status === status).map(task => task.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-3 min-h-[200px]">
+                          {filteredTasks
+                            .filter(task => task.status === status)
+                            .map((task) => {
+                              const assignee = teamMembers.find(m => m.userId === task.assigneeId);
+                              return (
+                                <TaskCard
+                                  key={task.id}
+                                  task={task}
+                                  assignee={assignee}
+                                  onEdit={() => console.log('Edit task:', task.id)}
+                                  onDelete={() => deleteTaskMutation.mutate(task.id)}
+                                  onPreview={() => {
+                                    setSelectedTask(task);
+                                    setShowPreviewPanel(true);
+                                  }}
+                                />
+                              );
+                            })}
+                          {filteredTasks.filter(task => task.status === status).length === 0 && (
+                            <div className="text-center py-8 text-muted-foreground">
+                              <div className="text-2xl mb-2">📋</div>
+                              <p className="text-sm">No {status.toLowerCase().replace('_', ' ')} tasks</p>
+                            </div>
+                          )}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
           </div>
         </div>
       )}
