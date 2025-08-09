@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
+import { CommandPalette } from "./CommandPalette";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,6 +9,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -36,6 +38,12 @@ export function Layout({ children }: LayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Command Palette - Global keyboard shortcut ⌘K */}
+      <CommandPalette 
+        open={commandPaletteOpen} 
+        onOpenChange={setCommandPaletteOpen}
+      />
     </div>
   );
 }
