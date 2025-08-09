@@ -449,7 +449,7 @@ export default function TaskManagement() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [studyFilter, setStudyFilter] = useState<string>("all");
+  const [studyFilter, setStudyFilter] = useState<string>("ALL");
   const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("ALL");
   const [expandedStudies, setExpandedStudies] = useState<Set<string>>(new Set());
@@ -651,7 +651,7 @@ export default function TaskManagement() {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter;
-    const matchesStudy = studyFilter === 'all' || task.studyId === studyFilter;
+    const matchesStudy = studyFilter === 'ALL' || task.studyId === studyFilter;
     const matchesPriority = priorityFilter === 'ALL' || task.priority === priorityFilter;
     const matchesAssignee = assigneeFilter === 'ALL' || 
                            (assigneeFilter === 'UNASSIGNED' && !task.assigneeId) ||
@@ -767,7 +767,7 @@ export default function TaskManagement() {
   const clearAllFilters = () => {
     setSearchTerm("");
     setStatusFilter("ALL");
-    setStudyFilter("all");
+    setStudyFilter("ALL");
     setPriorityFilter("ALL");
     setAssigneeFilter("ALL");
     setDateRangeFilter({});
@@ -989,7 +989,7 @@ export default function TaskManagement() {
                     <SelectValue placeholder="All Studies" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Studies</SelectItem>
+                    <SelectItem value="ALL">All Studies</SelectItem>
                     {labFilteredStudies.map((study) => (
                       <SelectItem key={study.id} value={study.id}>
                         {study.name}
@@ -1243,7 +1243,7 @@ export default function TaskManagement() {
               setStatusFilter("ALL");
               setPriorityFilter("ALL");
               setAssigneeFilter("ALL");
-              setStudyFilter("all");
+              setStudyFilter("ALL");
             }}
             className="whitespace-nowrap"
           >
@@ -1323,12 +1323,12 @@ export default function TaskManagement() {
                   const studyTasks = tasksByStudy[study.id] || [];
                   const filteredStudyTasks = studyTasks.filter(task => {
                     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase());
-                    const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
-                    const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+                    const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter;
+                    const matchesPriority = priorityFilter === 'ALL' || task.priority === priorityFilter;
                     return matchesSearch && matchesStatus && matchesPriority;
                   });
                   
-                  if (studyFilter !== 'all' && study.id !== studyFilter) return null;
+                  if (studyFilter !== 'ALL' && study.id !== studyFilter) return null;
                   if (filteredStudyTasks.length === 0 && searchTerm) return null;
                   
                   const isExpanded = expandedStudies.has(study.id);
@@ -1456,7 +1456,7 @@ export default function TaskManagement() {
                 
                 {labFilteredStudies.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12">
+                    <TableCell colSpan={bulkOperationMode ? 9 : 8} className="text-center py-12">
                       <div className="flex flex-col items-center gap-3">
                         <div className="text-4xl">📊</div>
                         <div className="text-lg font-medium text-foreground">No research projects found</div>
