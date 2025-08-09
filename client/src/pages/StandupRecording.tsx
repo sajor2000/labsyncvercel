@@ -96,6 +96,14 @@ export default function StandupRecording() {
 
   const { data: teamMembers = [], isLoading: teamMembersLoading } = useQuery({
     queryKey: ['/api/team-members', selectedLab?.id],
+    queryFn: async () => {
+      const url = selectedLab?.id ? `/api/team-members?labId=${selectedLab.id}` : '/api/team-members';
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch team members');
+      }
+      return response.json();
+    },
     enabled: !!selectedLab?.id,
   });
 
