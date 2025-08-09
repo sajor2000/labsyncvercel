@@ -235,11 +235,31 @@ export default function Studies() {
         }, 500);
         return;
       }
-      toast({
-        title: "Error",
-        description: "Failed to delete study",
-        variant: "destructive",
-      });
+      
+      const errorMessage = (error as Error).message;
+      if (errorMessage.includes("Cannot delete study. It contains") && errorMessage.includes("task")) {
+        // Try to parse additional task details from error response
+        let taskDetails = "";
+        try {
+          const match = errorMessage.match(/(\d+) task\(s\)/);
+          const taskCount = match ? match[1] : "some";
+          taskDetails = `This study has ${taskCount} associated task${taskCount !== "1" ? "s" : ""}. `;
+        } catch (e) {
+          taskDetails = "This study has associated tasks. ";
+        }
+        
+        toast({
+          title: "Cannot Delete Study",
+          description: `${taskDetails}Go to the Tasks page to delete or reassign them first, then try deleting the study again.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete study",
+          variant: "destructive",
+        });
+      }
     },
   });
 

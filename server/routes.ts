@@ -128,7 +128,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Study deleted successfully" });
     } catch (error) {
       console.error("Error deleting study:", error);
-      res.status(500).json({ message: (error as Error).message || "Failed to delete study" });
+      const errorMessage = (error as Error).message || "Failed to delete study";
+      
+      // Return specific status codes for different error types
+      if (errorMessage.includes("Cannot delete study. It contains") && errorMessage.includes("task")) {
+        // Get the associated tasks to provide more details
+        const tasks = await storage.getTasks(req.params.id);
+        res.status(409).json({ 
+          message: errorMessage,
+          associatedTasks: tasks.map(task => ({ id: task.id, title: task.title }))
+        }); // 409 Conflict for dependency constraint
+      } else {
+        res.status(500).json({ message: errorMessage });
+      }
     }
   });
 
