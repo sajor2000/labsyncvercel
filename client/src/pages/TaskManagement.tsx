@@ -39,6 +39,26 @@ const statusColors = {
   BLOCKED: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400",
 };
 
+const studyStatusColors = {
+  PLANNING: "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400",
+  IRB_SUBMISSION: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400", 
+  IRB_APPROVED: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
+  DATA_COLLECTION: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
+  ANALYSIS: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
+  MANUSCRIPT: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400",
+  UNDER_REVIEW: "bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400",
+  PUBLISHED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400",
+  ON_HOLD: "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
+  CANCELLED: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400",
+};
+
+const fundingColors = {
+  NIH: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
+  INDUSTRY: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400", 
+  INTERNAL: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
+  NONE: "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
+};
+
 // Quick task form schema
 const quickTaskSchema = z.object({
   title: z.string().min(1, "Task title is required"),
@@ -200,8 +220,8 @@ export default function TaskManagement() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Task Management</h1>
-          <p className="text-muted-foreground">Monday.com-style task management for all your studies</p>
+          <h1 className="text-2xl font-bold text-foreground">Research Project Board</h1>
+          <p className="text-muted-foreground">State-of-the-art project management for research studies and tasks</p>
         </div>
         <div className="flex items-center gap-2">
           <Button 
@@ -383,9 +403,24 @@ export default function TaskManagement() {
       {/* Monday.com-style Task Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span>Tasks by Study</span>
-            <Badge variant="secondary">{filteredTasks.length} tasks</Badge>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span>Research Project Dashboard</span>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">{labFilteredStudies.length} projects</Badge>
+                <Badge variant="outline">{filteredTasks.length} tasks</Badge>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full bg-primary/20"></div>
+                <span>Projects</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div>
+                <span>Tasks</span>
+              </div>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -400,11 +435,12 @@ export default function TaskManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12"></TableHead>
-                  <TableHead>Task</TableHead>
-                  <TableHead>Study</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Assignee</TableHead>
+                  <TableHead className="min-w-[200px]">Project/Study Name</TableHead>
+                  <TableHead>Study Type</TableHead>
+                  <TableHead>Study Status</TableHead>
+                  <TableHead>Funding</TableHead>
+                  <TableHead>Team</TableHead>
+                  <TableHead>Tasks</TableHead>
                   <TableHead className="w-20">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -425,7 +461,7 @@ export default function TaskManagement() {
                   
                   return [
                     // Study header row
-                    <TableRow key={`study-${study.id}`} className="bg-muted/50 hover:bg-muted/70">
+                    <TableRow key={`study-${study.id}`} className="bg-muted/50 hover:bg-muted/70 border-l-4 border-l-primary">
                       <TableCell>
                         <Button
                           variant="ghost"
@@ -436,38 +472,100 @@ export default function TaskManagement() {
                           {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </Button>
                       </TableCell>
-                      <TableCell className="font-medium" colSpan={4}>
-                        <div className="flex items-center gap-2">
-                          <span>{study.name}</span>
-                          <Badge variant="outline">{filteredStudyTasks.length} tasks</Badge>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-semibold text-base">{study.name}</span>
+                          {study.oraNumber && (
+                            <span className="text-xs text-muted-foreground">ORA: {study.oraNumber}</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            quickForm.setValue('studyId', study.id);
-                            setShowQuickAdd(true);
-                          }}
-                          data-testid={`button-add-task-${study.id}`}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add Task
-                        </Button>
+                        <Badge variant="outline" className="text-xs">
+                          {study.studyType || 'Not Specified'}
+                        </Badge>
                       </TableCell>
-                      <TableCell></TableCell>
+                      <TableCell>
+                        <Badge className={studyStatusColors[study.status as keyof typeof studyStatusColors] || studyStatusColors.PLANNING}>
+                          {study.status?.replace('_', ' ') || 'Planning'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={fundingColors[study.funding as keyof typeof fundingColors] || fundingColors.NONE}>
+                          {study.funding || 'None'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {study.assignees && study.assignees.length > 0 ? (
+                            <>
+                              <div className="flex -space-x-1">
+                                {study.assignees.slice(0, 3).map((assigneeId, index) => {
+                                  const member = teamMembers.find(m => m.userId === assigneeId);
+                                  return (
+                                    <div 
+                                      key={assigneeId}
+                                      className="w-6 h-6 rounded-full bg-primary/10 border-2 border-background flex items-center justify-center text-xs font-medium"
+                                      title={member?.user?.firstName || member?.user?.email || assigneeId}
+                                    >
+                                      {(member?.user?.firstName?.[0] || member?.user?.email?.[0] || '?').toUpperCase()}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {study.assignees.length > 3 && (
+                                <span className="text-xs text-muted-foreground">+{study.assignees.length - 3}</span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No team assigned</span>
+                          )}
+                          {study.externalCollaborators && (
+                            <Badge variant="secondary" className="text-xs ml-2">
+                              Ext. Collab.
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {filteredStudyTasks.length} tasks
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              quickForm.setValue('studyId', study.id);
+                              setShowQuickAdd(true);
+                            }}
+                            data-testid={`button-add-task-${study.id}`}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add Task
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>,
                     // Task rows (only shown when expanded)
                     ...(isExpanded ? filteredStudyTasks.map((task) => {
                       const assignee = teamMembers.find(m => m.userId === task.assigneeId);
                       
                       return (
-                        <TableRow key={task.id} className="hover:bg-muted/50">
-                          <TableCell></TableCell>
-                          <TableCell className="font-medium">
-                            <div className="flex flex-col">
-                              <span>{task.title}</span>
+                        <TableRow key={task.id} className="hover:bg-muted/25 border-l-4 border-l-muted">
+                          <TableCell className="pl-8">
+                            <div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div>
+                          </TableCell>
+                          <TableCell className="font-medium pl-4">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm">{task.title}</span>
                               {task.description && (
                                 <span className="text-xs text-muted-foreground line-clamp-1">
                                   {task.description}
@@ -476,27 +574,25 @@ export default function TaskManagement() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {study.name}
-                            </Badge>
+                            <span className="text-xs text-muted-foreground">Subtask</span>
                           </TableCell>
                           <TableCell>
-                            <Badge className={statusColors[task.status as keyof typeof statusColors] || statusColors.TODO}>
+                            <Badge className={statusColors[task.status as keyof typeof statusColors] || statusColors.TODO} variant="secondary">
                               {task.status?.replace('_', ' ') || 'TODO'}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge className={priorityColors[task.priority as keyof typeof priorityColors] || priorityColors.MEDIUM}>
+                            <Badge className={priorityColors[task.priority as keyof typeof priorityColors] || priorityColors.MEDIUM} variant="outline">
                               {task.priority || 'MEDIUM'}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             {assignee ? (
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs">
+                                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs">
                                   {(assignee.user?.firstName?.[0] || assignee.user?.email?.[0] || '?').toUpperCase()}
                                 </div>
-                                <span className="text-sm">
+                                <span className="text-xs">
                                   {assignee.user?.firstName || assignee.user?.email || assignee.userId}
                                 </span>
                               </div>
@@ -505,11 +601,14 @@ export default function TaskManagement() {
                             )}
                           </TableCell>
                           <TableCell>
+                            <span className="text-xs text-muted-foreground">Task</span>
+                          </TableCell>
+                          <TableCell>
                             <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                              <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
                                 <Edit className="h-3 w-3" />
                               </Button>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive">
+                              <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-destructive">
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
@@ -522,9 +621,15 @@ export default function TaskManagement() {
                 
                 {labFilteredStudies.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      <div className="text-muted-foreground">
-                        No studies found. Create studies first to organize your tasks.
+                    <TableCell colSpan={8} className="text-center py-12">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="text-4xl">📊</div>
+                        <div className="text-lg font-medium text-foreground">No research projects found</div>
+                        <div className="text-muted-foreground">Create studies first to organize your research workflow</div>
+                        <Button variant="outline" className="mt-2">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Your First Study
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
