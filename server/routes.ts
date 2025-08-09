@@ -593,20 +593,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (attendees.length > 0) {
         const teamMembers = await storage.getTeamMembersByIds(attendees);
-        attendeeEmails = teamMembers.map(member => member.email).filter(Boolean);
-        attendeeNames = teamMembers.map(member => member.name).filter(Boolean);
+        attendeeEmails = teamMembers.map(member => member.email).filter((email): email is string => Boolean(email));
+        attendeeNames = teamMembers.map(member => member.name).filter((name): name is string => Boolean(name));
       }
 
       // Process with AI
       const { meetingRecorderService } = await import('./meetingRecorder');
-      const processedMeeting = await meetingRecorderService.processTranscriptAndCreateMeeting(
+      const processedMeeting = await meetingRecorderService.createMeetingFromTranscript({
         transcript,
-        labId || null,
+        labId: labId || null,
         userId,
         meetingType,
         attendeeEmails,
         attendeeNames
-      );
+      });
 
       res.json(processedMeeting);
     } catch (error) {
@@ -631,11 +631,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const actionItems = await storage.getActionItemsByMeetingId(meetingId);
       
       // Generate email HTML
-      const html = await meetingRecorderService.generateMeetingEmailHtml(
+      const html = await meetingRecorderService.generateEmailHtml({
         meeting,
         actionItems,
-        "Lab Meeting Preview"
-      );
+        title: "Lab Meeting Preview"
+      });
       
       res.json({ html });
     } catch (error) {

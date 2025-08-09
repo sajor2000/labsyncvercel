@@ -215,6 +215,57 @@ Return both HTML summary and JSON structure.`;
   }
 
   /**
+   * Create meeting from transcript with AI processing
+   */
+  async createMeetingFromTranscript(params: {
+    transcript: string;
+    labId: string | null;
+    userId: string;
+    meetingType: string;
+    attendeeEmails: string[];
+    attendeeNames: string[];
+  }): Promise<any> {
+    try {
+      const meetingDate = new Date().toISOString().split('T')[0];
+      const processed = await this.processTranscript(params.transcript, meetingDate);
+      
+      const meetingId = await this.saveMeetingToDatabase(
+        params.transcript,
+        processed.processedNotes,
+        processed.extractedTasks,
+        params.labId,
+        params.userId,
+        params.meetingType
+      );
+
+      // Get the created meeting
+      const [meeting] = await db
+        .select()
+        .from(standupMeetings)
+        .where(eq(standupMeetings.id, meetingId));
+
+      return meeting;
+    } catch (error) {
+      console.error("Error creating meeting from transcript:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate email HTML for meeting preview
+   */
+  async generateEmailHtml(params: {
+    meeting: any;
+    actionItems: any[];
+    title?: string;
+  }): Promise<string> {
+    const meetingDate = new Date(params.meeting.meetingDate || params.meeting.createdAt).toLocaleDateString();
+    const labName = params.title || "Lab Meeting";
+    
+    return this.generateEmailHTML(params.meeting, params.actionItems, meetingDate, labName);
+  }
+
+  /**
    * Send meeting summary via email using Resend
    */
   async sendMeetingSummary(
