@@ -57,6 +57,14 @@ Color Scheme: Slack-inspired dark theme with professional color palette (purple 
 - **Notifications**: Live notification system for task updates and meeting alerts
 - **Lab Context Switching**: Real-time lab switching with automatic data filtering across all pages
 
+### Task Assignment System
+- **Multi-User Assignment**: Complete system supporting single or multiple team member assignment per task
+- **Assignment Workflow**: Integrated assignment selection during task creation with searchable multi-select interface
+- **Visual Assignment Display**: Task cards show assignment status with user icons and member badges
+- **Project-Based Filtering**: Assignment options filtered by project/study team membership
+- **Assignment Management**: Backend API routes for creating, retrieving, and managing task assignments
+- **Database Integration**: Leverages TaskAssignments table with proper foreign key relationships
+
 ### Avatar Upload System
 - **File Upload**: Comprehensive avatar upload system supporting JPG and PNG images
 - **Circular Images**: All avatars display as circular profile pictures with proper object-fit styling
@@ -71,6 +79,8 @@ Color Scheme: Slack-inspired dark theme with professional color palette (purple 
 - **Dark Mode**: Default dark theme with proper contrast ratios and accessibility considerations
 - **Scrollbars**: Custom Slack-style scrollbar design for better visual consistency
 - **Focus States**: Enhanced accessibility with proper focus indicators
+- **Design Inspiration**: Monday.com-inspired visual task management with Airtable's flexible data views
+- **UI Patterns**: Modern glassmorphism effects, gradient accents, smooth animations, and micro-interactions
 
 ### Development & Deployment
 - **Type Safety**: Full TypeScript implementation across frontend, backend, and shared schemas
@@ -104,3 +114,10 @@ Color Scheme: Slack-inspired dark theme with professional color palette (purple 
 - **Notification System**: Framework ready for email/SMS notification integration
 - **Calendar Integration**: Architecture prepared for calendar system integration
 - **Export Systems**: Ready for document generation and data export functionality
+
+### Future UI/UX Enhancements
+- **Timeline/Gantt View**: Visual project timeline for comprehensive project planning
+- **Inline Editing**: Direct data editing capabilities within table and card views
+- **Command Palette**: Quick navigation system with keyboard shortcuts (⌘K)
+- **Real-time Collaboration**: Live cursors and collaborative editing features
+- **Custom Themes**: User-defined color schemes and personalization options
