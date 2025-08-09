@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Mic, FileText, Users, Clock } from "lucide-react";
+import { Loader2, Mic, FileText, Users, Clock, Mail, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +26,7 @@ interface ProcessedResult {
 export function TranscriptProcessor() {
   const [transcript, setTranscript] = useState("");
   const [processedResult, setProcessedResult] = useState<ProcessedResult | null>(null);
+  const [emailRecipients, setEmailRecipients] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { selectedLab } = useLabContext();
@@ -52,6 +54,30 @@ export function TranscriptProcessor() {
     },
   });
 
+  const emailMutation = useMutation({
+    mutationFn: async (data: { meetingId: string; recipients: string[]; labName: string }) => {
+      return apiRequest(`/api/standups/${data.meetingId}/send-email`, 'POST', {
+        recipients: data.recipients,
+        labName: data.labName,
+      });
+    },
+    onSuccess: async (response) => {
+      const result = await response.json();
+      toast({
+        title: "Success",
+        description: `Email sent successfully to ${result.recipients?.length || 'all'} recipients`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to send email",
+        variant: "destructive",
+      });
+      console.error("Email sending error:", error);
+    },
+  });
+
   const handleProcess = () => {
     if (!transcript.trim()) {
       toast({
@@ -71,6 +97,47 @@ export function TranscriptProcessor() {
   const handleClear = () => {
     setTranscript("");
     setProcessedResult(null);
+    setEmailRecipients("");
+  };
+
+  const handleSendEmail = () => {
+    if (!processedResult?.meetingId) {
+      toast({
+        title: "Error",
+        description: "No meeting to send. Process a transcript first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!emailRecipients.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter email recipients",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const recipients = emailRecipients
+      .split(',')
+      .map(email => email.trim())
+      .filter(email => email.length > 0);
+
+    if (recipients.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please enter valid email addresses",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    emailMutation.mutate({
+      meetingId: processedResult.meetingId,
+      recipients,
+      labName: selectedLab?.name || "Your Lab",
+    });
   };
 
   return (
@@ -208,8 +275,51 @@ export function TranscriptProcessor() {
             </CardContent>
           </Card>
 
+          {/* Email Section */}
+          {processedResult?.meetingId && (
+            <Card className="border-blue-200 dark:border-blue-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  Send Email Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label htmlFor="email-recipients" className="text-sm font-medium mb-2 block">
+                    Email Recipients (comma-separated)
+                  </label>
+                  <Input
+                    id="email-recipients"
+                    placeholder="john@lab.edu, jane@lab.edu, team@lab.edu"
+                    value={emailRecipients}
+                    onChange={(e) => setEmailRecipients(e.target.value)}
+                    data-testid="input-email-recipients"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter email addresses separated by commas
+                  </p>
+                </div>
+                
+                <Button 
+                  onClick={handleSendEmail}
+                  disabled={emailMutation.isPending || !emailRecipients.trim()}
+                  className="flex items-center gap-2"
+                  data-testid="button-send-email"
+                >
+                  {emailMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  {emailMutation.isPending ? "Sending..." : "Send Email Summary"}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Success Message */}
-          {processedResult.meetingId && selectedLab && (
+          {processedResult?.meetingId && selectedLab && (
             <Card className="border-green-200 dark:border-green-800">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-2 text-green-600 dark:text-green-400">

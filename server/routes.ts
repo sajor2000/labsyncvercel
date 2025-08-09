@@ -3,7 +3,6 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { createSampleData } from "./sampleData";
-import { createSampleData } from "./sampleData";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -495,6 +494,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching meeting details:", error);
       res.status(500).json({ message: "Failed to fetch meeting details" });
+    }
+  });
+
+  // Send meeting summary email
+  app.post('/api/standups/:meetingId/send-email', isAuthenticated, async (req: any, res) => {
+    try {
+      const { meetingId } = req.params;
+      const { recipients, labName } = req.body;
+      
+      if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+        return res.status(400).json({ message: "Recipients array is required" });
+      }
+
+      const { meetingRecorderService } = await import('./meetingRecorder');
+      const result = await meetingRecorderService.sendMeetingSummary(
+        meetingId,
+        recipients,
+        labName || "Your Lab"
+      );
+
+      if (result.success) {
+        res.json({
+          success: true,
+          messageId: result.messageId,
+          message: `Email sent successfully to ${recipients.length} recipients`
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+    } catch (error) {
+      console.error("Error sending meeting email:", error);
+      res.status(500).json({ message: "Failed to send meeting email" });
     }
   });
 
