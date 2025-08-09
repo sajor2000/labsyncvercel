@@ -148,9 +148,16 @@ function SortableTaskRow({ task, assignee, onEdit, onDelete, onPreview }: {
             <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs">
               {(assignee.user?.firstName?.[0] || assignee.user?.email?.[0] || '?').toUpperCase()}
             </div>
-            <span className="text-xs">
-              {assignee.user?.firstName || assignee.user?.email || assignee.userId}
-            </span>
+            <div className="flex flex-col">
+              <span className="text-xs">
+                {assignee.user?.firstName && assignee.user?.lastName 
+                  ? `${assignee.user.firstName} ${assignee.user.lastName}` 
+                  : assignee.user?.firstName || assignee.user?.email || assignee.userId}
+              </span>
+              {assignee.role && (
+                <span className="text-xs text-muted-foreground">{assignee.role}</span>
+              )}
+            </div>
           </div>
         ) : (
           <span className="text-xs text-muted-foreground">Unassigned</span>
@@ -240,9 +247,14 @@ function TaskCard({ task, assignee, onEdit, onDelete, onPreview }: {
             <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
               {(assignee.user?.firstName?.[0] || assignee.user?.email?.[0] || '?').toUpperCase()}
             </div>
-            <span className="text-sm text-gray-600 dark:text-gray-400 truncate">
-              {assignee.user?.firstName || assignee.user?.email || assignee.userId}
-            </span>
+            <div className="flex flex-col">
+              <span className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                {assignee.user?.firstName && assignee.user?.lastName 
+                  ? `${assignee.user.firstName} ${assignee.user.lastName}` 
+                  : assignee.user?.firstName || assignee.user?.email || assignee.userId}
+              </span>
+              <span className="text-xs text-gray-500">{assignee.role}</span>
+            </div>
           </div>
         )}
 
@@ -340,13 +352,18 @@ function TaskPreviewPanel({ task, assignee, onClose, onEdit, onDelete }: {
         {assignee && (
           <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Assignee</label>
-            <div className="mt-1 flex items-center gap-2">
+            <div className="mt-1 flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
                 {(assignee.user?.firstName?.[0] || assignee.user?.email?.[0] || '?').toUpperCase()}
               </div>
-              <span className="text-gray-900 dark:text-gray-100">
-                {assignee.user?.firstName || assignee.user?.email || assignee.userId}
-              </span>
+              <div className="flex flex-col">
+                <span className="text-gray-900 dark:text-gray-100 font-medium">
+                  {assignee.user?.firstName && assignee.user?.lastName 
+                    ? `${assignee.user.firstName} ${assignee.user.lastName}` 
+                    : assignee.user?.firstName || assignee.user?.email || assignee.userId}
+                </span>
+                <span className="text-sm text-gray-500">{assignee.role} • {assignee.user?.email}</span>
+              </div>
             </div>
           </div>
         )}
@@ -456,8 +473,9 @@ export default function TaskManagement() {
   });
 
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
-    queryKey: ['/api/team-members'],
-    enabled: isAuthenticated,
+    queryKey: ['/api/team-members', contextLab?.id],
+    queryFn: () => apiRequest(`/api/team-members?labId=${contextLab?.id}`, 'GET'),
+    enabled: isAuthenticated && !!contextLab,
   });
 
   // Quick task form
@@ -764,7 +782,19 @@ export default function TaskManagement() {
                           <SelectItem value="">Unassigned</SelectItem>
                           {teamMembers.map((member) => (
                             <SelectItem key={member.userId} value={member.userId}>
-                              {member.user?.firstName || member.user?.email || member.userId}
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+                                  {(member.user?.firstName?.[0] || member.user?.email?.[0] || '?').toUpperCase()}
+                                </div>
+                                <span>
+                                  {member.user?.firstName && member.user?.lastName 
+                                    ? `${member.user.firstName} ${member.user.lastName}` 
+                                    : member.user?.firstName || member.user?.email || member.userId}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  ({member.role})
+                                </span>
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
