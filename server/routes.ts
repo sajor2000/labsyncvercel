@@ -552,6 +552,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get meetings for preview
+  app.get('/api/standups/meetings', isAuthenticated, async (req: any, res) => {
+    try {
+      const meetings = await storage.getStandupMeetings();
+      res.json(meetings);
+    } catch (error) {
+      console.error("Error fetching meetings:", error);
+      res.status(500).json({ message: "Failed to fetch meetings" });
+    }
+  });
+
+  // Get email HTML for a specific meeting
+  app.get('/api/standups/meeting-email/:meetingId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { meetingId } = req.params;
+      const { meetingRecorderService } = await import('./meetingRecorder');
+      
+      // Get meeting data
+      const meeting = await storage.getStandupMeeting(meetingId);
+      if (!meeting) {
+        return res.status(404).json({ message: "Meeting not found" });
+      }
+
+      // Get action items
+      const actionItems = await storage.getActionItemsByMeetingId(meetingId);
+      
+      // Generate email HTML
+      const html = await meetingRecorderService.generateMeetingEmailHtml(
+        meeting,
+        actionItems,
+        "Lab Meeting Preview"
+      );
+      
+      res.json({ html });
+    } catch (error) {
+      console.error("Error generating meeting email:", error);
+      res.status(500).json({ message: "Failed to generate meeting email" });
+    }
+  });
+
   // Audio transcription endpoint using OpenAI Whisper
   app.post('/api/transcribe', isAuthenticated, upload.single('audio'), async (req: any, res) => {
     try {

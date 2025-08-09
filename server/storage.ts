@@ -684,6 +684,27 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(standupMeetings).orderBy(desc(standupMeetings.scheduledDate));
   }
 
+  // Meeting preview operations
+  async getStandupMeetings(): Promise<StandupMeeting[]> {
+    return await db.select().from(standupMeetings).orderBy(desc(standupMeetings.createdAt));
+  }
+
+  async getStandupMeeting(id: string): Promise<StandupMeeting | undefined> {
+    const [meeting] = await db
+      .select()
+      .from(standupMeetings)
+      .where(eq(standupMeetings.id, id));
+    return meeting;
+  }
+
+  async getActionItemsByMeetingId(meetingId: string): Promise<ActionItem[]> {
+    return await db
+      .select()
+      .from(standupActionItems)
+      .where(eq(standupActionItems.meetingId, meetingId))
+      .orderBy(standupActionItems.createdAt);
+  }
+
   async createStandup(standup: InsertStandupMeeting): Promise<StandupMeeting> {
     const [newStandup] = await db.insert(standupMeetings).values(standup).returning();
     return newStandup;

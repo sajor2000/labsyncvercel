@@ -16,7 +16,8 @@ import {
   LayoutGrid,
   Users,
   Lightbulb,
-  Clock
+  Clock,
+  Eye
 } from "lucide-react";
 import logoUrl from "@assets/Xnip2025-08-08_14-04-18_1754679867710.png";
 import { useEffect } from "react";
@@ -41,6 +42,7 @@ const navigationItems = [
   { name: "Team Members", href: "/team-members", icon: Users },
   { name: "Standups", href: "/standups", icon: Mic },
   { name: "AI Transcription", href: "/ai-transcription", icon: Brain },
+  { name: "Meeting Preview", href: "/meeting-preview", icon: Eye },
   { name: "Calendar", href: "/calendar", icon: Calendar },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
 ];
