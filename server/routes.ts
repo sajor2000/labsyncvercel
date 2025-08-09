@@ -124,7 +124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/studies/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteStudy(req.params.id);
+      const cascade = req.query.cascade === 'true';
+      await storage.deleteStudy(req.params.id, cascade);
       res.json({ message: "Study deleted successfully" });
     } catch (error) {
       console.error("Error deleting study:", error);
@@ -136,6 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const tasks = await storage.getTasks(req.params.id);
         res.status(409).json({ 
           message: errorMessage,
+          taskCount: tasks.length,
           associatedTasks: tasks.map(task => ({ id: task.id, title: task.title }))
         }); // 409 Conflict for dependency constraint
       } else {

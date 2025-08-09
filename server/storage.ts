@@ -449,14 +449,19 @@ export class DatabaseStorage implements IStorage {
     return updatedStudy;
   }
 
-  async deleteStudy(id: string): Promise<void> {
+  async deleteStudy(id: string, cascade: boolean = false): Promise<void> {
     // Check for associated tasks
     const associatedTasks = await db.select({ id: tasks.id })
       .from(tasks)
       .where(eq(tasks.studyId, id));
     
-    if (associatedTasks.length > 0) {
+    if (associatedTasks.length > 0 && !cascade) {
       throw new Error(`Cannot delete study. It contains ${associatedTasks.length} task(s). Please delete the tasks first.`);
+    }
+    
+    // If cascade is true, delete associated tasks first
+    if (cascade && associatedTasks.length > 0) {
+      await db.delete(tasks).where(eq(tasks.studyId, id));
     }
     
     await db.delete(studies).where(eq(studies.id, id));

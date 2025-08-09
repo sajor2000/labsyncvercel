@@ -62,6 +62,7 @@ export default function Studies() {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingStudy, setEditingStudy] = useState<Study | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ study: Study; taskCount: number } | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -213,8 +214,9 @@ export default function Studies() {
 
   // Delete study mutation
   const deleteStudyMutation = useMutation({
-    mutationFn: async (studyId: string) => {
-      return apiRequest(`/api/studies/${studyId}`, 'DELETE');
+    mutationFn: async ({ studyId, cascade = false }: { studyId: string; cascade?: boolean }) => {
+      const url = cascade ? `/api/studies/${studyId}?cascade=true` : `/api/studies/${studyId}`;
+      return apiRequest(url, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
@@ -238,19 +240,10 @@ export default function Studies() {
       
       const errorMessage = (error as Error).message;
       if (errorMessage.includes("Cannot delete study. It contains") && errorMessage.includes("task")) {
-        // Try to parse additional task details from error response
-        let taskDetails = "";
-        try {
-          const match = errorMessage.match(/(\d+) task\(s\)/);
-          const taskCount = match ? match[1] : "some";
-          taskDetails = `This study has ${taskCount} associated task${taskCount !== "1" ? "s" : ""}. `;
-        } catch (e) {
-          taskDetails = "This study has associated tasks. ";
-        }
-        
+        // This should not happen anymore with the new confirmation flow, but keep as fallback
         toast({
-          title: "Cannot Delete Study",
-          description: `${taskDetails}Go to the Tasks page to delete or reassign them first, then try deleting the study again.`,
+          title: "Error",
+          description: "Failed to delete study",
           variant: "destructive",
         });
       } else {
@@ -288,6 +281,50 @@ export default function Studies() {
       bucketId: study.bucketId || "",
     });
     setIsCreateOpen(true);
+  };
+
+  const handleDeleteStudy = async (study: Study) => {
+    try {
+      // First try to delete without cascade
+      await apiRequest(`/api/studies/${study.id}`, 'DELETE');
+      queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
+      toast({
+        title: "Success",
+        description: "Study deleted successfully",
+      });
+    } catch (error: any) {
+      // Check if error response contains task count information
+      if (error.message.includes("Cannot delete study. It contains") && error.message.includes("task")) {
+        try {
+          // Try to parse task count from error message
+          const match = error.message.match(/(\d+) task\(s\)/);
+          const taskCount = match ? parseInt(match[1]) : 1;
+          
+          // Show confirmation dialog
+          setConfirmDelete({ study, taskCount });
+        } catch (e) {
+          toast({
+            title: "Cannot Delete Study",
+            description: "This study has associated tasks. Please delete or reassign them first.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Error", 
+          description: "Failed to delete study",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (!confirmDelete) return;
+    
+    // Delete with cascade option
+    deleteStudyMutation.mutate({ studyId: confirmDelete.study.id, cascade: true });
+    setConfirmDelete(null);
   };
 
   // Filter studies by selected lab context first, then by other filters
@@ -759,7 +796,7 @@ export default function Studies() {
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction 
-                              onClick={() => deleteStudyMutation.mutate(study.id)}
+                              onClick={() => handleDeleteStudy(study)}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               Delete
@@ -775,6 +812,37 @@ export default function Studies() {
           ))}
         </div>
       )}
+
+      {/* Confirmation Dialog for Cascade Delete */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Study and Associated Tasks?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-2">
+                <p>
+                  <strong>Warning:</strong> This study has {confirmDelete?.taskCount} associated task{confirmDelete?.taskCount !== 1 ? 's' : ''}.
+                </p>
+                <p>
+                  Deleting "{confirmDelete?.study.name}" will also permanently delete all associated tasks. This action cannot be undone.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Alternative: You can go to the Tasks page to reassign these tasks to another study first.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Study & Tasks
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
