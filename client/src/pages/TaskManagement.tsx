@@ -435,6 +435,7 @@ function TaskPreviewPanel({ task, assignee, onClose, onEdit, onDelete }: {
 // Quick task form schema
 const quickTaskSchema = z.object({
   title: z.string().min(1, "Task title is required"),
+  description: z.string().optional(),
   bucketId: z.string().optional(),
   studyId: z.string().min(1, "Study is required"),
   priority: z.string().default("MEDIUM"),
@@ -522,6 +523,7 @@ export default function TaskManagement() {
     resolver: zodResolver(quickTaskSchema),
     defaultValues: {
       title: "",
+      description: "",
       bucketId: "",
       studyId: "",
       priority: "MEDIUM",
@@ -535,7 +537,6 @@ export default function TaskManagement() {
       return apiRequest('/api/tasks', 'POST', {
         ...data,
         status: 'TODO',
-        description: '',
       });
     },
     onSuccess: () => {
@@ -1047,23 +1048,29 @@ export default function TaskManagement() {
         </Card>
       )}
 
-      {/* Quick Add Task Row */}
-      {showQuickAdd && (
-        <Card className="mb-6 border-dashed border-2 border-primary/20">
-          <CardContent className="p-4">
-            <Form {...quickForm}>
-              <form onSubmit={quickForm.handleSubmit(onQuickSubmit)} className="flex items-end gap-4">
+      {/* Enhanced Task Creation Dialog */}
+      <Dialog open={showQuickAdd} onOpenChange={setShowQuickAdd}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Create New Task</DialogTitle>
+          </DialogHeader>
+          
+          <Form {...quickForm}>
+            <form onSubmit={quickForm.handleSubmit(onQuickSubmit)} className="space-y-8">
+              {/* Task Basic Information */}
+              <div className="grid grid-cols-1 gap-6">
                 <FormField
                   control={quickForm.control}
                   name="title"
                   render={({ field }) => (
-                    <FormItem className="flex-1">
+                    <FormItem>
+                      <FormLabel className="text-base font-medium">Task Title *</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="What needs to be done?" 
                           {...field} 
                           data-testid="input-quick-task-title"
-                          className="text-base"
+                          className="text-base h-12"
                         />
                       </FormControl>
                       <FormMessage />
@@ -1071,21 +1078,50 @@ export default function TaskManagement() {
                   )}
                 />
                 
+                {/* Description field */}
+                <FormField
+                  control={quickForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-medium">Description</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Provide additional details about this task..." 
+                          {...field} 
+                          data-testid="textarea-quick-task-description"
+                          className="text-base min-h-[100px]"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Organization and Priority */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={quickForm.control}
                   name="bucketId"
                   render={({ field }) => (
-                    <FormItem className="w-48">
+                    <FormItem>
+                      <FormLabel className="text-base font-medium">Bucket *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger data-testid="select-quick-bucket">
+                          <SelectTrigger data-testid="select-quick-bucket" className="h-12">
                             <SelectValue placeholder="Select bucket" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {buckets.map((bucket) => (
                             <SelectItem key={bucket.id} value={bucket.id}>
-                              {bucket.name}
+                              <div className="flex flex-col items-start">
+                                <span className="font-medium">{bucket.name}</span>
+                                {bucket.description && (
+                                  <span className="text-xs text-muted-foreground">{bucket.description}</span>
+                                )}
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1099,19 +1135,72 @@ export default function TaskManagement() {
                   control={quickForm.control}
                   name="studyId"
                   render={({ field }) => (
-                    <FormItem className="w-48">
+                    <FormItem>
+                      <FormLabel className="text-base font-medium">Study/Project *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger data-testid="select-quick-study">
+                          <SelectTrigger data-testid="select-quick-study" className="h-12">
                             <SelectValue placeholder="Select study" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {labFilteredStudies.map((study) => (
                             <SelectItem key={study.id} value={study.id}>
-                              {study.name}
+                              <div className="flex flex-col items-start">
+                                <span className="font-medium">{study.name}</span>
+                                {study.studyType && (
+                                  <span className="text-xs text-muted-foreground">{study.studyType}</span>
+                                )}
+                              </div>
                             </SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Priority and Assignment */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={quickForm.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-medium">Priority</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue="MEDIUM">
+                        <FormControl>
+                          <SelectTrigger data-testid="select-quick-priority" className="h-12">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="LOW">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                              <span>Low Priority</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="MEDIUM">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                              <span>Medium Priority</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="HIGH">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                              <span>High Priority</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="URGENT">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                              <span>Urgent</span>
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1121,78 +1210,83 @@ export default function TaskManagement() {
                 
                 <FormField
                   control={quickForm.control}
-                  name="priority"
-                  render={({ field }) => (
-                    <FormItem className="w-32">
-                      <Select onValueChange={field.onChange} defaultValue="MEDIUM">
-                        <FormControl>
-                          <SelectTrigger data-testid="select-quick-priority">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="LOW">Low</SelectItem>
-                          <SelectItem value="MEDIUM">Medium</SelectItem>
-                          <SelectItem value="HIGH">High</SelectItem>
-                          <SelectItem value="URGENT">Urgent</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={quickForm.control}
                   name="assigneeId"
                   render={({ field }) => (
-                    <FormItem className="w-48">
+                    <FormItem>
+                      <FormLabel className="text-base font-medium">Assign To</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl>
-                          <SelectTrigger data-testid="select-quick-assignee">
-                            <SelectValue placeholder="Assign to..." />
+                          <SelectTrigger data-testid="select-quick-assignee" className="h-12">
+                            <SelectValue placeholder="Choose team member..." />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          <SelectItem value="unassigned">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                <span className="text-xs">—</span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-medium">Unassigned</span>
+                                <span className="text-xs text-muted-foreground">No assignee</span>
+                              </div>
+                            </div>
+                          </SelectItem>
                           {teamMembers.map((member) => (
                             <SelectItem key={member.id} value={member.id}>
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
                                   {(member.name?.[0] || member.email?.[0] || '?').toUpperCase()}
                                 </div>
-                                <span>
-                                  {member.name || member.email || member.id}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  ({member.role})
-                                </span>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">
+                                    {member.name || member.email || member.id}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {member.role}
+                                  </span>
+                                </div>
                               </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
-                
-                <div className="flex items-center gap-2">
-                  <Button type="submit" disabled={createTaskMutation.isPending} data-testid="button-create-quick-task">
-                    {createTaskMutation.isPending ? "Creating..." : "Add Task"}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    onClick={() => setShowQuickAdd(false)}
-                    size="sm"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      )}
+              </div>
+              
+              {/* Form Actions */}
+              <div className="flex items-center justify-end gap-4 pt-6 border-t">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowQuickAdd(false)}
+                  className="px-6"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={createTaskMutation.isPending} 
+                  data-testid="button-create-quick-task"
+                  className="px-6"
+                >
+                  {createTaskMutation.isPending ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Creating...
+                    </div>
+                  ) : (
+                    "Create Task"
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       {/* Enhanced Filters */}
       <div className="flex flex-col lg:flex-row gap-4 mb-6">
