@@ -429,6 +429,9 @@ export const labMembers = pgTable("lab_members", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   labId: varchar("lab_id").notNull().references(() => labs.id, { onDelete: "cascade" }),
   
+  // Lab-specific role
+  labRole: userRoleEnum("lab_role").default("RESEARCH_ASSISTANT"), // Role specific to this lab
+  
   // Permissions based on role
   isAdmin: boolean("is_admin").default(false), // Can manage lab settings
   canCreateProjects: boolean("can_create_projects").default(false),

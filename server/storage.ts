@@ -34,6 +34,8 @@ import {
   type InsertActionItem,
   type TeamMember,
   type InsertTeamMember,
+  type LabMember,
+  type InsertLabMember,
   type TeamMemberAssignment,
   type InsertTeamMemberAssignment,
   type ProjectMember,
@@ -420,6 +422,65 @@ export class DatabaseStorage implements IStorage {
     .innerJoin(labMembers, eq(users.id, labMembers.userId))
     .where(and(eq(labMembers.labId, labId), eq(labMembers.isActive, true)))
     .orderBy(users.name);
+  }
+
+  async getLabMemberAssignments(labId?: string): Promise<any[]> {
+    let query = db.select({
+      id: labMembers.id,
+      userId: labMembers.userId,
+      labId: labMembers.labId,
+      labRole: labMembers.labRole,
+      isAdmin: labMembers.isAdmin,
+      canCreateProjects: labMembers.canCreateProjects,
+      canAssignTasks: labMembers.canAssignTasks,
+      canViewAllProjects: labMembers.canViewAllProjects,
+      canEditAllProjects: labMembers.canEditAllProjects,
+      canManageMembers: labMembers.canManageMembers,
+      canApproveIdeas: labMembers.canApproveIdeas,
+      canAccessReports: labMembers.canAccessReports,
+      isActive: labMembers.isActive,
+      joinedAt: labMembers.joinedAt,
+      leftAt: labMembers.leftAt,
+      // User details
+      userEmail: users.email,
+      userFirstName: users.firstName,
+      userLastName: users.lastName,
+      userName: users.name,
+      userInitials: users.initials,
+      userProfileImageUrl: users.profileImageUrl,
+      userAvatar: users.avatar,
+      userRole: users.role,
+      userTitle: users.title,
+      userDepartment: users.department,
+      // Lab details
+      labName: labs.name,
+      labFullName: labs.fullName,
+    })
+    .from(labMembers)
+    .innerJoin(users, eq(labMembers.userId, users.id))
+    .innerJoin(labs, eq(labMembers.labId, labs.id))
+    .where(labId ? eq(labMembers.labId, labId) : eq(labMembers.isActive, true))
+    .orderBy(users.name);
+
+    return await query;
+  }
+
+  async assignUserToLab(assignment: InsertLabMember): Promise<LabMember> {
+    const [newAssignment] = await db.insert(labMembers).values(assignment).returning();
+    return newAssignment;
+  }
+
+  async updateLabMemberAssignment(id: string, updates: Partial<InsertLabMember>): Promise<LabMember> {
+    const [updatedAssignment] = await db
+      .update(labMembers)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(labMembers.id, id))
+      .returning();
+    return updatedAssignment;
+  }
+
+  async removeUserFromLab(userId: string, labId: string): Promise<void> {
+    await db.delete(labMembers).where(and(eq(labMembers.userId, userId), eq(labMembers.labId, labId)));
   }
 
   // Study operations

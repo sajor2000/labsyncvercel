@@ -85,7 +85,7 @@ export function Sidebar() {
               alt="LabSync Logo" 
               className="h-16 w-auto transition-all duration-300 group-hover:scale-105 animate-float"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute inset-[-12px] bg-gradient-to-r from-primary/20 to-accent/20 rounded-xl blur-2xl opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
           </div>
         </div>
       </div>
