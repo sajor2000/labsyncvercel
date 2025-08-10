@@ -32,23 +32,23 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-// Enhanced role options matching database enum exactly
+// Role options EXACTLY matching database teamMemberRoleEnum
 const roleOptions = [
-  { value: "Principal Investigator", label: "Principal Investigator" },
+  { value: "PI", label: "PI" },
   { value: "CO_PRINCIPAL_INVESTIGATOR", label: "Co-Principal Investigator" },
   { value: "Data Scientist", label: "Data Scientist" },
   { value: "Data Analyst", label: "Data Analyst" },
-  { value: "Clinical Research Coordinator", label: "Clinical Research Coordinator" },
   { value: "Regulatory Coordinator", label: "Regulatory Coordinator" },
-  { value: "Coordinator", label: "Staff Coordinator" },
+  { value: "Coordinator", label: "Coordinator" },
+  { value: "Lab Intern", label: "Lab Intern" },
+  { value: "Summer Intern", label: "Summer Intern" },
+  { value: "Principal Investigator", label: "Principal Investigator" },
+  { value: "Clinical Research Coordinator", label: "Clinical Research Coordinator" },
+  { value: "Staff Coordinator", label: "Staff Coordinator" },
   { value: "Fellow", label: "Fellow" },
   { value: "Medical Student", label: "Medical Student" },
   { value: "Volunteer Research Assistant", label: "Volunteer Research Assistant" },
   { value: "Research Assistant", label: "Research Assistant" },
-  { value: "PI", label: "PI" },
-  { value: "Lab Intern", label: "Lab Intern" },
-  { value: "Summer Intern", label: "Summer Intern" },
-  { value: "Staff Coordinator", label: "Staff Coordinator" },
 ];
 
 // Create form schema for enhanced user model
