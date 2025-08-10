@@ -189,6 +189,7 @@ export default function TeamMembersEnhanced() {
         expertise: data.expertise ? data.expertise.split(',').map(s => s.trim()).filter(Boolean) : [],
         skills: data.skills ? data.skills.split(',').map(s => s.trim()).filter(Boolean) : [],
         institution: "Rush University Medical Center",
+        labId: selectedLab?.id, // Include the selected lab ID
       };
       
       await apiRequest('/api/team-members', 'POST', memberData);

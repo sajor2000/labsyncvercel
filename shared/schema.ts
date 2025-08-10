@@ -459,16 +459,28 @@ export const labMembers = pgTable("lab_members", {
 export const teamMembers = pgTable("team_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  middleName: varchar("middle_name"),
   initials: varchar("initials", { length: 10 }),
   email: varchar("email"), // Removed unique constraint to allow members in multiple labs
   role: teamMemberRoleEnum("role").notNull(),
+  title: varchar("title"), // Job title
   avatarUrl: varchar("avatar_url"), // PNG avatar image URL
   labId: varchar("lab_id").references(() => labs.id),
   position: varchar("position").default("0"), // For ordering in lists
   department: varchar("department"), // Department or group affiliation
+  institution: varchar("institution"),
   phoneNumber: varchar("phone_number"),
+  capacity: varchar("capacity"), // Work capacity
+  bio: text("bio"), // Biography
+  linkedIn: varchar("linked_in"), // LinkedIn profile URL
+  orcid: varchar("orcid"), // ORCID identifier
+  expertise: text("expertise").array(), // Array of expertise areas
+  skills: text("skills").array(), // Array of technical skills
   startDate: timestamp("start_date"),
   isActive: boolean("is_active").default(true),
+  isExternal: boolean("is_external").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

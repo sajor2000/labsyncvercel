@@ -440,11 +440,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/team-members", isAuthenticated, async (req, res) => {
     try {
-      const member = await storage.createTeamMember(req.body);
+      // Get labId from request body or query parameter  
+      const labId = req.body.labId || req.query.labId;
+      if (!labId) {
+        return res.status(400).json({ message: "Lab ID is required" });
+      }
+      
+      // Map frontend form data to database schema
+      const memberData: any = {
+        name: req.body.name || `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim(),
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        middleName: req.body.middleName,
+        initials: req.body.initials,
+        email: req.body.email,
+        role: req.body.role,
+        title: req.body.title,
+        labId: labId,
+        department: req.body.department,
+        institution: req.body.institution,
+        phoneNumber: req.body.phone, // Map phone to phoneNumber
+        capacity: req.body.capacity,
+        bio: req.body.bio,
+        linkedIn: req.body.linkedIn,
+        orcid: req.body.orcid,
+        expertise: req.body.expertise,
+        skills: req.body.skills,
+        isActive: !req.body.isExternal || true, // Map isExternal to isActive (inverse)
+        isExternal: req.body.isExternal || false,
+        position: "0"
+      };
+
+      // Remove undefined and empty values
+      Object.keys(memberData).forEach(key => {
+        if (memberData[key] === undefined || memberData[key] === '') {
+          delete memberData[key];
+        }
+      });
+
+      const member = await storage.createTeamMember(memberData);
       res.json(member);
     } catch (error) {
       console.error("Error creating team member:", error);
-      res.status(500).json({ message: "Failed to create team member" });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Failed to create team member", error: errorMessage });
     }
   });
 
