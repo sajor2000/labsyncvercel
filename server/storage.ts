@@ -418,7 +418,7 @@ export class DatabaseStorage implements IStorage {
       phone: teamMembers.phoneNumber,
       linkedIn: sql<string>`''`,
       orcid: sql<string>`''`,
-      lastActive: sql<string>`''`,
+      lastActive: sql<Date | null>`NULL`,
       isActive: teamMembers.isActive,
       createdAt: teamMembers.createdAt,
       updatedAt: teamMembers.updatedAt,
