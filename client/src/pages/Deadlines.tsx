@@ -401,7 +401,9 @@ export default function Deadlines() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="unassigned">Unassigned</SelectItem>
-                            {(teamMembers as any[]).map((member: any) => (
+                            {(teamMembers as any[])
+                              .filter((member: any) => member?.id && member?.name)
+                              .map((member: any) => (
                               <SelectItem key={member.id} value={member.id}>
                                 {member.name}
                               </SelectItem>
@@ -429,7 +431,9 @@ export default function Deadlines() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="none">No related study</SelectItem>
-                            {(studies as any[]).map((study: any) => (
+                            {(studies as any[])
+                              .filter((study: any) => study?.id && study?.name)
+                              .map((study: any) => (
                               <SelectItem key={study.id} value={study.id}>
                                 {study.name}
                               </SelectItem>
@@ -594,7 +598,7 @@ export default function Deadlines() {
                         <CardTitle className="text-lg">{deadline.title}</CardTitle>
                         {deadline.submissionUrl && (
                           <a 
-                            href={deadline.submissionUrl || ""} 
+                            href={deadline.submissionUrl || "#"} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800"
