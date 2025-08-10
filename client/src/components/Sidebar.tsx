@@ -76,13 +76,13 @@ export function Sidebar() {
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-sidebar via-sidebar-background to-sidebar border-r border-sidebar-border backdrop-blur-xl">
       {/* Logo and Title */}
-      <div className="p-6 border-b border-sidebar-border/50">
+      <div className="p-8 border-b border-sidebar-border/50">
         <div className="flex items-center justify-center">
           <div className="relative group">
             <img 
               src={logoUrl} 
               alt="LabSync Logo" 
-              className="h-16 w-auto transition-all duration-200"
+              className="h-24 w-auto transition-all duration-200 hover:scale-105"
             />
 
           </div>
