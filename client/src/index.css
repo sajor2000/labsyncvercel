@@ -3,105 +3,105 @@
 @tailwind utilities;
 
 :root {
-  /* LabSync Brand Colors - Light Theme */
-  --background: hsl(0, 0%, 100%);
-  --foreground: hsl(210, 11%, 15%);
-  --muted: hsl(188, 20%, 97%);
-  --muted-foreground: hsl(210, 8%, 45%);
+  /* Monday.com Inspired - Light Theme */
+  --background: hsl(0, 0%, 99%);
+  --foreground: hsl(220, 9%, 25%);
+  --muted: hsl(210, 15%, 96%);
+  --muted-foreground: hsl(220, 8%, 50%);
   --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(210, 11%, 15%);
+  --popover-foreground: hsl(220, 9%, 25%);
   --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(210, 11%, 15%);
-  --border: hsl(188, 15%, 88%);
-  --input: hsl(188, 15%, 92%);
+  --card-foreground: hsl(220, 9%, 25%);
+  --border: hsl(220, 15%, 92%);
+  --input: hsl(220, 15%, 97%);
   
-  /* Primary: Deep Teal from logo background */
-  --primary: hsl(181, 45%, 30%);
+  /* Primary: Monday.com signature blue */
+  --primary: hsl(225, 100%, 60%);
   --primary-foreground: hsl(0, 0%, 100%);
   
-  /* Secondary: Neutral complement */
-  --secondary: hsl(188, 20%, 95%);
-  --secondary-foreground: hsl(210, 11%, 15%);
+  /* Secondary: Clean neutral */
+  --secondary: hsl(220, 15%, 97%);
+  --secondary-foreground: hsl(220, 9%, 25%);
   
-  /* Accent: Bright cyan from logo icon */
-  --accent: hsl(190, 75%, 65%);
-  --accent-foreground: hsl(181, 45%, 15%);
+  /* Accent: Monday.com purple accent */
+  --accent: hsl(267, 85%, 70%);
+  --accent-foreground: hsl(0, 0%, 100%);
   
-  /* Semantic Colors */
-  --destructive: hsl(0, 84%, 60%);
+  /* Semantic Colors - Monday.com style */
+  --destructive: hsl(0, 72%, 55%);
   --destructive-foreground: hsl(0, 0%, 98%);
   --success: hsl(142, 71%, 45%);
   --success-foreground: hsl(0, 0%, 100%);
-  --warning: hsl(38, 92%, 50%);
+  --warning: hsl(38, 100%, 55%);
   --warning-foreground: hsl(0, 0%, 100%);
-  --info: hsl(217, 91%, 60%);
+  --info: hsl(210, 100%, 60%);
   --info-foreground: hsl(0, 0%, 100%);
   
-  --ring: hsl(181, 45%, 30%);
-  --radius: 0.5rem;
+  --ring: hsl(225, 100%, 60%);
+  --radius: 0.75rem;
   
-  /* Chart Colors - Professional data visualization */
-  --chart-1: hsl(181, 45%, 30%);
-  --chart-2: hsl(190, 75%, 65%);
+  /* Chart Colors - Monday.com style palette */
+  --chart-1: hsl(225, 100%, 60%);
+  --chart-2: hsl(267, 85%, 70%);
   --chart-3: hsl(142, 71%, 45%);
-  --chart-4: hsl(38, 92%, 50%);
-  --chart-5: hsl(217, 91%, 60%);
+  --chart-4: hsl(38, 100%, 55%);
+  --chart-5: hsl(0, 72%, 55%);
 }
 
 .dark {
-  /* LabSync Brand Colors - Dark Theme (Premium Feel) */
-  --background: hsl(181, 30%, 8%);
-  --foreground: hsl(188, 20%, 95%);
-  --muted: hsl(181, 25%, 12%);
-  --muted-foreground: hsl(188, 15%, 65%);
-  --popover: hsl(181, 28%, 10%);
-  --popover-foreground: hsl(188, 20%, 95%);
-  --card: hsl(181, 25%, 11%);
-  --card-foreground: hsl(188, 20%, 95%);
-  --border: hsl(181, 20%, 18%);
-  --input: hsl(181, 20%, 16%);
+  /* Monday.com Inspired - Dark Theme */
+  --background: hsl(220, 25%, 10%);
+  --foreground: hsl(220, 15%, 95%);
+  --muted: hsl(220, 25%, 15%);
+  --muted-foreground: hsl(220, 15%, 70%);
+  --popover: hsl(220, 30%, 12%);
+  --popover-foreground: hsl(220, 15%, 95%);
+  --card: hsl(220, 25%, 13%);
+  --card-foreground: hsl(220, 15%, 95%);
+  --border: hsl(220, 20%, 20%);
+  --input: hsl(220, 20%, 18%);
   
-  /* Primary: Enhanced teal with better contrast */
-  --primary: hsl(181, 50%, 45%);
-  --primary-foreground: hsl(181, 30%, 8%);
+  /* Primary: Monday.com blue for dark */
+  --primary: hsl(225, 100%, 65%);
+  --primary-foreground: hsl(220, 25%, 10%);
   
-  /* Secondary: Sophisticated dark complement */
-  --secondary: hsl(181, 20%, 16%);
-  --secondary-foreground: hsl(188, 20%, 95%);
+  /* Secondary: Dark sophisticated */
+  --secondary: hsl(220, 20%, 18%);
+  --secondary-foreground: hsl(220, 15%, 95%);
   
-  /* Accent: Vibrant cyan with glow effect */
-  --accent: hsl(190, 85%, 70%);
-  --accent-foreground: hsl(181, 30%, 8%);
+  /* Accent: Monday.com purple for dark */
+  --accent: hsl(267, 85%, 75%);
+  --accent-foreground: hsl(220, 25%, 10%);
   
-  /* Semantic Colors - Enhanced for dark theme */
-  --destructive: hsl(0, 84%, 65%);
+  /* Semantic Colors - Monday.com dark theme */
+  --destructive: hsl(0, 72%, 60%);
   --destructive-foreground: hsl(0, 0%, 98%);
-  --success: hsl(142, 71%, 50%);
-  --success-foreground: hsl(181, 30%, 8%);
-  --warning: hsl(38, 92%, 55%);
-  --warning-foreground: hsl(181, 30%, 8%);
-  --info: hsl(217, 91%, 65%);
-  --info-foreground: hsl(181, 30%, 8%);
+  --success: hsl(142, 71%, 55%);
+  --success-foreground: hsl(220, 25%, 10%);
+  --warning: hsl(38, 100%, 60%);
+  --warning-foreground: hsl(220, 25%, 10%);
+  --info: hsl(210, 100%, 65%);
+  --info-foreground: hsl(220, 25%, 10%);
   
-  --ring: hsl(181, 50%, 45%);
-  --radius: 0.5rem;
+  --ring: hsl(225, 100%, 65%);
+  --radius: 0.75rem;
   
-  /* Chart Colors - Optimized for dark backgrounds */
-  --chart-1: hsl(181, 50%, 45%);
-  --chart-2: hsl(190, 85%, 70%);
-  --chart-3: hsl(142, 71%, 50%);
-  --chart-4: hsl(38, 92%, 55%);
-  --chart-5: hsl(217, 91%, 65%);
+  /* Chart Colors - Monday.com dark palette */
+  --chart-1: hsl(225, 100%, 65%);
+  --chart-2: hsl(267, 85%, 75%);
+  --chart-3: hsl(142, 71%, 55%);
+  --chart-4: hsl(38, 100%, 60%);
+  --chart-5: hsl(0, 72%, 60%);
   
-  /* Sidebar Colors */
-  --sidebar-background: hsl(181, 30%, 9%);
-  --sidebar-foreground: hsl(188, 15%, 85%);
-  --sidebar-primary: hsl(181, 50%, 45%);
-  --sidebar-primary-foreground: hsl(181, 30%, 8%);
-  --sidebar-accent: hsl(190, 85%, 70%);
-  --sidebar-accent-foreground: hsl(181, 30%, 8%);
-  --sidebar-border: hsl(181, 20%, 18%);
-  --sidebar-ring: hsl(181, 50%, 45%);
+  /* Sidebar Colors - Monday.com inspired */
+  --sidebar-background: hsl(220, 30%, 11%);
+  --sidebar-foreground: hsl(220, 15%, 85%);
+  --sidebar-primary: hsl(225, 100%, 65%);
+  --sidebar-primary-foreground: hsl(220, 25%, 10%);
+  --sidebar-accent: hsl(267, 85%, 75%);
+  --sidebar-accent-foreground: hsl(220, 25%, 10%);
+  --sidebar-border: hsl(220, 20%, 20%);
+  --sidebar-ring: hsl(225, 100%, 65%);
 }
 
 @layer base {
@@ -117,34 +117,74 @@
     @apply dark;
   }
 
-  /* LabSync-inspired scrollbar styling */
+  /* Monday.com-inspired scrollbar styling */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
   }
-
+  
   ::-webkit-scrollbar-track {
     background: hsl(var(--muted));
-    border-radius: 6px;
+    border-radius: 9999px;
   }
-
+  
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.6), hsl(var(--accent) / 0.4));
-    border-radius: 6px;
-    border: 2px solid hsl(var(--background));
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 9999px;
   }
-
+  
   ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.8), hsl(var(--accent) / 0.6));
+    background: hsl(var(--muted-foreground) / 0.5);
   }
+}
 
+@layer base {
+  /* Monday.com style animations */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@layer components {
+  /* Card hover effects like Monday.com */
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-md hover:scale-[1.02];
+  }
+  
+  /* Button styles inspired by Monday.com */
+  .btn-monday {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200;
+    @apply bg-primary text-primary-foreground active:scale-95;
+    @apply shadow-sm hover:shadow-md;
+  }
+  
+  .btn-monday:hover {
+    background: hsl(var(--primary) / 0.9);
+  }
+  
+  .btn-monday-secondary {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200;
+    @apply bg-secondary text-secondary-foreground active:scale-95;
+    @apply border border-border;
+  }
+  
+  .btn-monday-secondary:hover {
+    background: hsl(var(--secondary) / 0.8);
+    border-color: hsl(var(--primary) / 0.2);
+  }
+  
   /* Enhanced focus states with brand colors */
   .focus-visible:focus-visible {
     @apply outline-2 outline-offset-2 outline-primary;
     box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
   }
 
-  /* Gradient utilities for world-class design */
+  /* Gradient utilities for Monday.com-style design */
   .gradient-primary {
     background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
   }

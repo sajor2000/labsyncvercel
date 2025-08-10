@@ -1671,14 +1671,20 @@ export default function TaskManagement() {
                                 {/* Study Phase/Status */}
                                 <div className="flex items-center gap-2">
                                   <Badge 
-                                    variant={study.status === 'ACTIVE' ? 'default' : 
-                                            study.status === 'COMPLETED' ? 'secondary' : 'outline'}
+                                    variant={study.status === 'ANALYSIS' || study.status === 'DATA_COLLECTION' ? 'default' : 
+                                            study.status === 'PUBLISHED' || study.status === 'MANUSCRIPT' ? 'secondary' : 'outline'}
                                     className="text-xs"
                                   >
-                                    {study.status === 'ACTIVE' && 'Analysis phase'}
+                                    {study.status === 'ANALYSIS' && 'Analysis phase'}
+                                    {study.status === 'DATA_COLLECTION' && 'Data Collection'}
                                     {study.status === 'ON_HOLD' && 'On hold'}
-                                    {study.status === 'COMPLETED' && 'Manuscript phase'}
+                                    {study.status === 'MANUSCRIPT' && 'Manuscript phase'}
+                                    {study.status === 'PUBLISHED' && 'Published'}
                                     {study.status === 'PLANNING' && 'Planning phase'}
+                                    {study.status === 'IRB_SUBMISSION' && 'IRB Submission'}
+                                    {study.status === 'IRB_APPROVED' && 'IRB Approved'}
+                                    {study.status === 'UNDER_REVIEW' && 'Under Review'}
+                                    {study.status === 'CANCELLED' && 'Cancelled'}
                                   </Badge>
                                 </div>
 
@@ -1752,8 +1758,8 @@ export default function TaskManagement() {
                                 {/* Task Count */}
                                 <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t">
                                   <span>{totalTasks} tasks</span>
-                                  {study.endDate && (
-                                    <span>Due: {new Date(study.endDate).toLocaleDateString()}</span>
+                                  {study.createdAt && (
+                                    <span>Created: {new Date(study.createdAt).toLocaleDateString()}</span>
                                   )}
                                 </div>
                               </div>
