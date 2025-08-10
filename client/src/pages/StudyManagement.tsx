@@ -383,8 +383,6 @@ export default function StudyManagement() {
       {/* Left Sidebar */}
       <div className="w-64 bg-card border-r border-border/40 flex flex-col">
         <div className="p-4 border-b border-border/40">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Table 1</h2>
-          
           {/* Add New Study Button */}
           <Button 
             onClick={() => setShowCreateDialog(true)}
