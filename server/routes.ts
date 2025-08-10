@@ -81,6 +81,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard routes
+  app.get('/api/dashboard/stats', isAuthenticated, async (req, res) => {
+    try {
+      const labId = req.query.labId as string | undefined;
+      const stats = await storage.getDashboardStats(labId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  app.get('/api/activity', isAuthenticated, async (req, res) => {
+    try {
+      const labId = req.query.labId as string | undefined;
+      const activity = await storage.getActivityFeed(labId);
+      res.json(activity);
+    } catch (error) {
+      console.error("Error fetching activity feed:", error);
+      res.status(500).json({ message: "Failed to fetch activity feed" });
+    }
+  });
+
   // Lab routes
   app.get("/api/labs", isAuthenticated, async (req, res) => {
     try {
@@ -138,6 +161,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/buckets/deleted", isAuthenticated, async (req, res) => {
+    try {
+      const labId = req.query.labId as string | undefined;
+      const deletedBuckets = await storage.getDeletedBuckets(labId);
+      res.json(deletedBuckets);
+    } catch (error) {
+      console.error("Error fetching deleted buckets:", error);
+      res.status(500).json({ message: "Failed to fetch deleted buckets" });
+    }
+  });
+
   app.post("/api/buckets", isAuthenticated, async (req, res) => {
     try {
       const bucket = await storage.createBucket(req.body);
@@ -167,6 +201,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching studies:", error);
       res.status(500).json({ message: "Failed to fetch studies" });
+    }
+  });
+
+  app.get("/api/studies/deleted", isAuthenticated, async (req, res) => {
+    try {
+      const labId = req.query.labId as string | undefined;
+      const deletedStudies = await storage.getDeletedStudies(labId);
+      res.json(deletedStudies);
+    } catch (error) {
+      console.error("Error fetching deleted studies:", error);
+      res.status(500).json({ message: "Failed to fetch deleted studies" });
     }
   });
 
@@ -312,6 +357,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching tasks:", error);
       res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
+  app.get("/api/tasks/deleted", isAuthenticated, async (req, res) => {
+    try {
+      const labId = req.query.labId as string | undefined;
+      const deletedTasks = await storage.getDeletedTasks(labId);
+      res.json(deletedTasks);
+    } catch (error) {
+      console.error("Error fetching deleted tasks:", error);
+      res.status(500).json({ message: "Failed to fetch deleted tasks" });
     }
   });
 

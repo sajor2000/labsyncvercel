@@ -209,6 +209,15 @@ export interface IStorage {
   exportUserData(id: string): Promise<any>;
   deleteUser(id: string): Promise<void>;
 
+  // Dashboard and analytics
+  getDashboardStats(labId?: string): Promise<any>;
+  getActivityFeed(labId?: string): Promise<any>;
+
+  // Deleted items operations
+  getDeletedBuckets(labId?: string): Promise<Bucket[]>;
+  getDeletedStudies(labId?: string): Promise<Study[]>;
+  getDeletedTasks(labId?: string): Promise<Task[]>;
+
   // PHASE 1: CRITICAL SECURITY OPERATIONS
   validateUserLabAccess(userId: string, labId: string): Promise<boolean>;
   validateProjectMembership(userId: string, projectId: string): Promise<boolean>;
@@ -906,6 +915,59 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: string): Promise<void> {
     await db.delete(users).where(eq(users.id, id));
+  }
+
+  // Dashboard and analytics methods
+  async getDashboardStats(labId?: string): Promise<any> {
+    const labs = await this.getLabs();
+    const studies = await this.getStudies(labId);
+    const tasks = await this.getTasks();
+    const standups = await this.getStandups(labId);
+    
+    return {
+      labs: labs.length,
+      studies: studies.length,
+      tasks: tasks.length,
+      activeTasks: tasks.filter(t => ['TODO', 'IN_PROGRESS'].includes(t.status || '')).length,
+      completedTasks: tasks.filter(t => t.status === 'DONE').length,
+      standups: standups.length,
+      recentActivity: (await this.getActivityFeed(labId)).slice(0, 5)
+    };
+  }
+
+  async getActivityFeed(labId?: string): Promise<any[]> {
+    // Get recent activities across the system
+    const studies = await this.getStudies(labId);
+    const tasks = await this.getTasks();
+    const standups = await this.getStandups(labId);
+    
+    const activities = [
+      ...studies.slice(0, 5).map(s => ({
+        type: 'study',
+        action: 'created',
+        item: s.title,
+        timestamp: s.createdAt,
+        id: s.id
+      })),
+      ...tasks.slice(0, 5).map(t => ({
+        type: 'task',
+        action: 'created',
+        item: t.title,
+        timestamp: t.createdAt,
+        id: t.id
+      })),
+      ...standups.slice(0, 3).map(s => ({
+        type: 'meeting',
+        action: 'completed',
+        item: `Standup Meeting`,
+        timestamp: s.createdAt,
+        id: s.id
+      }))
+    ];
+    
+    return activities
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 10);
   }
 
   // Enhanced CRUD operations
