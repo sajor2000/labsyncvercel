@@ -22,7 +22,7 @@ export function TopHeader({ onMenuClick }: TopHeaderProps) {
           <img 
             src={logoUrl} 
             alt="LabSync" 
-            className="h-8 w-auto animate-float"
+            className="h-8 w-auto"
           />
         </div>
         
@@ -63,13 +63,13 @@ export function TopHeader({ onMenuClick }: TopHeaderProps) {
           data-testid="button-notifications"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute -top-1 -right-1 h-3 w-3 bg-gradient-to-r from-destructive to-warning rounded-full animate-pulse"></span>
+          <span className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full"></span>
         </Button>
 
         {/* User Avatar */}
         {user && (
           <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-sm font-medium shadow-lg glow-primary transition-all duration-200 hover:scale-105">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-sm font-medium shadow-sm">
               {user.firstName?.[0] || user.email?.[0]?.toUpperCase() || "U"}
             </div>
             <div className="hidden sm:block">
@@ -79,7 +79,7 @@ export function TopHeader({ onMenuClick }: TopHeaderProps) {
                   : user.email
                 }
               </p>
-              <p className="text-xs text-accent font-medium">Making Science Easier</p>
+              <p className="text-xs text-accent/80 font-medium">Making Science Easier</p>
             </div>
           </div>
         )}
