@@ -41,6 +41,42 @@ import { insertStudySchema } from "@shared/schema";
 import { QuickTaskModal } from "@/components/QuickTaskModal";
 import { useLocation } from "wouter";
 
+// Pretty labels for study data
+const statusLabels: Record<string, string> = {
+  PLANNING: "Planning",
+  IRB_SUBMISSION: "IRB Submission",
+  IRB_APPROVED: "IRB Approved",
+  DATA_COLLECTION: "Data Collection",
+  ANALYSIS: "Analysis",
+  MANUSCRIPT: "Manuscript",
+  UNDER_REVIEW: "Under Review",
+  PUBLISHED: "Published",
+  ON_HOLD: "On Hold",
+  CANCELLED: "Cancelled"
+};
+
+const studyTypeLabels: Record<string, string> = {
+  CLINICAL_TRIAL: "Clinical Trial",
+  COHORT_STUDY: "Cohort Study",
+  CASE_CONTROL: "Case Control",
+  CROSS_SECTIONAL: "Cross Sectional",
+  SYSTEMATIC_REVIEW: "Systematic Review",
+  META_ANALYSIS: "Meta Analysis",
+  QUALITATIVE: "Qualitative",
+  MIXED_METHODS: "Mixed Methods",
+  OTHER: "Other"
+};
+
+const fundingLabels: Record<string, string> = {
+  NONE: "None",
+  NIH: "NIH",
+  NSF: "NSF", 
+  PRIVATE_FOUNDATION: "Private Foundation",
+  INDUSTRY: "Industry",
+  INSTITUTIONAL: "Institutional",
+  OTHER: "Other"
+};
+
 // View modes for the management interface
 type ViewMode = 'kanban' | 'grid' | 'list';
 
@@ -109,7 +145,7 @@ function SortableStudyCard({ study, teamMembers }: { study: Study; teamMembers: 
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Status</p>
               <Badge className={`text-xs ${studyStatusColors[study.status || 'PLANNING']}`}>
-                {study.status?.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                {study.status ? statusLabels[study.status] || study.status : statusLabels.PLANNING}
               </Badge>
             </div>
           </div>
@@ -145,7 +181,7 @@ function SortableStudyCard({ study, teamMembers }: { study: Study; teamMembers: 
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Funding</p>
               <Badge className={`text-xs ${fundingColors[study.funding as keyof typeof fundingColors] || fundingColors.OTHER}`}>
-                {study.fundingSource || study.funding.replace('_', ' ')}
+                {study.fundingSource || (study.funding ? fundingLabels[study.funding] || study.funding : fundingLabels.NONE)}
               </Badge>
             </div>
           )}
@@ -605,7 +641,7 @@ export default function StudyManagement() {
                       <p className="text-sm text-muted-foreground">{study.studyType}</p>
                     </div>
                     <Badge className={studyStatusColors[study.status || 'PLANNING']}>
-                      {study.status?.replace('_', ' ')}
+                      {study.status ? statusLabels[study.status] || study.status : statusLabels.PLANNING}
                     </Badge>
                   </div>
                 </Card>

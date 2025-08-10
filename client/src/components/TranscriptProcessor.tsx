@@ -10,6 +10,20 @@ import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLabContext } from "@/hooks/useLabContext";
 
+// Pretty labels for task statuses
+const statusLabels: Record<string, string> = {
+  TODO: "To Do",
+  IN_PROGRESS: "In Progress",
+  REVIEW: "Review",
+  DONE: "Done",
+  COMPLETED: "Completed",
+  BLOCKED: "Blocked",
+  completed: "Completed", // AI might return lowercase
+  todo: "To Do",
+  "in_progress": "In Progress",
+  "in progress": "In Progress"
+};
+
 interface ProcessedResult {
   meetingId: string | null;
   processedNotes: string;
@@ -454,7 +468,7 @@ export function TranscriptProcessor() {
                           variant={task.status === "completed" ? "default" : "secondary"}
                           className="ml-2"
                         >
-                          {task.status}
+                          {statusLabels[task.status] || task.status}
                         </Badge>
                       </div>
                       

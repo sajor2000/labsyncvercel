@@ -10,6 +10,27 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Calendar, Users, Settings, FileText, BarChart3, Zap, Clock, Target, BookOpen } from "lucide-react";
 import type { Study, Task, TeamMember } from "@shared/schema";
 
+// Pretty labels for statuses
+const statusLabels: Record<string, string> = {
+  // Study statuses
+  PLANNING: "Planning",
+  IRB_SUBMISSION: "IRB Submission",
+  IRB_APPROVED: "IRB Approved",
+  DATA_COLLECTION: "Data Collection",
+  ANALYSIS: "Analysis",
+  MANUSCRIPT: "Manuscript",
+  UNDER_REVIEW: "Under Review",
+  PUBLISHED: "Published",
+  ON_HOLD: "On Hold",
+  CANCELLED: "Cancelled",
+  // Task statuses
+  TODO: "To Do",
+  IN_PROGRESS: "In Progress",
+  REVIEW: "Review",
+  DONE: "Done",
+  BLOCKED: "Blocked"
+};
+
 interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -227,7 +248,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                     <div className="flex flex-col">
                       <span className="font-medium">{study.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {study.studyType} • {study.status}
+                        {study.studyType} • {study.status ? statusLabels[study.status] || study.status : statusLabels.PLANNING}
                       </span>
                     </div>
                   </CommandItem>

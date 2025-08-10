@@ -48,6 +48,15 @@ import type { Study, Lab, Bucket, TeamMember, Task } from "@shared/schema";
 import { TimelineView } from "@/components/TimelineView";
 import { useLocation, useSearch } from "wouter";
 
+// Pretty labels for task statuses
+const statusLabels: Record<string, string> = {
+  TODO: "To Do",
+  IN_PROGRESS: "In Progress",
+  REVIEW: "Review", 
+  DONE: "Done",
+  BLOCKED: "Blocked"
+};
+
 const priorityColors = {
   LOW: "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
   MEDIUM: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
@@ -152,7 +161,7 @@ function SortableTaskRow({ task, assignee, onEdit, onDelete, onPreview, bulkOper
       </TableCell>
       <TableCell>
         <Badge className={statusColors[task.status as keyof typeof statusColors] || statusColors.TODO} variant="secondary">
-          {task.status?.replace('_', ' ') || 'TODO'}
+          {task.status ? statusLabels[task.status] || task.status : statusLabels.TODO}
         </Badge>
       </TableCell>
       <TableCell>
@@ -263,7 +272,7 @@ function TaskCard({ task, assignee, onEdit, onDelete, onPreview }: {
               'bg-gray-100 text-gray-700'}
           `}
         >
-          {task.status?.replace('_', ' ') || 'TODO'}
+          {task.status ? statusLabels[task.status] || task.status : statusLabels.TODO}
         </Badge>
 
         {/* Assignee */}
@@ -357,7 +366,7 @@ function TaskPreviewPanel({ task, assignee, onClose, onEdit, onDelete }: {
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
             <div className="mt-1">
               <Badge className={statusColors[task.status as keyof typeof statusColors] || statusColors.TODO} variant="secondary">
-                {task.status?.replace('_', ' ') || 'TODO'}
+                {task.status ? statusLabels[task.status] || task.status : statusLabels.TODO}
               </Badge>
             </div>
           </div>
@@ -1514,7 +1523,7 @@ export default function TaskManagement() {
                       </TableCell>
                       <TableCell>
                         <Badge className={studyStatusColors[study.status as keyof typeof studyStatusColors] || studyStatusColors.PLANNING}>
-                          {study.status?.replace('_', ' ') || 'Planning'}
+                          {study.status ? statusLabels[study.status] || study.status : 'Planning'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -1712,7 +1721,7 @@ export default function TaskManagement() {
                                 {/* Study Type */}
                                 {study.studyType && (
                                   <p className="text-xs text-muted-foreground">
-                                    {study.studyType.replace('_', ' ').toLowerCase()}
+                                    {study.studyType}
                                   </p>
                                 )}
 

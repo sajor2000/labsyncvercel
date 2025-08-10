@@ -16,6 +16,18 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLabContext } from "@/hooks/useLabContext";
 
+// Pretty labels for standup statuses
+const statusLabels: Record<string, string> = {
+  scheduled: "Scheduled",
+  in_progress: "In Progress", 
+  completed: "Completed",
+  cancelled: "Cancelled",
+  SCHEDULED: "Scheduled",
+  IN_PROGRESS: "In Progress",
+  COMPLETED: "Completed",  
+  CANCELLED: "Cancelled"
+};
+
 interface Standup {
   id: string;
   title: string;
@@ -273,7 +285,7 @@ export default function Standups() {
                     )}
                   </div>
                   <Badge className={`${getStatusColor(standup.status)} text-white`}>
-                    {standup.status.replace('_', ' ')}
+                    {statusLabels[standup.status] || standup.status}
                   </Badge>
                 </div>
               </CardHeader>

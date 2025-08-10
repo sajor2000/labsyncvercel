@@ -12,6 +12,20 @@ import { FlaskConical, Building2, FolderOpen, Users, Calendar, CheckSquare, Tren
 import { Link } from "wouter";
 import type { Lab, Study, Bucket, Task } from "@shared/schema";
 
+// Pretty labels for study statuses
+const statusLabels: Record<string, string> = {
+  PLANNING: "Planning",
+  IRB_SUBMISSION: "IRB Submission",
+  IRB_APPROVED: "IRB Approved",
+  DATA_COLLECTION: "Data Collection",
+  ANALYSIS: "Analysis",
+  MANUSCRIPT: "Manuscript",
+  UNDER_REVIEW: "Under Review",
+  PUBLISHED: "Published",
+  ON_HOLD: "On Hold",
+  CANCELLED: "Cancelled"
+};
+
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -251,7 +265,7 @@ export default function Dashboard() {
                                 study.status === 'ANALYSIS' ? 'secondary' : 'outline'}
                         className="font-medium"
                       >
-                        {study.status?.replace('_', ' ') || 'Planning'}
+                        {study.status ? statusLabels[study.status] || study.status : statusLabels.PLANNING}
                       </Badge>
                     </div>
                   ))}

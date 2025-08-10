@@ -3,6 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 
+// Pretty labels for action item statuses
+const statusLabels: Record<string, string> = {
+  OPEN: "Open",
+  IN_PROGRESS: "In Progress", 
+  COMPLETED: "Completed",
+  BLOCKED: "Blocked",
+  ON_HOLD: "On Hold",
+  CANCELLED: "Cancelled"
+};
+
 // Mock data for action items
 const mockActionItems = [
   {
@@ -107,7 +117,7 @@ export function ActionItems() {
                       className={`px-2 py-1 rounded text-xs ${statusColors[item.status]}`}
                       data-testid={`status-${item.status.toLowerCase()}`}
                     >
-                      {item.status.replace("_", " ")}
+                      {statusLabels[item.status] || item.status}
                     </span>
                     
                     {item.status !== "COMPLETED" && (
