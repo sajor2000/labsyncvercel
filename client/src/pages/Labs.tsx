@@ -18,6 +18,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { Lab, Study, Bucket, InsertLab, TeamMember } from "@shared/schema";
 import { insertLabSchema } from "@shared/schema";
 
+// Predefined color options for labs
+const LAB_COLOR_OPTIONS = [
+  { name: "Blue", value: "#3b82f6", class: "bg-blue-500" },
+  { name: "Teal", value: "#4C9A92", class: "bg-teal-600" },
+  { name: "Green", value: "#10b981", class: "bg-green-500" },
+  { name: "Purple", value: "#8b5cf6", class: "bg-purple-500" },
+  { name: "Pink", value: "#ec4899", class: "bg-pink-500" },
+  { name: "Orange", value: "#f59e0b", class: "bg-orange-500" },
+  { name: "Red", value: "#ef4444", class: "bg-red-500" },
+  { name: "Indigo", value: "#6366f1", class: "bg-indigo-500" },
+  { name: "Cyan", value: "#5DD5E6", class: "bg-cyan-400" },
+  { name: "Yellow", value: "#eab308", class: "bg-yellow-500" },
+  { name: "Rose", value: "#f43f5e", class: "bg-rose-500" },
+  { name: "Emerald", value: "#059669", class: "bg-emerald-600" },
+];
+
 export default function Labs() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -424,7 +440,12 @@ export default function Labs() {
                   <FormItem>
                     <FormLabel>Department</FormLabel>
                     <FormControl>
-                      <Input placeholder="Internal Medicine - Critical Care" {...field} data-testid="input-lab-department" />
+                      <Input 
+                        placeholder="Internal Medicine - Critical Care" 
+                        {...field}
+                        value={field.value || ""}
+                        data-testid="input-lab-department" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -437,21 +458,36 @@ export default function Labs() {
                   <FormItem>
                     <FormLabel>Lab Color</FormLabel>
                     <FormControl>
-                      <div className="flex items-center gap-2">
-                        <Input 
-                          type="color" 
-                          className="w-16 h-10 p-1 border" 
-                          {...field}
-                          value={field.value || "#3b82f6"} 
-                          data-testid="input-lab-color"
-                        />
-                        <Input 
-                          placeholder="#3b82f6" 
-                          {...field}
-                          value={field.value || "#3b82f6"} 
-                          data-testid="input-lab-color-text"
-                        />
-                      </div>
+                      <Select 
+                        value={field.value || "#3b82f6"} 
+                        onValueChange={field.onChange}
+                        data-testid="select-lab-color"
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-4 h-4 rounded-full border" 
+                                style={{ backgroundColor: field.value || "#3b82f6" }}
+                              />
+                              {LAB_COLOR_OPTIONS.find(c => c.value === field.value)?.name || "Blue"}
+                            </div>
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LAB_COLOR_OPTIONS.map((color) => (
+                            <SelectItem key={color.value} value={color.value}>
+                              <div className="flex items-center gap-2">
+                                <div 
+                                  className="w-4 h-4 rounded-full border" 
+                                  style={{ backgroundColor: color.value }}
+                                />
+                                {color.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -533,7 +569,12 @@ export default function Labs() {
                   <FormItem>
                     <FormLabel>Department</FormLabel>
                     <FormControl>
-                      <Input placeholder="Internal Medicine - Critical Care" {...field} data-testid="input-edit-lab-department" />
+                      <Input 
+                        placeholder="Internal Medicine - Critical Care" 
+                        {...field}
+                        value={field.value || ""}
+                        data-testid="input-edit-lab-department" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -546,21 +587,36 @@ export default function Labs() {
                   <FormItem>
                     <FormLabel>Lab Color</FormLabel>
                     <FormControl>
-                      <div className="flex items-center gap-2">
-                        <Input 
-                          type="color" 
-                          className="w-16 h-10 p-1 border" 
-                          {...field}
-                          value={field.value || "#3b82f6"}
-                          data-testid="input-edit-lab-color"
-                        />
-                        <Input 
-                          placeholder="#3b82f6" 
-                          {...field}
-                          value={field.value || "#3b82f6"}
-                          data-testid="input-edit-lab-color-text"
-                        />
-                      </div>
+                      <Select 
+                        value={field.value || "#3b82f6"} 
+                        onValueChange={field.onChange}
+                        data-testid="select-edit-lab-color"
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-4 h-4 rounded-full border" 
+                                style={{ backgroundColor: field.value || "#3b82f6" }}
+                              />
+                              {LAB_COLOR_OPTIONS.find(c => c.value === field.value)?.name || "Blue"}
+                            </div>
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LAB_COLOR_OPTIONS.map((color) => (
+                            <SelectItem key={color.value} value={color.value}>
+                              <div className="flex items-center gap-2">
+                                <div 
+                                  className="w-4 h-4 rounded-full border" 
+                                  style={{ backgroundColor: color.value }}
+                                />
+                                {color.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -667,7 +723,7 @@ export default function Labs() {
                 <div className="space-y-1 max-h-32 overflow-y-auto">
                   {getLabStudies(viewingLab.id).slice(0, 5).map(study => (
                     <div key={study.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs">
-                      <span className="font-medium">{study.title}</span>
+                      <span className="font-medium">{study.name}</span>
                       <Badge variant="outline" className="text-xs">
                         {study.status}
                       </Badge>
