@@ -46,6 +46,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { Study, Lab, Bucket, TeamMember, Task } from "@shared/schema";
 import { TimelineView } from "@/components/TimelineView";
+import { useLocation, useSearch } from "wouter";
 
 const priorityColors = {
   LOW: "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
@@ -449,6 +450,12 @@ export default function TaskManagement() {
   const { selectedLab: contextLab } = useLabContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const searchParams = useSearch();
+  const [, navigate] = useLocation();
+  
+  // Parse URL params for study filter
+  const urlParams = new URLSearchParams(searchParams);
+  const studyIdFromUrl = urlParams.get('studyId');
   
   // States for delete confirmation dialogs
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
@@ -456,7 +463,7 @@ export default function TaskManagement() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [studyFilter, setStudyFilter] = useState<string>("ALL");
+  const [studyFilter, setStudyFilter] = useState<string>(studyIdFromUrl || "ALL");
   const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("ALL");
   const [expandedStudies, setExpandedStudies] = useState<Set<string>>(new Set());
@@ -496,6 +503,20 @@ export default function TaskManagement() {
       return;
     }
   }, [isAuthenticated, isLoading, toast]);
+
+  // Auto-expand study if coming from Study Board
+  useEffect(() => {
+    if (studyIdFromUrl) {
+      setExpandedStudies(new Set([studyIdFromUrl]));
+      // Auto-scroll to study section after a brief delay
+      setTimeout(() => {
+        const studyElement = document.getElementById(`study-${studyIdFromUrl}`);
+        if (studyElement) {
+          studyElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+    }
+  }, [studyIdFromUrl]);
 
   // Fetch data
   const { data: studies = [], isLoading: studiesLoading } = useQuery<Study[]>({

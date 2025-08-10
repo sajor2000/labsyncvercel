@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Filter, Search, Edit, Trash2, ChevronDown, Grid3x3, List, Columns, Eye, Settings, Users, Building } from "lucide-react";
+import { Plus, Filter, Search, Edit, Trash2, ChevronDown, Grid3x3, List, Columns, Eye, Settings, Users, Building, Zap, CheckSquare, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -38,6 +38,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { Study, Lab, Bucket, TeamMember } from "@shared/schema";
 import { insertStudySchema } from "@shared/schema";
+import { QuickTaskModal } from "@/components/QuickTaskModal";
+import { useLocation } from "wouter";
 
 // View modes for the management interface
 type ViewMode = 'kanban' | 'grid' | 'list';
@@ -155,6 +157,40 @@ function SortableStudyCard({ study, teamMembers }: { study: Study; teamMembers: 
               <p className="text-xs text-foreground">{study.externalCollaborators}</p>
             </div>
           )}
+          {/* Quick Actions */}
+          <div className="flex gap-2 pt-2 border-t border-border/20">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="flex-1 h-7 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                // Navigate to task management with study filter
+                window.location.href = `/task-management?studyId=${study.id}`;
+              }}
+              data-testid={`button-view-tasks-${study.id}`}
+            >
+              <CheckSquare className="h-3 w-3 mr-1" />
+              Tasks
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="flex-1 h-7 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                // This would open quick task modal
+                const event = new CustomEvent('openQuickTask', { 
+                  detail: { study, bucketId: study.bucketId, labId: study.labId } 
+                });
+                window.dispatchEvent(event);
+              }}
+              data-testid={`button-quick-task-${study.id}`}
+            >
+              <Zap className="h-3 w-3 mr-1" />
+              Quick Task
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -171,6 +207,7 @@ export default function StudyManagement() {
   const { isAuthenticated, isLoading } = useAuth();
   const { selectedLab } = useLabContext();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [searchTerm, setSearchTerm] = useState("");
@@ -178,6 +215,7 @@ export default function StudyManagement() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingStudy, setEditingStudy] = useState<Study | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [quickTaskStudy, setQuickTaskStudy] = useState<Study | null>(null);
 
   // Fetch data
   const { data: buckets = [], isLoading: bucketsLoading } = useQuery<Bucket[]>({
@@ -340,6 +378,18 @@ export default function StudyManagement() {
     // Handle study reordering logic here
     // This would involve updating study positions and bucket assignments
   };
+
+  // Listen for quick task events
+  useEffect(() => {
+    const handleQuickTask = (event: CustomEvent) => {
+      setQuickTaskStudy(event.detail.study);
+    };
+
+    window.addEventListener('openQuickTask', handleQuickTask as EventListener);
+    return () => {
+      window.removeEventListener('openQuickTask', handleQuickTask as EventListener);
+    };
+  }, []);
 
   // Filter studies
   const filteredStudies = studies.filter(study => {
@@ -698,6 +748,18 @@ export default function StudyManagement() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Quick Task Modal */}
+      {quickTaskStudy && (
+        <QuickTaskModal
+          open={!!quickTaskStudy}
+          onOpenChange={(open) => !open && setQuickTaskStudy(null)}
+          study={quickTaskStudy}
+          teamMembers={teamMembers}
+          bucketId={quickTaskStudy.bucketId}
+          labId={quickTaskStudy.labId}
+        />
+      )}
     </div>
   );
 }
