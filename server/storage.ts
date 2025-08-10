@@ -206,6 +206,7 @@ export interface IStorage {
   updateUserProfile(id: string, profile: Partial<User>): Promise<User>;
   getUserSettings(id: string): Promise<any>;
   updateUserSettings(id: string, settings: any): Promise<any>;
+  exportUserData(id: string): Promise<any>;
   deleteUser(id: string): Promise<void>;
 
   // PHASE 1: CRITICAL SECURITY OPERATIONS
@@ -883,6 +884,24 @@ export class DatabaseStorage implements IStorage {
   async updateUserSettings(id: string, settings: any): Promise<any> {
     // Mock implementation - in real app would update settings table
     return settings;
+  }
+
+  async exportUserData(id: string): Promise<any> {
+    // Get all user data for export
+    const user = await this.getUser(id);
+    const labs = await this.getLabs();
+    const studies = await this.getStudies();
+    const tasks = await this.getTasks();
+    const actionItems = await this.getActionItems();
+    
+    return {
+      user,
+      labs,
+      studies: studies.filter(s => s.createdBy === id),
+      tasks: tasks.filter(t => t.assigneeId === id),
+      actionItems: actionItems.filter(a => a.assigneeId === id),
+      exportedAt: new Date().toISOString()
+    };
   }
 
   async deleteUser(id: string): Promise<void> {
