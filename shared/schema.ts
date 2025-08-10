@@ -217,6 +217,18 @@ export const ideaStatusEnum = pgEnum("idea_status", [
   "REJECTED"
 ]);
 
+export const effortLevelEnum = pgEnum("effort_level", [
+  "Small",
+  "Medium",
+  "Large"
+]);
+
+export const impactLevelEnum = pgEnum("impact_level", [
+  "Low",
+  "Medium",
+  "High"
+]);
+
 export const deadlineTypeEnum = pgEnum("deadline_type", [
   "GRANT_APPLICATION",
   "PAPER_SUBMISSION",
@@ -539,8 +551,8 @@ export const ideas = pgTable("ideas", {
   tags: text("tags").array(),
   proposedBy: varchar("proposed_by").references(() => teamMembers.id),
   labId: varchar("lab_id").notNull().references(() => labs.id),
-  estimatedEffort: varchar("estimated_effort"), // Small, Medium, Large
-  potentialImpact: varchar("potential_impact"), // Low, Medium, High
+  estimatedEffort: effortLevelEnum("estimated_effort"),
+  potentialImpact: impactLevelEnum("potential_impact"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

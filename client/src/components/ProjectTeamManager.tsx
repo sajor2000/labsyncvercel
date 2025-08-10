@@ -84,18 +84,18 @@ export function ProjectTeamManager({ study, children }: ProjectTeamManagerProps)
   };
 
   const getRoleBadgeColor = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'pi':
+    switch (role) {
+      case 'PI':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100';
-      case 'data scientist':
+      case 'Data Scientist':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
-      case 'data analyst':
+      case 'Data Analyst':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
-      case 'regulatory coordinator':
-      case 'coordinator':
+      case 'Regulatory Coordinator':
+      case 'Coordinator':
         return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100';
-      case 'lab intern':
-      case 'summer intern':
+      case 'Lab Intern':
+      case 'Summer Intern':
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
@@ -105,7 +105,7 @@ export function ProjectTeamManager({ study, children }: ProjectTeamManagerProps)
   const filteredTeamMembers = teamMembers.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (member.email && member.email.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesRole = selectedRole === "all" || member.role.toLowerCase() === selectedRole.toLowerCase();
+    const matchesRole = selectedRole === "all" || member.role === selectedRole;
     return matchesSearch && matchesRole;
   });
 
@@ -234,13 +234,13 @@ export function ProjectTeamManager({ study, children }: ProjectTeamManagerProps)
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="pi">PI</SelectItem>
-                    <SelectItem value="data scientist">Data Scientist</SelectItem>
-                    <SelectItem value="data analyst">Data Analyst</SelectItem>
-                    <SelectItem value="regulatory coordinator">Regulatory Coordinator</SelectItem>
-                    <SelectItem value="coordinator">Coordinator</SelectItem>
-                    <SelectItem value="lab intern">Lab Intern</SelectItem>
-                    <SelectItem value="summer intern">Summer Intern</SelectItem>
+                    <SelectItem value="PI">PI</SelectItem>
+                    <SelectItem value="Data Scientist">Data Scientist</SelectItem>
+                    <SelectItem value="Data Analyst">Data Analyst</SelectItem>
+                    <SelectItem value="Regulatory Coordinator">Regulatory Coordinator</SelectItem>
+                    <SelectItem value="Coordinator">Coordinator</SelectItem>
+                    <SelectItem value="Lab Intern">Lab Intern</SelectItem>
+                    <SelectItem value="Summer Intern">Summer Intern</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
