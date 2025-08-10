@@ -4,6 +4,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { LabSwitcher } from "@/components/LabSwitcher";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
+import logoUrl from "@assets/FullLogo_1754662799020.png";
 
 interface TopHeaderProps {
   onMenuClick?: () => void;
@@ -13,14 +14,23 @@ export function TopHeader({ onMenuClick }: TopHeaderProps) {
   const { user } = useAuth() as { user?: User };
 
   return (
-    <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6">
-      {/* Left side - Menu and Search */}
-      <div className="flex items-center space-x-4">
+    <header className="h-16 glass border-b border-border/50 flex items-center justify-between px-6 backdrop-blur-xl bg-gradient-to-r from-card via-card to-muted/30">
+      {/* Left side - Logo, Menu and Search */}
+      <div className="flex items-center space-x-6">
+        {/* LabSync Logo */}
+        <div className="flex items-center space-x-3">
+          <img 
+            src={logoUrl} 
+            alt="LabSync" 
+            className="h-8 w-auto animate-float"
+          />
+        </div>
+        
         <Button
           variant="ghost"
           size="icon"
           onClick={onMenuClick}
-          className="md:hidden"
+          className="md:hidden hover:bg-accent/20 transition-all duration-200"
           data-testid="button-menu"
         >
           <Menu className="h-5 w-5" />
@@ -31,7 +41,7 @@ export function TopHeader({ onMenuClick }: TopHeaderProps) {
           <input
             type="text"
             placeholder="Search studies, tasks, or documents..."
-            className="pl-10 pr-4 py-2 w-80 border border-input rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+            className="pl-10 pr-4 py-2 w-80 border border-input/50 rounded-lg bg-background/50 backdrop-blur-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200 hover:bg-background/70"
             data-testid="input-search"
           />
         </div>
@@ -49,17 +59,17 @@ export function TopHeader({ onMenuClick }: TopHeaderProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="relative"
+          className="relative hover:bg-accent/20 transition-all duration-200"
           data-testid="button-notifications"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
+          <span className="absolute -top-1 -right-1 h-3 w-3 bg-gradient-to-r from-destructive to-warning rounded-full animate-pulse"></span>
         </Button>
 
         {/* User Avatar */}
         {user && (
           <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-sm font-medium shadow-lg glow-primary transition-all duration-200 hover:scale-105">
               {user.firstName?.[0] || user.email?.[0]?.toUpperCase() || "U"}
             </div>
             <div className="hidden sm:block">
@@ -69,6 +79,7 @@ export function TopHeader({ onMenuClick }: TopHeaderProps) {
                   : user.email
                 }
               </p>
+              <p className="text-xs text-accent font-medium">Making Science Easier</p>
             </div>
           </div>
         )}

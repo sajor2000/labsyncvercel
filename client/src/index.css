@@ -3,49 +3,105 @@
 @tailwind utilities;
 
 :root {
+  /* LabSync Brand Colors - Light Theme */
   --background: hsl(0, 0%, 100%);
-  --foreground: hsl(0, 0%, 9%);
-  --muted: hsl(0, 0%, 96%);
-  --muted-foreground: hsl(0, 0%, 45%);
+  --foreground: hsl(210, 11%, 15%);
+  --muted: hsl(188, 20%, 97%);
+  --muted-foreground: hsl(210, 8%, 45%);
   --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(0, 0%, 9%);
+  --popover-foreground: hsl(210, 11%, 15%);
   --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(0, 0%, 9%);
-  --border: hsl(0, 0%, 90%);
-  --input: hsl(0, 0%, 90%);
-  --primary: hsl(180, 45%, 35%);
+  --card-foreground: hsl(210, 11%, 15%);
+  --border: hsl(188, 15%, 88%);
+  --input: hsl(188, 15%, 92%);
+  
+  /* Primary: Deep Teal from logo background */
+  --primary: hsl(181, 45%, 30%);
   --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(0, 0%, 96%);
-  --secondary-foreground: hsl(0, 0%, 9%);
-  --accent: hsl(180, 45%, 55%);
-  --accent-foreground: hsl(0, 0%, 100%);
+  
+  /* Secondary: Neutral complement */
+  --secondary: hsl(188, 20%, 95%);
+  --secondary-foreground: hsl(210, 11%, 15%);
+  
+  /* Accent: Bright cyan from logo icon */
+  --accent: hsl(190, 75%, 65%);
+  --accent-foreground: hsl(181, 45%, 15%);
+  
+  /* Semantic Colors */
   --destructive: hsl(0, 84%, 60%);
   --destructive-foreground: hsl(0, 0%, 98%);
-  --ring: hsl(180, 45%, 35%);
-  --radius: 0.375rem;
+  --success: hsl(142, 71%, 45%);
+  --success-foreground: hsl(0, 0%, 100%);
+  --warning: hsl(38, 92%, 50%);
+  --warning-foreground: hsl(0, 0%, 100%);
+  --info: hsl(217, 91%, 60%);
+  --info-foreground: hsl(0, 0%, 100%);
+  
+  --ring: hsl(181, 45%, 30%);
+  --radius: 0.5rem;
+  
+  /* Chart Colors - Professional data visualization */
+  --chart-1: hsl(181, 45%, 30%);
+  --chart-2: hsl(190, 75%, 65%);
+  --chart-3: hsl(142, 71%, 45%);
+  --chart-4: hsl(38, 92%, 50%);
+  --chart-5: hsl(217, 91%, 60%);
 }
 
 .dark {
-  --background: hsl(240, 9%, 9%);
-  --foreground: hsl(0, 0%, 95%);
-  --muted: hsl(240, 6%, 15%);
-  --muted-foreground: hsl(240, 5%, 65%);
-  --popover: hsl(240, 7%, 12%);
-  --popover-foreground: hsl(0, 0%, 95%);
-  --card: hsl(240, 8%, 13%);
-  --card-foreground: hsl(0, 0%, 95%);
-  --border: hsl(240, 6%, 20%);
-  --input: hsl(240, 6%, 20%);
-  --primary: hsl(180, 45%, 35%);
-  --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(240, 6%, 15%);
-  --secondary-foreground: hsl(0, 0%, 95%);
-  --accent: hsl(180, 45%, 55%);
-  --accent-foreground: hsl(0, 0%, 100%);
-  --destructive: hsl(0, 84%, 60%);
+  /* LabSync Brand Colors - Dark Theme (Premium Feel) */
+  --background: hsl(181, 30%, 8%);
+  --foreground: hsl(188, 20%, 95%);
+  --muted: hsl(181, 25%, 12%);
+  --muted-foreground: hsl(188, 15%, 65%);
+  --popover: hsl(181, 28%, 10%);
+  --popover-foreground: hsl(188, 20%, 95%);
+  --card: hsl(181, 25%, 11%);
+  --card-foreground: hsl(188, 20%, 95%);
+  --border: hsl(181, 20%, 18%);
+  --input: hsl(181, 20%, 16%);
+  
+  /* Primary: Enhanced teal with better contrast */
+  --primary: hsl(181, 50%, 45%);
+  --primary-foreground: hsl(181, 30%, 8%);
+  
+  /* Secondary: Sophisticated dark complement */
+  --secondary: hsl(181, 20%, 16%);
+  --secondary-foreground: hsl(188, 20%, 95%);
+  
+  /* Accent: Vibrant cyan with glow effect */
+  --accent: hsl(190, 85%, 70%);
+  --accent-foreground: hsl(181, 30%, 8%);
+  
+  /* Semantic Colors - Enhanced for dark theme */
+  --destructive: hsl(0, 84%, 65%);
   --destructive-foreground: hsl(0, 0%, 98%);
-  --ring: hsl(180, 45%, 35%);
-  --radius: 0.375rem;
+  --success: hsl(142, 71%, 50%);
+  --success-foreground: hsl(181, 30%, 8%);
+  --warning: hsl(38, 92%, 55%);
+  --warning-foreground: hsl(181, 30%, 8%);
+  --info: hsl(217, 91%, 65%);
+  --info-foreground: hsl(181, 30%, 8%);
+  
+  --ring: hsl(181, 50%, 45%);
+  --radius: 0.5rem;
+  
+  /* Chart Colors - Optimized for dark backgrounds */
+  --chart-1: hsl(181, 50%, 45%);
+  --chart-2: hsl(190, 85%, 70%);
+  --chart-3: hsl(142, 71%, 50%);
+  --chart-4: hsl(38, 92%, 55%);
+  --chart-5: hsl(217, 91%, 65%);
+  
+  /* Sidebar Colors */
+  --sidebar-background: hsl(181, 30%, 9%);
+  --sidebar-foreground: hsl(188, 15%, 85%);
+  --sidebar-primary: hsl(181, 50%, 45%);
+  --sidebar-primary-foreground: hsl(181, 30%, 8%);
+  --sidebar-accent: hsl(190, 85%, 70%);
+  --sidebar-accent-foreground: hsl(181, 30%, 8%);
+  --sidebar-border: hsl(181, 20%, 18%);
+  --sidebar-ring: hsl(181, 50%, 45%);
 }
 
 @layer base {
@@ -61,27 +117,63 @@
     @apply dark;
   }
 
-  /* Slack-inspired scrollbar styling for dark theme */
+  /* LabSync-inspired scrollbar styling */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(var(--background));
+    background: hsl(var(--muted));
+    border-radius: 6px;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted-foreground) / 0.2);
-    border-radius: 4px;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.6), hsl(var(--accent) / 0.4));
+    border-radius: 6px;
+    border: 2px solid hsl(var(--background));
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.3);
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.8), hsl(var(--accent) / 0.6));
   }
 
-  /* Enhanced focus states for better accessibility */
+  /* Enhanced focus states with brand colors */
   .focus-visible:focus-visible {
-    @apply outline-2 outline-offset-2 outline-ring;
+    @apply outline-2 outline-offset-2 outline-primary;
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+  }
+
+  /* Gradient utilities for world-class design */
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  }
+
+  .gradient-card {
+    background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--muted)));
+    border: 1px solid hsl(var(--border));
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glow effects for premium feel */
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 20px hsl(var(--accent) / 0.3);
+  }
+
+  /* Glassmorphism effect */
+  .glass {
+    background: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid hsl(var(--border) / 0.5);
   }
 }

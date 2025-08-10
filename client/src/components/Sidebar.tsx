@@ -19,7 +19,7 @@ import {
   Clock,
   Eye
 } from "lucide-react";
-import logoUrl from "@assets/Xnip2025-08-08_14-04-18_1754679867710.png";
+import logoUrl from "@assets/FullLogo_1754662799020.png";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLabContext } from "@/hooks/useLabContext";
@@ -75,22 +75,23 @@ export function Sidebar() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background border-r border-border">
+    <div className="flex flex-col h-full bg-gradient-to-b from-sidebar via-sidebar-background to-sidebar border-r border-sidebar-border backdrop-blur-xl">
       {/* Logo and Title */}
-      <div className="p-6 border-b border-border">
-        <div className="flex items-center space-x-3">
-          <div className="relative">
+      <div className="p-6 border-b border-sidebar-border/50">
+        <div className="flex items-center justify-center">
+          <div className="relative group">
             <img 
               src={logoUrl} 
               alt="LabSync Logo" 
-              className="h-20 w-auto"
+              className="h-16 w-auto transition-all duration-300 group-hover:scale-105 animate-float"
             />
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </div>
         </div>
       </div>
 
       {/* Lab Switcher */}
-      <div className="px-4 py-3 border-b border-border">
+      <div className="px-4 py-3 border-b border-sidebar-border/50">
         <LabSwitcher />
       </div>
 
@@ -105,10 +106,10 @@ export function Sidebar() {
               <Link key={item.name} href={item.href}>
                 <div
                   className={cn(
-                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer group relative overflow-hidden",
                     isActive
-                      ? "bg-accent text-accent-foreground"
-                      : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                      ? "bg-gradient-to-r from-sidebar-primary to-sidebar-accent text-sidebar-primary-foreground shadow-lg glow-primary"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/20 hover:text-sidebar-accent hover:shadow-md"
                   )}
                   data-testid={`nav-${item.name.toLowerCase()}`}
                 >
@@ -122,7 +123,7 @@ export function Sidebar() {
       </div>
 
       {/* User Section */}
-      <div className="border-t border-border p-4">
+      <div className="border-t border-sidebar-border/50 p-4 bg-gradient-to-t from-sidebar-background/80 to-transparent">
         {/* User Info */}
         {user && (
           <div className="flex items-center space-x-3 mb-4">
@@ -138,13 +139,13 @@ export function Sidebar() {
               className="flex-shrink-0"
             />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
                 {user.firstName && user.lastName 
                   ? `${user.firstName} ${user.lastName}`
                   : user.email
                 }
               </p>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs text-sidebar-accent font-medium truncate gradient-text">
                 Making Science Easier
               </p>
             </div>
@@ -170,7 +171,7 @@ export function Sidebar() {
           
           <Button
             variant="ghost"
-            className="w-full justify-start px-3 py-2 h-auto text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+            className="w-full justify-start px-3 py-2 h-auto text-sm font-medium text-sidebar-foreground hover:bg-destructive/20 hover:text-destructive transition-all duration-200"
             onClick={handleLogout}
             data-testid="button-logout"
           >
