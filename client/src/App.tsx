@@ -10,6 +10,7 @@ import Landing from "@/pages/Landing";
 import Studies from "@/pages/Studies";
 
 import TaskManagement from "@/pages/TaskManagement";
+import StudyManagement from "@/pages/StudyManagement";
 import Labs from "@/pages/Labs";
 import Buckets from "@/pages/Buckets";
 import StackedView from "@/pages/StackedView";
@@ -37,6 +38,7 @@ function Router() {
         <LabProvider>
           <Route path="/" component={() => <Layout><Dashboard /></Layout>} />
           <Route path="/studies" component={() => <Layout><Studies /></Layout>} />
+          <Route path="/study-management" component={() => <Layout><StudyManagement /></Layout>} />
 
           <Route path="/tasks" component={() => <Layout><TaskManagement /></Layout>} />
           <Route path="/stacked" component={() => <Layout><StackedView /></Layout>} />
