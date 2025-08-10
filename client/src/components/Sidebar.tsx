@@ -83,9 +83,9 @@ export function Sidebar() {
             <img 
               src={logoUrl} 
               alt="LabSync Logo" 
-              className="h-16 w-auto transition-all duration-300 group-hover:scale-105 animate-float"
+              className="h-16 w-auto transition-all duration-200"
             />
-            <div className="absolute inset-[-12px] bg-gradient-to-r from-primary/20 to-accent/20 rounded-xl blur-2xl opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
+
           </div>
         </div>
       </div>
@@ -108,8 +108,8 @@ export function Sidebar() {
                   className={cn(
                     "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer group relative overflow-hidden",
                     isActive
-                      ? "bg-gradient-to-r from-sidebar-primary to-sidebar-accent text-sidebar-primary-foreground shadow-lg glow-primary"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/20 hover:text-sidebar-accent hover:shadow-md"
+                      ? "bg-gradient-to-r from-sidebar-primary to-sidebar-accent text-sidebar-primary-foreground shadow-sm"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/20 hover:text-sidebar-accent"
                   )}
                   data-testid={`nav-${item.name.toLowerCase()}`}
                 >
@@ -145,7 +145,7 @@ export function Sidebar() {
                   : user.email
                 }
               </p>
-              <p className="text-xs text-sidebar-accent font-medium truncate gradient-text">
+              <p className="text-xs text-sidebar-accent/80 font-medium truncate">
                 Making Science Easier
               </p>
             </div>
