@@ -31,19 +31,23 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-// Enhanced role options for comprehensive research lab roles
+// Enhanced role options matching database enum exactly
 const roleOptions = [
-  { value: "PRINCIPAL_INVESTIGATOR", label: "Principal Investigator" },
+  { value: "Principal Investigator", label: "Principal Investigator" },
   { value: "CO_PRINCIPAL_INVESTIGATOR", label: "Co-Principal Investigator" },
-  { value: "DATA_SCIENTIST", label: "Data Scientist" },
-  { value: "DATA_ANALYST", label: "Data Analyst" },
-  { value: "CLINICAL_RESEARCH_COORDINATOR", label: "Clinical Research Coordinator" },
-  { value: "REGULATORY_COORDINATOR", label: "Regulatory Coordinator" },
-  { value: "STAFF_COORDINATOR", label: "Staff Coordinator" },
-  { value: "FELLOW", label: "Fellow" },
-  { value: "MEDICAL_STUDENT", label: "Medical Student" },
-  { value: "VOLUNTEER_RESEARCH_ASSISTANT", label: "Volunteer Research Assistant" },
-  { value: "RESEARCH_ASSISTANT", label: "Research Assistant" },
+  { value: "Data Scientist", label: "Data Scientist" },
+  { value: "Data Analyst", label: "Data Analyst" },
+  { value: "Clinical Research Coordinator", label: "Clinical Research Coordinator" },
+  { value: "Regulatory Coordinator", label: "Regulatory Coordinator" },
+  { value: "Coordinator", label: "Staff Coordinator" },
+  { value: "Fellow", label: "Fellow" },
+  { value: "Medical Student", label: "Medical Student" },
+  { value: "Volunteer Research Assistant", label: "Volunteer Research Assistant" },
+  { value: "Research Assistant", label: "Research Assistant" },
+  { value: "PI", label: "PI" },
+  { value: "Lab Intern", label: "Lab Intern" },
+  { value: "Summer Intern", label: "Summer Intern" },
+  { value: "Staff Coordinator", label: "Staff Coordinator" },
 ];
 
 // Create form schema for enhanced user model
