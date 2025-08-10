@@ -20,10 +20,7 @@ export function StudyCreationModal({ isOpen, onClose }: StudyCreationModalProps)
 
   const createStudyMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/studies", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("/api/studies", "POST", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/studies"] });

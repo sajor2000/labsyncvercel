@@ -65,10 +65,7 @@ export default function Settings() {
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: Partial<UserSettings>) => {
-      return apiRequest('/api/auth/settings', {
-        method: 'PUT',
-        body: data,
-      });
+      return apiRequest('/api/auth/settings', 'PUT', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/settings'] });
@@ -88,9 +85,7 @@ export default function Settings() {
 
   const exportDataMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('/api/auth/export-data', {
-        method: 'POST',
-      });
+      return apiRequest('/api/auth/export-data', 'POST', {});
     },
     onSuccess: () => {
       toast({
@@ -109,9 +104,7 @@ export default function Settings() {
 
   const deleteAccountMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('/api/auth/delete-account', {
-        method: 'DELETE',
-      });
+      return apiRequest('/api/auth/delete-account', 'DELETE', {});
     },
     onSuccess: () => {
       toast({

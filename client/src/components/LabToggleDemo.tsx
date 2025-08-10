@@ -48,7 +48,7 @@ export function LabToggleDemo() {
           <div className="text-center flex-1 mx-4">
             <div 
               className="w-4 h-4 rounded-full mx-auto mb-2" 
-              style={{ backgroundColor: selectedLab?.color || '#3b82f6' }}
+              style={{ backgroundColor: selectedLab?.primaryColor || '#3b82f6' }}
             />
             <h3 className="font-semibold text-lg">{selectedLab?.name}</h3>
             <p className="text-sm text-muted-foreground">

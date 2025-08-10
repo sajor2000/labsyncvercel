@@ -661,8 +661,8 @@ export default function Deadlines() {
                       onValueChange={(status) => statusUpdateMutation.mutate({ id: deadline.id, status })}
                     >
                       <SelectTrigger className="w-auto h-auto p-0 border-0 text-xs bg-transparent">
-                        <Badge className={statusColors[deadline.status || "PENDING"]}>
-                          {statusLabels[deadline.status || "PENDING"]}
+                        <Badge className={statusColors[deadline.status as keyof typeof statusColors || "PENDING"]}>
+                          {statusLabels[deadline.status as keyof typeof statusLabels || "PENDING"]}
                         </Badge>
                       </SelectTrigger>
                       <SelectContent>

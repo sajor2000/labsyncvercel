@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { standupMeetings, standupActionItems, type StandupMeeting, type StandupActionItem } from "@shared/schema";
+import { standupMeetings, standupActionItems, type StandupMeeting, type ActionItem } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 import { Resend } from "resend";
@@ -178,7 +178,7 @@ Return both HTML summary and JSON structure.`;
         .from(standupMeetings);
 
       return meetings.filter(meeting => 
-        new Date(meeting.createdAt) >= cutoffDate
+        meeting.createdAt && new Date(meeting.createdAt) >= cutoffDate
       );
     } catch (error) {
       console.error("Error fetching recent meetings:", error);
@@ -232,10 +232,9 @@ Return both HTML summary and JSON structure.`;
       const meetingId = await this.saveMeetingToDatabase(
         params.transcript,
         processed.processedNotes,
-        processed.extractedTasks,
+        JSON.stringify(processed.extractedTasks),
         params.labId,
-        params.userId,
-        params.meetingType
+        params.userId
       );
 
       // Get the created meeting

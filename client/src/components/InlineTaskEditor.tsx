@@ -54,8 +54,8 @@ export function InlineTaskEditor({
       status: task.status as any,
       priority: task.priority as any,
       assigneeId: task.assigneeId || "",
-      estimatedHours: task.estimatedHours || undefined,
-      dueDate: task.dueDate || undefined,
+      estimatedHours: task.estimatedHours ? Number(task.estimatedHours) : undefined,
+      dueDate: task.dueDate ? (task.dueDate instanceof Date ? task.dueDate.toISOString().split('T')[0] : task.dueDate) : undefined,
     },
   });
 
@@ -250,7 +250,7 @@ export function InlineTaskEditor({
               value={form.watch('estimatedHours')?.toString() || ''}
               onChange={(e) => form.setValue('estimatedHours', e.target.value ? Number(e.target.value) : undefined)}
               onBlur={() => {
-                if (form.watch('estimatedHours') !== task.estimatedHours) {
+                if (form.watch('estimatedHours') !== Number(task.estimatedHours)) {
                   handleFieldSave('estimatedHours', form.watch('estimatedHours'));
                 } else {
                   handleCancel();

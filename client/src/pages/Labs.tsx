@@ -35,8 +35,8 @@ export default function Labs() {
     defaultValues: {
       name: "",
       description: "",
-      piName: "",
-      color: "#3b82f6",
+      department: "",
+      primaryColor: "#3b82f6",
     },
   });
 
@@ -46,8 +46,8 @@ export default function Labs() {
     defaultValues: {
       name: "",
       description: "",
-      piName: "",
-      color: "#3b82f6",
+      department: "",
+      primaryColor: "#3b82f6",
     },
   });
 
@@ -118,8 +118,8 @@ export default function Labs() {
     editForm.reset({
       name: lab.name,
       description: lab.description || "",
-      piName: lab.piName || "",
-      color: lab.color || "#3b82f6",
+      department: lab.department || "",
+      primaryColor: lab.primaryColor || "#3b82f6",
     });
     setShowEditDialog(true);
   };
@@ -293,7 +293,7 @@ export default function Labs() {
                     <CardTitle className="flex items-center gap-2">
                       <div 
                         className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: lab.color || '#3b82f6' }}
+                        style={{ backgroundColor: lab.primaryColor || '#3b82f6' }}
                       />
                       {lab.name}
                     </CardTitle>
@@ -419,23 +419,12 @@ export default function Labs() {
               />
               <FormField
                 control={form.control}
-                name="piName"
+                name="department"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Principal Investigator</FormLabel>
+                    <FormLabel>Department</FormLabel>
                     <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
-                        <SelectTrigger data-testid="select-lab-pi">
-                          <SelectValue placeholder="Select Principal Investigator" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {allTeamMembers.map((member) => (
-                            <SelectItem key={member.id} value={member.name || member.email || ''}>
-                              {member.name || member.email} ({member.role})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Input placeholder="Internal Medicine - Critical Care" {...field} data-testid="input-lab-department" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -443,7 +432,7 @@ export default function Labs() {
               />
               <FormField
                 control={form.control}
-                name="color"
+                name="primaryColor"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Lab Color</FormLabel>
@@ -539,26 +528,12 @@ export default function Labs() {
               />
               <FormField
                 control={editForm.control}
-                name="piName"
+                name="department"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Principal Investigator</FormLabel>
+                    <FormLabel>Department</FormLabel>
                     <FormControl>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
-                        <SelectTrigger data-testid="select-edit-lab-pi">
-                          <SelectValue placeholder="Select Principal Investigator" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {editingLab && allTeamMembers
-                            .filter(member => member.labId === editingLab.id)
-                            .map((member) => (
-                              <SelectItem key={member.id} value={member.name || member.email || ''}>
-                                {member.name || member.email} ({member.role})
-                              </SelectItem>
-                            ))
-                          }
-                        </SelectContent>
-                      </Select>
+                      <Input placeholder="Internal Medicine - Critical Care" {...field} data-testid="input-edit-lab-department" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -566,7 +541,7 @@ export default function Labs() {
               />
               <FormField
                 control={editForm.control}
-                name="color"
+                name="primaryColor"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Lab Color</FormLabel>
@@ -620,7 +595,7 @@ export default function Labs() {
             <DialogTitle className="flex items-center gap-2">
               <div 
                 className="w-4 h-4 rounded-full" 
-                style={{ backgroundColor: viewingLab?.color || "#3b82f6" }}
+                style={{ backgroundColor: viewingLab?.primaryColor || "#3b82f6" }}
               />
               {viewingLab?.name}
             </DialogTitle>
@@ -634,8 +609,8 @@ export default function Labs() {
               {/* Lab Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">Principal Investigator</h4>
-                  <p className="text-sm">{viewingLab.piName || "Not assigned"}</p>
+                  <h4 className="text-sm font-medium text-muted-foreground">Department</h4>
+                  <p className="text-sm">{viewingLab.department || "Not specified"}</p>
                 </div>
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium text-muted-foreground">Created</h4>

@@ -22,12 +22,12 @@ export default function Calendar() {
   const { selectedLab } = useLabContext();
 
   // Fetch events from multiple sources
-  const { data: standups = [] } = useQuery({
+  const { data: standups = [] } = useQuery<any[]>({
     queryKey: ['/api/standups', selectedLab?.id],
     enabled: !!selectedLab?.id,
   });
 
-  const { data: deadlines = [] } = useQuery({
+  const { data: deadlines = [] } = useQuery<any[]>({
     queryKey: ['/api/deadlines', selectedLab?.id],
     enabled: !!selectedLab?.id,
   });

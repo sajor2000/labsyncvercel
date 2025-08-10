@@ -27,38 +27,38 @@ interface AnalyticsData {
 export default function Analytics() {
   const { selectedLab } = useLabContext();
 
-  const { data: studies = [], isLoading: studiesLoading } = useQuery({
+  const { data: studies = [], isLoading: studiesLoading } = useQuery<any[]>({
     queryKey: ['/api/studies', selectedLab?.id],
     enabled: !!selectedLab?.id,
   });
 
-  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery<any[]>({
     queryKey: ['/api/tasks'],
   });
 
-  const { data: teamMembers = [], isLoading: teamLoading } = useQuery({
+  const { data: teamMembers = [], isLoading: teamLoading } = useQuery<any[]>({
     queryKey: ['/api/team-members'],
   });
 
-  const { data: deadlines = [], isLoading: deadlinesLoading } = useQuery({
+  const { data: deadlines = [], isLoading: deadlinesLoading } = useQuery<any[]>({
     queryKey: ['/api/deadlines', selectedLab?.id],
     enabled: !!selectedLab?.id,
   });
 
-  const { data: standups = [], isLoading: standupsLoading } = useQuery({
+  const { data: standups = [], isLoading: standupsLoading } = useQuery<any[]>({
     queryKey: ['/api/standups', selectedLab?.id],
     enabled: !!selectedLab?.id,
   });
 
-  const { data: buckets = [], isLoading: bucketsLoading } = useQuery({
+  const { data: buckets = [], isLoading: bucketsLoading } = useQuery<any[]>({
     queryKey: ['/api/buckets'],
   });
 
-  const { data: ideas = [], isLoading: ideasLoading } = useQuery({
+  const { data: ideas = [], isLoading: ideasLoading } = useQuery<any[]>({
     queryKey: ['/api/ideas'],
   });
 
-  const { data: meetings = [], isLoading: meetingsLoading } = useQuery({
+  const { data: meetings = [], isLoading: meetingsLoading } = useQuery<any[]>({
     queryKey: ['/api/standups/meetings', selectedLab?.id],
     enabled: !!selectedLab?.id,
   });

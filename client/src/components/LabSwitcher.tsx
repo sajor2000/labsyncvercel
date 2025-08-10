@@ -37,7 +37,7 @@ export function LabSwitcher() {
       <div className="flex items-center">
         <div 
           className="w-3 h-3 rounded-full mr-2 border border-white/20" 
-          style={{ backgroundColor: selectedLab?.color || '#3b82f6' }}
+          style={{ backgroundColor: selectedLab?.primaryColor || '#3b82f6' }}
         />
         <Building2 className="mr-2 h-4 w-4" />
         <span className="truncate">

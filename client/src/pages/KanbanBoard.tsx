@@ -357,7 +357,7 @@ export default function KanbanBoard() {
       if (selectedAssignees.length > 0) {
         const assignmentPromises = selectedAssignees.map(userId =>
           apiRequest('/api/task-assignments', 'POST', {
-            taskId: newTask.id,
+            taskId: (newTask as any).id,
             userId,
             projectId: selectedStudy,
           })

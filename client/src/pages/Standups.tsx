@@ -50,7 +50,7 @@ export default function Standups() {
     enabled: !!selectedLab?.id,
   });
 
-  const { data: teamMembers = [] } = useQuery({
+  const { data: teamMembers = [] } = useQuery<any[]>({
     queryKey: ['/api/team-members'],
   });
 
@@ -66,12 +66,9 @@ export default function Standups() {
 
   const createStandupMutation = useMutation({
     mutationFn: async (data: StandupFormData) => {
-      return apiRequest('/api/standups', {
-        method: 'POST',
-        body: {
-          ...data,
-          labId: selectedLab?.id,
-        },
+      return apiRequest('/api/standups', 'POST', {
+        ...data,
+        labId: selectedLab?.id,
       });
     },
     onSuccess: () => {
@@ -94,10 +91,7 @@ export default function Standups() {
 
   const updateStandupStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      return apiRequest(`/api/standups/${id}`, {
-        method: 'PUT',
-        body: { status },
-      });
+      return apiRequest(`/api/standups/${id}`, 'PUT', { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/standups'] });
