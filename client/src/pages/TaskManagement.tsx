@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -448,6 +449,10 @@ export default function TaskManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  // States for delete confirmation dialogs
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [studyFilter, setStudyFilter] = useState<string>("ALL");
@@ -825,7 +830,7 @@ export default function TaskManagement() {
               <Button 
                 variant="ghost" 
                 size="sm"
-                onClick={() => bulkDelete.mutate()}
+                onClick={() => setShowBulkDeleteConfirm(true)}
                 disabled={bulkDelete.isPending}
                 className="text-destructive hover:text-destructive"
               >
@@ -1474,7 +1479,7 @@ export default function TaskManagement() {
                           isSelected={selectedTasks.has(task.id)}
                           onSelect={handleSelectTask}
                           onEdit={() => console.log('Edit task:', task.id)}
-                          onDelete={() => deleteTaskMutation.mutate(task.id)}
+                          onDelete={() => setTaskToDelete(task)}
                           onPreview={() => {
                             setSelectedTask(task);
                             setShowPreviewPanel(true);
@@ -1732,7 +1737,10 @@ export default function TaskManagement() {
           studies={labFilteredStudies}
           teamMembers={teamMembers}
           onTaskEdit={(task) => console.log('Edit task:', task.id)}
-          onTaskDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
+          onTaskDelete={(taskId) => {
+            const task = filteredTasks.find(t => t.id === taskId);
+            if (task) setTaskToDelete(task);
+          }}
         />
       ) : null}
 
@@ -1746,13 +1754,61 @@ export default function TaskManagement() {
             setSelectedTask(null);
           }}
           onEdit={() => console.log('Edit task:', selectedTask.id)}
-          onDelete={() => {
-            deleteTaskMutation.mutate(selectedTask.id);
-            setShowPreviewPanel(false);
-            setSelectedTask(null);
-          }}
+          onDelete={() => setTaskToDelete(selectedTask)}
         />
       )}
+
+      {/* Single Task Delete Confirmation Dialog */}
+      <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{taskToDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (taskToDelete) {
+                  deleteTaskMutation.mutate(taskToDelete.id);
+                  setTaskToDelete(null);
+                  setShowPreviewPanel(false);
+                  setSelectedTask(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Multiple Tasks</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedTasks.size} selected task{selectedTasks.size !== 1 ? 's' : ''}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                bulkDelete.mutate();
+                setShowBulkDeleteConfirm(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
