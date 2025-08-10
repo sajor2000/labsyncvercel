@@ -37,6 +37,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/auth/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.updateUserProfile(userId, req.body);
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  app.put('/api/auth/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const settings = await storage.updateUserSettings(userId, req.body);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating user settings:", error);
+      res.status(500).json({ message: "Failed to update settings" });
+    }
+  });
+
   // Lab routes
   app.get("/api/labs", isAuthenticated, async (req, res) => {
     try {
@@ -698,6 +720,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching meeting details:", error);
       res.status(500).json({ message: "Failed to fetch meeting details" });
+    }
+  });
+
+  // Action Items routes
+  app.get("/api/action-items", isAuthenticated, async (req, res) => {
+    try {
+      const actionItems = await storage.getActionItems();
+      res.json(actionItems);
+    } catch (error) {
+      console.error("Error fetching action items:", error);
+      res.status(500).json({ message: "Failed to fetch action items" });
+    }
+  });
+
+  app.post("/api/action-items", isAuthenticated, async (req, res) => {
+    try {
+      const actionItem = await storage.createActionItem(req.body);
+      res.json(actionItem);
+    } catch (error) {
+      console.error("Error creating action item:", error);
+      res.status(500).json({ message: "Failed to create action item" });
+    }
+  });
+
+  app.put("/api/action-items/:id", isAuthenticated, async (req, res) => {
+    try {
+      const actionItem = await storage.updateActionItem(req.params.id, req.body);
+      res.json(actionItem);
+    } catch (error) {
+      console.error("Error updating action item:", error);
+      res.status(500).json({ message: "Failed to update action item" });
+    }
+  });
+
+  // Restore endpoints for soft-deleted items
+  app.patch("/api/studies/:id/restore", isAuthenticated, async (req, res) => {
+    try {
+      const study = await storage.restoreStudy(req.params.id);
+      res.json(study);
+    } catch (error) {
+      console.error("Error restoring study:", error);
+      res.status(500).json({ message: "Failed to restore study" });
+    }
+  });
+
+  app.patch("/api/tasks/:id/restore", isAuthenticated, async (req, res) => {
+    try {
+      const task = await storage.restoreTask(req.params.id);
+      res.json(task);
+    } catch (error) {
+      console.error("Error restoring task:", error);
+      res.status(500).json({ message: "Failed to restore task" });
+    }
+  });
+
+  app.patch("/api/buckets/:id/restore", isAuthenticated, async (req, res) => {
+    try {
+      const bucket = await storage.restoreBucket(req.params.id);
+      res.json(bucket);
+    } catch (error) {
+      console.error("Error restoring bucket:", error);
+      res.status(500).json({ message: "Failed to restore bucket" });
     }
   });
 
