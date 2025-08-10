@@ -434,6 +434,7 @@ function TaskPreviewPanel({ task, assignee, onClose, onEdit, onDelete }: {
 // Quick task form schema
 const quickTaskSchema = z.object({
   title: z.string().min(1, "Task title is required"),
+  bucketId: z.string().optional(),
   studyId: z.string().min(1, "Study is required"),
   priority: z.string().default("MEDIUM"),
   assigneeId: z.string().optional(),
@@ -506,11 +507,17 @@ export default function TaskManagement() {
     enabled: isAuthenticated && !!contextLab,
   }) as { data: TeamMember[] };
 
+  const { data: buckets = [] } = useQuery({
+    queryKey: ['/api/buckets', contextLab?.id],
+    enabled: isAuthenticated && !!contextLab,
+  }) as { data: Bucket[] };
+
   // Quick task form
   const quickForm = useForm<QuickTaskFormValues>({
     resolver: zodResolver(quickTaskSchema),
     defaultValues: {
       title: "",
+      bucketId: "",
       studyId: "",
       priority: "MEDIUM",
       assigneeId: "",
@@ -1061,6 +1068,30 @@ export default function TaskManagement() {
                 
                 <FormField
                   control={quickForm.control}
+                  name="bucketId"
+                  render={({ field }) => (
+                    <FormItem className="w-48">
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-quick-bucket">
+                            <SelectValue placeholder="Select bucket" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {buckets.map((bucket) => (
+                            <SelectItem key={bucket.id} value={bucket.id}>
+                              {bucket.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={quickForm.control}
                   name="studyId"
                   render={({ field }) => (
                     <FormItem className="w-48">
@@ -1477,73 +1508,221 @@ export default function TaskManagement() {
         </CardContent>
       </Card>
       ) : viewMode === 'kanban' ? (
-        // Kanban View
+        // Enhanced Airtable-style Kanban View - Study/Project Cards grouped by Buckets
         <div className="h-full overflow-x-auto">
           <div className="flex gap-6 min-w-max pb-6">
-            {/* Kanban Columns */}
-            {(['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'] as const).map((status) => (
-              <div key={status} className="flex-shrink-0 w-80">
-                <Card className="h-full">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${
-                          status === 'TODO' ? 'bg-gray-400' :
-                          status === 'IN_PROGRESS' ? 'bg-blue-500' :
-                          status === 'REVIEW' ? 'bg-yellow-500' :
-                          'bg-green-500'
-                        }`} />
-                        <h3 className="font-medium">
-                          {status.replace('_', ' ')}
-                        </h3>
-                      </div>
-                      <Badge variant="secondary" className="text-xs">
-                        {filteredTasks.filter(task => task.status === status).length}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={(event) => handleDragEnd(event, status)}
-                    >
-                      <SortableContext
-                        items={filteredTasks.filter(task => task.status === status).map(task => task.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <div className="space-y-3 min-h-[200px]">
-                          {filteredTasks
-                            .filter(task => task.status === status)
-                            .map((task) => {
-                              const assignee = teamMembers.find(m => m.id === task.assigneeId);
-                              return (
-                                <TaskCard
-                                  key={task.id}
-                                  task={task}
-                                  assignee={assignee}
-                                  onEdit={() => console.log('Edit task:', task.id)}
-                                  onDelete={() => deleteTaskMutation.mutate(task.id)}
-                                  onPreview={() => {
-                                    setSelectedTask(task);
-                                    setShowPreviewPanel(true);
-                                  }}
-                                />
-                              );
-                            })}
-                          {filteredTasks.filter(task => task.status === status).length === 0 && (
-                            <div className="text-center py-8 text-muted-foreground">
-                              <div className="text-2xl mb-2">📋</div>
-                              <p className="text-sm">No {status.toLowerCase().replace('_', ' ')} tasks</p>
-                            </div>
-                          )}
+            {/* Bucket Columns */}
+            {buckets.map((bucket) => {
+              const bucketStudies = labFilteredStudies.filter(study => study.bucketId === bucket.id);
+              return (
+                <div key={bucket.id} className="flex-shrink-0 w-80">
+                  <Card className="h-full">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-primary" />
+                          <h3 className="font-medium text-base">{bucket.name}</h3>
                         </div>
-                      </SortableContext>
-                    </DndContext>
-                  </CardContent>
-                </Card>
-              </div>
-            ))}
+                        <Badge variant="secondary" className="text-xs">
+                          {bucketStudies.length} studies
+                        </Badge>
+                      </div>
+                      {bucket.description && (
+                        <p className="text-sm text-muted-foreground mt-1">{bucket.description}</p>
+                      )}
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-4 min-h-[300px]">
+                        {bucketStudies.map((study) => {
+                          const studyTasks = tasks.filter(task => task.studyId === study.id);
+                          const completedTasks = studyTasks.filter(task => task.status === 'DONE').length;
+                          const totalTasks = studyTasks.length;
+                          const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+                          
+                          return (
+                            <Card 
+                              key={study.id} 
+                              className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/30"
+                              onClick={() => {
+                                // Navigate to study tasks or open study details
+                                console.log('Navigate to study:', study.id);
+                              }}
+                            >
+                              {/* Study Name & Status */}
+                              <div className="space-y-3">
+                                <div className="flex items-start justify-between">
+                                  <h4 className="font-semibold text-sm line-clamp-2">{study.name}</h4>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      quickForm.setValue('studyId', study.id);
+                                      quickForm.setValue('bucketId', bucket.id);
+                                      setShowQuickAdd(true);
+                                    }}
+                                    className="text-xs px-2 py-1 h-auto"
+                                    data-testid={`button-add-task-${study.id}`}
+                                  >
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Task
+                                  </Button>
+                                </div>
+
+                                {/* Study Phase/Status */}
+                                <div className="flex items-center gap-2">
+                                  <Badge 
+                                    variant={study.status === 'ACTIVE' ? 'default' : 
+                                            study.status === 'COMPLETED' ? 'secondary' : 'outline'}
+                                    className="text-xs"
+                                  >
+                                    {study.status === 'ACTIVE' && 'Analysis phase'}
+                                    {study.status === 'ON_HOLD' && 'On hold'}
+                                    {study.status === 'COMPLETED' && 'Manuscript phase'}
+                                    {study.status === 'PLANNING' && 'Planning phase'}
+                                  </Badge>
+                                </div>
+
+                                {/* Study Type */}
+                                {study.studyType && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {study.studyType.replace('_', ' ').toLowerCase()}
+                                  </p>
+                                )}
+
+                                {/* Progress Bar */}
+                                {totalTasks > 0 && (
+                                  <div className="space-y-1">
+                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                      <span>Progress</span>
+                                      <span>{completedTasks}/{totalTasks}</span>
+                                    </div>
+                                    <div className="w-full bg-muted rounded-full h-1.5">
+                                      <div 
+                                        className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                                        style={{ width: `${progress}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Team Assignment */}
+                                <div className="flex items-center gap-2">
+                                  {study.assignees && study.assignees.length > 0 ? (
+                                    <div className="flex items-center gap-1">
+                                      <div className="flex -space-x-1">
+                                        {study.assignees.slice(0, 3).map((assigneeId) => {
+                                          const member = teamMembers.find(m => m.id === assigneeId);
+                                          return (
+                                            <div 
+                                              key={assigneeId}
+                                              className="w-5 h-5 rounded-full bg-primary/10 border border-background flex items-center justify-center text-xs font-medium"
+                                              title={member?.name || member?.email || assigneeId}
+                                            >
+                                              {(member?.name?.[0] || member?.email?.[0] || '?').toUpperCase()}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                      {study.assignees.length > 3 && (
+                                        <span className="text-xs text-muted-foreground">+{study.assignees.length - 3}</span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">No team assigned</span>
+                                  )}
+                                </div>
+
+                                {/* Funding & Collaborators */}
+                                <div className="flex flex-wrap gap-1">
+                                  {study.fundingSource && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {study.fundingSource.includes('NIH') ? '🏛️ NIH' :
+                                       study.fundingSource.includes('Industry') ? '🏢 Industry' :
+                                       study.fundingSource.includes('Internal') ? '🏥 Internal' :
+                                       study.fundingSource}
+                                    </Badge>
+                                  )}
+                                  {study.externalCollaborators && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      🤝 Ext. Collab
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                {/* Task Count */}
+                                <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t">
+                                  <span>{totalTasks} tasks</span>
+                                  {study.endDate && (
+                                    <span>Due: {new Date(study.endDate).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </Card>
+                          );
+                        })}
+                        
+                        {bucketStudies.length === 0 && (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <div className="text-3xl mb-2">📊</div>
+                            <p className="text-sm">No studies in this bucket</p>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="mt-2"
+                              onClick={() => console.log('Create study in bucket:', bucket.id)}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Add Study
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })}
+            
+            {/* Unassigned Studies Column */}
+            {(() => {
+              const unassignedStudies = labFilteredStudies.filter(study => !study.bucketId || !buckets.find(b => b.id === study.bucketId));
+              if (unassignedStudies.length === 0) return null;
+              
+              return (
+                <div className="flex-shrink-0 w-80">
+                  <Card className="h-full border-dashed">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-muted-foreground/50" />
+                          <h3 className="font-medium text-base text-muted-foreground">Unassigned</h3>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {unassignedStudies.length}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Studies not assigned to any bucket</p>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-4 min-h-[300px]">
+                        {unassignedStudies.map((study) => (
+                          <Card 
+                            key={study.id} 
+                            className="p-3 border-dashed opacity-75 hover:opacity-100 transition-opacity"
+                          >
+                            <div className="space-y-2">
+                              <h4 className="font-medium text-sm">{study.name}</h4>
+                              <p className="text-xs text-muted-foreground">Click to assign to a bucket</p>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })()}
           </div>
         </div>
       ) : viewMode === 'timeline' ? (
