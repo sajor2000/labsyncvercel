@@ -22,6 +22,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { Study, Lab, Bucket, TeamMember } from "@shared/schema";
 
+// Pretty labels for status display
+const statusLabels = {
+  PLANNING: "Planning",
+  IRB_SUBMISSION: "IRB Submission",
+  IRB_APPROVED: "IRB Approved",
+  DATA_COLLECTION: "Data Collection",
+  ANALYSIS: "Analysis",
+  MANUSCRIPT: "Manuscript",
+  UNDER_REVIEW: "Under Review",
+  PUBLISHED: "Published",
+  ON_HOLD: "On Hold",
+  CANCELLED: "Cancelled",
+};
+
 const statusColors = {
   PLANNING: "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
   IRB_SUBMISSION: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400",
@@ -736,7 +750,7 @@ export default function Studies() {
                     className={study.status ? statusColors[study.status] : statusColors.PLANNING} 
                     variant="secondary"
                   >
-                    {study.status ? study.status.replace('_', ' ') : 'Planning'}
+                    {study.status ? statusLabels[study.status] || study.status : statusLabels.PLANNING}
                   </Badge>
                 </div>
                 {study.oraNumber && (

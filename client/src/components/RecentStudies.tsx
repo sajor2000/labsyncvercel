@@ -3,6 +3,19 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import type { Study } from "@shared/schema";
 
+const statusLabels = {
+  PLANNING: "Planning",
+  IRB_SUBMISSION: "IRB Submission",
+  IRB_APPROVED: "IRB Approved",
+  DATA_COLLECTION: "Data Collection",
+  ANALYSIS: "Analysis",
+  MANUSCRIPT: "Manuscript",
+  UNDER_REVIEW: "Under Review",
+  PUBLISHED: "Published",
+  ON_HOLD: "On Hold",
+  CANCELLED: "Cancelled",
+};
+
 const statusColors = {
   PLANNING: "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400",
   IRB_SUBMISSION: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400",
@@ -81,14 +94,14 @@ export default function RecentStudies() {
                     className={study.status ? statusColors[study.status] : statusColors.PLANNING} 
                     variant="secondary"
                   >
-                    {study.status ? study.status.replace('_', ' ') : 'Planning'}
+                    {study.status ? statusLabels[study.status] || study.status : statusLabels.PLANNING}
                   </Badge>
                 </div>
                 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span>Status</span>
-                    <span>{study.status ? study.status.replace('_', ' ') : 'Planning'}</span>
+                    <span>{study.status ? statusLabels[study.status] || study.status : statusLabels.PLANNING}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Last updated: {study.updatedAt ? new Date(study.updatedAt).toLocaleDateString() : 'Unknown'}

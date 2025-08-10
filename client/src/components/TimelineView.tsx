@@ -7,6 +7,27 @@ import { Separator } from "@/components/ui/separator";
 import { CalendarDays, Clock, User, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Task, Study, TeamMember } from "@shared/schema";
 
+// Pretty labels for statuses
+const statusLabels: Record<string, string> = {
+  // Study statuses
+  PLANNING: "Planning",
+  IRB_SUBMISSION: "IRB Submission",
+  IRB_APPROVED: "IRB Approved",
+  DATA_COLLECTION: "Data Collection",
+  ANALYSIS: "Analysis",
+  MANUSCRIPT: "Manuscript",
+  UNDER_REVIEW: "Under Review",
+  PUBLISHED: "Published",
+  ON_HOLD: "On Hold",
+  CANCELLED: "Cancelled",
+  // Task statuses
+  TODO: "To Do",
+  IN_PROGRESS: "In Progress",
+  REVIEW: "Review",
+  DONE: "Done",
+  BLOCKED: "Blocked"
+};
+
 interface TimelineViewProps {
   tasks: Task[];
   studies: Study[];
@@ -241,7 +262,7 @@ export function TimelineView({ tasks, studies, teamMembers, onTaskEdit, onTaskDe
                               {study && (
                                 <span className="ml-2">
                                   <Badge variant="outline" className="text-xs">
-                                    {study.status?.replace('_', ' ') || 'Planning'}
+                                    {study.status ? statusLabels[study.status] || study.status : statusLabels.PLANNING}
                                   </Badge>
                                 </span>
                               )}
@@ -295,7 +316,7 @@ export function TimelineView({ tasks, studies, teamMembers, onTaskEdit, onTaskDe
                                     variant="outline" 
                                     className="text-xs"
                                   >
-                                    {task.status?.replace('_', ' ') || 'TODO'}
+                                    {task.status ? statusLabels[task.status] || task.status : statusLabels.TODO}
                                   </Badge>
                                 </div>
                               </div>
