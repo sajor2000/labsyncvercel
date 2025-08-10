@@ -65,6 +65,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/labs/:id", isAuthenticated, async (req, res) => {
+    try {
+      const { name } = req.body;
+      
+      // Validate required fields
+      if (!name || typeof name !== 'string' || name.trim() === '') {
+        return res.status(400).json({ message: "Lab name is required and must be a valid string." });
+      }
+      
+      const lab = await storage.updateLab(req.params.id, req.body);
+      res.json(lab);
+    } catch (error) {
+      console.error("Error updating lab:", error);
+      res.status(500).json({ message: "Failed to update lab" });
+    }
+  });
+
   // Bucket routes
   app.get("/api/buckets", isAuthenticated, async (req, res) => {
     try {

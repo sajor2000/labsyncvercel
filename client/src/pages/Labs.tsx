@@ -470,7 +470,7 @@ export default function Labs() {
                                 className="w-4 h-4 rounded-full border" 
                                 style={{ backgroundColor: field.value || "#3b82f6" }}
                               />
-                              {LAB_COLOR_OPTIONS.find(c => c.value === field.value)?.name || "Blue"}
+                              {LAB_COLOR_OPTIONS.find(c => c.value === field.value)?.name || "Custom Color"}
                             </div>
                           </SelectValue>
                         </SelectTrigger>
@@ -599,7 +599,7 @@ export default function Labs() {
                                 className="w-4 h-4 rounded-full border" 
                                 style={{ backgroundColor: field.value || "#3b82f6" }}
                               />
-                              {LAB_COLOR_OPTIONS.find(c => c.value === field.value)?.name || "Blue"}
+                              {LAB_COLOR_OPTIONS.find(c => c.value === field.value)?.name || "Custom Color"}
                             </div>
                           </SelectValue>
                         </SelectTrigger>

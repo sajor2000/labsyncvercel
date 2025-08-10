@@ -116,6 +116,7 @@ export interface IStorage {
   // Lab operations
   getLabs(): Promise<Lab[]>;
   createLab(lab: InsertLab): Promise<Lab>;
+  updateLab(id: string, updates: Partial<InsertLab>): Promise<Lab>;
   getLabMembers(labId: string): Promise<User[]>;
   
   // Study operations
@@ -383,6 +384,15 @@ export class DatabaseStorage implements IStorage {
   async createLab(lab: InsertLab): Promise<Lab> {
     const [newLab] = await db.insert(labs).values(lab).returning();
     return newLab;
+  }
+
+  async updateLab(id: string, updates: Partial<InsertLab>): Promise<Lab> {
+    const [updatedLab] = await db
+      .update(labs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(labs.id, id))
+      .returning();
+    return updatedLab;
   }
 
   async getLabById(id: string): Promise<Lab | undefined> {
