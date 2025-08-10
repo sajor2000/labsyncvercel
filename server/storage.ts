@@ -408,9 +408,11 @@ export class DatabaseStorage implements IStorage {
       institution: users.institution,
       isExternal: users.isExternal,
       bio: users.bio,
-      linkedinUrl: users.linkedIn,
+      phone: users.phone,
+      linkedIn: users.linkedIn,
       orcid: users.orcid,
       lastActive: users.lastActive,
+      isActive: users.isActive,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     })
@@ -496,7 +498,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(tasks).where(eq(tasks.id, id));
   }
 
-  async moveTask(id: string, updates: { status?: string; position?: string; studyId?: string }): Promise<Task> {
+  async moveTask(id: string, updates: { status?: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'BLOCKED'; position?: string; studyId?: string }): Promise<Task> {
     return this.updateTask(id, updates);
   }
 
@@ -698,9 +700,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Meeting preview operations
-  async getStandupMeetings(): Promise<StandupMeeting[]> {
-    return await db.select().from(standupMeetings).orderBy(desc(standupMeetings.createdAt));
-  }
 
   async getStandupMeeting(id: string): Promise<StandupMeeting | undefined> {
     const [meeting] = await db

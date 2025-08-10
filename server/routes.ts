@@ -50,6 +50,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/labs", isAuthenticated, async (req, res) => {
     try {
+      const { name, description } = req.body;
+      
+      // Validate required fields
+      if (!name || typeof name !== 'string' || name.trim() === '') {
+        return res.status(400).json({ message: "Lab name is required and must be a valid string." });
+      }
+      
       const lab = await storage.createLab(req.body);
       res.json(lab);
     } catch (error) {
@@ -104,6 +111,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/studies", isAuthenticated, async (req, res) => {
     try {
+      const { title, bucketId } = req.body;
+      
+      // Validate required fields
+      if (!title || typeof title !== 'string' || title.trim() === '') {
+        return res.status(400).json({ message: "Study title is required and must be a valid string." });
+      }
+      
+      if (!bucketId || typeof bucketId !== 'string') {
+        return res.status(400).json({ message: "Bucket ID is required and must be a valid string." });
+      }
+      
       const study = await storage.createStudy(req.body);
       res.json(study);
     } catch (error) {
@@ -238,6 +256,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tasks", isAuthenticated, async (req, res) => {
     try {
+      const { title, studyId, status } = req.body;
+      
+      // Validate required fields
+      if (!title || typeof title !== 'string' || title.trim() === '') {
+        return res.status(400).json({ message: "Task title is required and must be a valid string." });
+      }
+      
+      if (!studyId || typeof studyId !== 'string') {
+        return res.status(400).json({ message: "Study ID is required and must be a valid string." });
+      }
+      
+      // Validate status if provided
+      if (status) {
+        const validStatuses = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'BLOCKED'];
+        if (!validStatuses.includes(status)) {
+          return res.status(400).json({ 
+            message: "Invalid status. Must be one of: " + validStatuses.join(', ') 
+          });
+        }
+      }
+      
       const taskData = {
         ...req.body,
         createdBy: (req.user as any)?.claims?.sub
@@ -274,6 +313,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tasks/:id/move", isAuthenticated, async (req, res) => {
     try {
       const { newStatus, newPosition, newStudyId } = req.body;
+      
+      // Validate status if provided
+      if (newStatus) {
+        const validStatuses = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'BLOCKED'];
+        if (!validStatuses.includes(newStatus)) {
+          return res.status(400).json({ 
+            message: "Invalid status. Must be one of: " + validStatuses.join(', ') 
+          });
+        }
+      }
+      
       const task = await storage.updateTask(req.params.id, {
         status: newStatus,
         position: newPosition,
@@ -289,6 +339,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tasks/:id/status", isAuthenticated, async (req, res) => {
     try {
       const { status } = req.body;
+      
+      // Validate status value
+      const validStatuses = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'BLOCKED'];
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json({ 
+          message: "Invalid status. Must be one of: " + validStatuses.join(', ') 
+        });
+      }
+      
       const task = await storage.updateTask(req.params.id, { status });
       res.json(task);
     } catch (error) {
@@ -300,6 +359,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tasks/:id/assign", isAuthenticated, async (req, res) => {
     try {
       const { assigneeId } = req.body;
+      
+      // Validate assigneeId if provided (should be a valid UUID or null/undefined for unassigning)
+      if (assigneeId && typeof assigneeId !== 'string') {
+        return res.status(400).json({ 
+          message: "Invalid assigneeId. Must be a valid user ID string." 
+        });
+      }
+      
       const task = await storage.updateTask(req.params.id, { assigneeId });
       res.json(task);
     } catch (error) {
@@ -635,7 +702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (labId) {
         meetings = await storage.getStandupMeetingsByLab(labId);
       } else {
-        meetings = await storage.getStandupMeetings();
+        meetings = await storage.getStandups();
       }
       res.json(meetings);
     } catch (error) {
