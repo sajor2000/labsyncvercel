@@ -223,7 +223,7 @@ export function InlineTaskEditor({
               <SelectValue placeholder="Assign to..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Unassigned</SelectItem>
+              <SelectItem value="unassigned">Unassigned</SelectItem>
               {teamMembers.map((member) => (
                 <SelectItem key={member.id} value={member.id}>
                   <div className="flex items-center gap-2">
