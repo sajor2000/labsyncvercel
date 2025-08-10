@@ -103,8 +103,8 @@ export default function TeamMembersEnhanced() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedRole, setSelectedRole] = useState<string>("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [selectedRole, setSelectedRole] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<EnhancedUser | null>(null);
@@ -328,8 +328,8 @@ export default function TeamMembersEnhanced() {
       member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.role?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesRole = !selectedRole || member.role === selectedRole;
-    const matchesStatus = !selectedStatus || 
+    const matchesRole = !selectedRole || selectedRole === "all" || member.role === selectedRole;
+    const matchesStatus = !selectedStatus || selectedStatus === "all" || 
       (selectedStatus === "active" && member.isActive) ||
       (selectedStatus === "inactive" && !member.isActive) ||
       (selectedStatus === "external" && member.isExternal);
@@ -440,7 +440,7 @@ export default function TeamMembersEnhanced() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Role *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger data-testid="select-role">
                               <SelectValue placeholder="Select role" />
@@ -605,7 +605,7 @@ export default function TeamMembersEnhanced() {
             <SelectValue placeholder="Filter by role" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All roles</SelectItem>
+            <SelectItem value="all">All roles</SelectItem>
             {roleOptions.map((role) => (
               <SelectItem key={role.value} value={role.value}>
                 {role.label}
@@ -618,7 +618,7 @@ export default function TeamMembersEnhanced() {
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All</SelectItem>
+            <SelectItem value="all">All</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="inactive">Inactive</SelectItem>
             <SelectItem value="external">External</SelectItem>
