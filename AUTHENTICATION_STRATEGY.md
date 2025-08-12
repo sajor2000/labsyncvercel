@@ -52,20 +52,20 @@ The system uses a two-tier matching approach:
 ### Current Team Members (12 Total)
 
 #### RICCC Lab (8 members)
-- J.C. Rojas - Principal Investigator
-- Kevin Buell - Research Assistant  
-- Mia McClintic - Research Assistant
-- Vaishvik Chaudhari - Research Assistant
-- Hoda Masteri - Research Assistant
-- Kian Mokhlesi - Volunteer Research Assistant
-- Dariush Mokhlesi - Volunteer Research Assistant
-- Connor P Lafeber - Research Assistant
+- J.C. Rojas - Principal Investigator (juancroj@gmail.com OR juan_rojas@rush.edu)
+- Kevin Buell - Principal Investigator (Kevin_Buell@rush.edu)
+- Mia McClintic - Regulatory Coordinator (Mia_R_McClintic@rush.edu)
+- Vaishvik Chaudhari - Data Scientist (Vaishvik_Chaudhari@rush.edu)
+- Hoda Masteri - Data Analyst (Hoda_MasteriFarahani@rush.edu)
+- Kian Mokhlesi - Volunteer Research Assistant (kianmokhlesi@gmail.com)
+- Dariush Mokhlesi - Volunteer Research Assistant (dariushmokhlesi@gmail.com)
+- Connor P Lafeber - Research Assistant (Connor_P_Lafeber@rush.edu)
 
 #### RHEDAS Lab (4 members)
-- J.C. Rojas - Principal Investigator (in both labs)
-- Jason Stanghelle - Research Assistant
-- Meher Sapna Masanpally - Research Assistant
-- Jada Sherrod - Research Assistant
+- J.C. Rojas - Principal Investigator (in both labs - uses same emails)
+- Jason Stanghelle - Data Analyst (Jason_Stanghelle@rush.edu)
+- Meher Sapna Masanpally - Data Analyst (MeherSapna_Masanpally@rush.edu)
+- Jada Sherrod - Staff Coordinator (Jada_J_Sherrod@rush.edu)
 
 ### Adding New Team Members
 
@@ -83,6 +83,7 @@ To grant access to new team members:
 | Scenario | System Behavior |
 |----------|----------------|
 | User has multiple emails | Register primary email, name matching handles alternates |
+| J.C. Rojas dual email | Primary: juancroj@gmail.com, Alternative: juan_rojas@rush.edu (both work via name matching) |
 | Name change (marriage, etc.) | Update name in system or add alternate email |
 | External collaborator | Add with `isExternal` flag set to true |
 | Temporary access | Set expiration date or deactivate when done |
