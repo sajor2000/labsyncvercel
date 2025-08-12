@@ -155,14 +155,33 @@ export default function Calendar() {
     return days;
   };
 
-  const getEventsForDay = (day: number) => {
+  const getDaysInWeek = (date: Date) => {
+    const startOfWeek = new Date(date);
+    startOfWeek.setDate(date.getDate() - date.getDay()); // Start from Sunday
+    
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      days.push(day);
+    }
+    
+    return days;
+  };
+
+  const getEventsForDay = (day: number | Date) => {
     if (!day) return [];
     
-    const dateStr = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      day
-    ).toISOString().split('T')[0];
+    let dateStr: string;
+    if (day instanceof Date) {
+      dateStr = day.toISOString().split('T')[0];
+    } else {
+      dateStr = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        day
+      ).toISOString().split('T')[0];
+    }
     
     return events.filter(event => 
       event.date.startsWith(dateStr)
@@ -172,10 +191,18 @@ export default function Calendar() {
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
-      if (direction === 'prev') {
-        newDate.setMonth(prev.getMonth() - 1);
-      } else {
-        newDate.setMonth(prev.getMonth() + 1);
+      if (calendarView === 'month') {
+        if (direction === 'prev') {
+          newDate.setMonth(prev.getMonth() - 1);
+        } else {
+          newDate.setMonth(prev.getMonth() + 1);
+        }
+      } else { // week view
+        if (direction === 'prev') {
+          newDate.setDate(prev.getDate() - 7);
+        } else {
+          newDate.setDate(prev.getDate() + 7);
+        }
       }
       return newDate;
     });
@@ -199,7 +226,15 @@ export default function Calendar() {
   ];
 
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const days = getDaysInMonth(currentDate);
+  const days = calendarView === 'month' ? getDaysInMonth(currentDate) : getDaysInWeek(currentDate);
+
+  const formatWeekRange = (weekDays: Date[]) => {
+    const start = weekDays[0];
+    const end = weekDays[6];
+    const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startStr} - ${endStr}`;
+  };
 
   if (!selectedLab) {
     return (
@@ -224,7 +259,10 @@ export default function Calendar() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center">
                   <CalendarIcon className="mr-2 h-5 w-5" />
-                  {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+                  {calendarView === 'month' 
+                    ? `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`
+                    : formatWeekRange(days as Date[])
+                  }
                 </CardTitle>
                 <div className="flex space-x-2">
                   <Select value={calendarView} onValueChange={(value: "month" | "week") => setCalendarView(value)}>
@@ -303,54 +341,97 @@ export default function Calendar() {
             <CardContent>
               <div className="grid grid-cols-7 gap-2">
                 {/* Day headers */}
-                {dayNames.map(day => (
-                  <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
-                    {day}
-                  </div>
-                ))}
+                {calendarView === 'month' ? (
+                  dayNames.map(day => (
+                    <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
+                      {day}
+                    </div>
+                  ))
+                ) : (
+                  (days as Date[]).map((day, index) => (
+                    <div key={index} className="p-2 text-center text-sm font-medium text-muted-foreground">
+                      <div>{dayNames[index]}</div>
+                      <div className="text-lg font-semibold">
+                        {day.getDate()}
+                      </div>
+                    </div>
+                  ))
+                )}
                 
                 {/* Calendar days */}
-                {days.map((day, index) => {
-                  const dayEvents = day ? getEventsForDay(day) : [];
-                  const isToday = day && 
-                    new Date().toDateString() === 
-                    new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toDateString();
-                  
-                  return (
-                    <div
-                      key={index}
-                      className={`min-h-[80px] p-1 border rounded-lg ${
-                        day ? 'bg-background hover:bg-muted/50' : 'bg-muted/20'
-                      } ${isToday ? 'ring-2 ring-primary' : ''}`}
-                      data-testid={day ? `calendar-day-${day}` : `calendar-empty-${index}`}
-                    >
-                      {day && (
-                        <>
-                          <div className={`text-sm font-medium ${isToday ? 'text-primary' : ''}`}>
-                            {day}
-                          </div>
-                          <div className="space-y-1">
-                            {dayEvents.slice(0, 2).map(event => (
-                              <div
-                                key={event.id}
-                                className={`text-xs p-1 rounded text-white truncate ${getEventTypeColor(event.type)}`}
-                                title={event.title}
-                                data-testid={`event-${event.id}`}
-                              >
-                                {event.title}
-                              </div>
-                            ))}
-                            {dayEvents.length > 2 && (
-                              <div className="text-xs text-muted-foreground">
-                                +{dayEvents.length - 2} more
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+                {calendarView === 'month' ? (
+                  // Month View
+                  (days as (number | null)[]).map((day, index) => {
+                    const dayEvents = day ? getEventsForDay(day) : [];
+                    const isToday = day && 
+                      new Date().toDateString() === 
+                      new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toDateString();
+                    
+                    return (
+                      <div
+                        key={index}
+                        className={`min-h-[80px] p-1 border rounded-lg ${
+                          day ? 'bg-background hover:bg-muted/50' : 'bg-muted/20'
+                        } ${isToday ? 'ring-2 ring-primary' : ''}`}
+                        data-testid={day ? `calendar-day-${day}` : `calendar-empty-${index}`}
+                      >
+                        {day && (
+                          <>
+                            <div className={`text-sm font-medium ${isToday ? 'text-primary' : ''}`}>
+                              {day}
+                            </div>
+                            <div className="space-y-1">
+                              {dayEvents.slice(0, 2).map(event => (
+                                <div
+                                  key={event.id}
+                                  className={`text-xs p-1 rounded text-white truncate ${getEventTypeColor(event.type)}`}
+                                  title={event.title}
+                                  data-testid={`event-${event.id}`}
+                                >
+                                  {event.title}
+                                </div>
+                              ))}
+                              {dayEvents.length > 2 && (
+                                <div className="text-xs text-muted-foreground">
+                                  +{dayEvents.length - 2} more
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  // Week View - no day display in grid, handled in headers
+                  (days as Date[]).map((day, index) => {
+                    const dayEvents = getEventsForDay(day);
+                    const isToday = new Date().toDateString() === day.toDateString();
+                    
+                    return (
+                      <div
+                        key={index}
+                        className={`min-h-[150px] p-2 border rounded-lg bg-background hover:bg-muted/50 ${
+                          isToday ? 'ring-2 ring-primary' : ''
+                        }`}
+                        data-testid={`calendar-day-${day.getDate()}`}
+                      >
+                        <div className="space-y-1">
+                          {dayEvents.map(event => (
+                            <div
+                              key={event.id}
+                              className={`text-xs p-1 rounded text-white truncate ${getEventTypeColor(event.type)}`}
+                              title={event.title}
+                              data-testid={`event-${event.id}`}
+                            >
+                              {event.title}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </CardContent>
           </Card>
