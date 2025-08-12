@@ -1,24 +1,43 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Users } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Users, Filter, Grid3X3, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLabContext } from "@/hooks/useLabContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface CalendarEvent {
   id: string;
   title: string;
-  type: "standup" | "deadline" | "meeting" | "milestone";
+  type: "standup" | "deadline" | "meeting" | "milestone" | "task" | "study";
   date: string;
   time?: string;
   description?: string;
   participants?: number;
   status?: string;
+  priority?: string;
+  metadata?: {
+    studyId?: string;
+    taskId?: string;
+    progress?: number;
+    assignees?: string[];
+  };
 }
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [calendarView, setCalendarView] = useState<"month" | "week">("month");
+  const [showFilters, setShowFilters] = useState(false);
+  const [eventFilters, setEventFilters] = useState({
+    standups: true,
+    deadlines: true,
+    tasks: true,
+    studies: true,
+    meetings: true,
+    milestones: true,
+  });
   const { selectedLab } = useLabContext();
 
   // Fetch events from multiple sources
@@ -32,10 +51,21 @@ export default function Calendar() {
     enabled: !!selectedLab?.id,
   });
 
-  // Combine all events
-  const events: CalendarEvent[] = [
+  const { data: tasks = [] } = useQuery<any[]>({
+    queryKey: ['/api/tasks', selectedLab?.id],
+    enabled: !!selectedLab?.id,
+  });
+
+  const { data: studies = [] } = useQuery<any[]>({
+    queryKey: ['/api/studies', selectedLab?.id],
+    enabled: !!selectedLab?.id,
+  });
+
+  // Combine all events from multiple sources
+  const allEvents: CalendarEvent[] = [
+    // Standups (Blue)
     ...standups.map((standup: any) => ({
-      id: standup.id,
+      id: `standup-${standup.id}`,
       title: standup.title,
       type: "standup" as const,
       date: standup.scheduledDate,
@@ -43,15 +73,64 @@ export default function Calendar() {
       participants: standup.participantIds?.length || 0,
       status: standup.status,
     })),
+    
+    // Deadlines (Red)
     ...deadlines.map((deadline: any) => ({
-      id: deadline.id,
+      id: `deadline-${deadline.id}`,
       title: deadline.title,
       type: "deadline" as const,
       date: deadline.dueDate,
       description: deadline.description,
       status: deadline.status,
+      priority: deadline.priority,
     })),
+    
+    // Task Deadlines (Orange)
+    ...tasks
+      .filter((task: any) => task.dueDate)
+      .map((task: any) => ({
+        id: `task-${task.id}`,
+        title: `Task: ${task.title}`,
+        type: "task" as const,
+        date: task.dueDate,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        metadata: {
+          taskId: task.id,
+          assignees: task.assignees || [],
+        },
+      })),
+    
+    // Study Milestones (Purple)
+    ...studies
+      .filter((study: any) => study.dueDate)
+      .map((study: any) => ({
+        id: `study-${study.id}`,
+        title: `Study: ${study.name}`,
+        type: "study" as const,
+        date: study.dueDate,
+        description: study.notes,
+        status: study.status,
+        priority: study.priority,
+        metadata: {
+          studyId: study.id,
+        },
+      })),
   ];
+
+  // Apply filters to events
+  const events = allEvents.filter(event => {
+    switch (event.type) {
+      case "standup": return eventFilters.standups;
+      case "deadline": return eventFilters.deadlines;
+      case "task": return eventFilters.tasks;
+      case "study": return eventFilters.studies;
+      case "meeting": return eventFilters.meetings;
+      case "milestone": return eventFilters.milestones;
+      default: return true;
+    }
+  });
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -108,6 +187,8 @@ export default function Calendar() {
       case "deadline": return "bg-red-500";
       case "meeting": return "bg-green-500";
       case "milestone": return "bg-purple-500";
+      case "task": return "bg-orange-500";
+      case "study": return "bg-indigo-500";
       default: return "bg-gray-500";
     }
   };
@@ -132,7 +213,7 @@ export default function Calendar() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Calendar</h1>
-        <p className="text-muted-foreground">View all lab events, deadlines, and meetings</p>
+        <p className="text-muted-foreground">Comprehensive research management hub with events, deadlines, tasks, and milestones</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -146,6 +227,23 @@ export default function Calendar() {
                   {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
                 </CardTitle>
                 <div className="flex space-x-2">
+                  <Select value={calendarView} onValueChange={(value: "month" | "week") => setCalendarView(value)}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="month">Month</SelectItem>
+                      <SelectItem value="week">Week</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                    data-testid="button-toggle-filters"
+                  >
+                    <Filter className="h-4 w-4" />
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -172,6 +270,35 @@ export default function Calendar() {
                   </Button>
                 </div>
               </div>
+              {showFilters && (
+                <div className="mt-4 p-4 bg-muted/20 rounded-lg border">
+                  <h4 className="text-sm font-medium mb-3">Event Filters</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {Object.entries(eventFilters).map(([type, enabled]) => (
+                      <div key={type} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`filter-${type}`}
+                          checked={enabled}
+                          onCheckedChange={(checked) => 
+                            setEventFilters(prev => ({ ...prev, [type]: checked }))
+                          }
+                        />
+                        <label htmlFor={`filter-${type}`} className="text-sm capitalize">
+                          {type === 'standups' ? 'Standups' :
+                           type === 'deadlines' ? 'Deadlines' :
+                           type === 'tasks' ? 'Task Deadlines' :
+                           type === 'studies' ? 'Study Milestones' :
+                           type === 'meetings' ? 'Meetings' :
+                           type === 'milestones' ? 'Milestones' : type}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 text-xs text-muted-foreground">
+                    Showing {events.length} of {allEvents.length} events
+                  </div>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-7 gap-2">
@@ -282,6 +409,14 @@ export default function Calendar() {
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-red-500 rounded"></div>
                   <span className="text-sm">Deadlines</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                  <span className="text-sm">Task Deadlines</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-indigo-500 rounded"></div>
+                  <span className="text-sm">Study Milestones</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-green-500 rounded"></div>
