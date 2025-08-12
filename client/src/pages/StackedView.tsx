@@ -392,12 +392,7 @@ export default function StackedView() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <div className="w-6 h-6 bg-primary rounded flex items-center justify-center text-white text-xs font-bold">
-                S
-              </div>
-              Stacked by Bucket
-            </div>
+            Stacked by Bucket
           </h1>
           <p className="text-muted-foreground">
             {contextLab 

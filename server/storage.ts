@@ -248,6 +248,13 @@ export interface IStorage {
   }): Promise<SecurityAuditLog[]>;
   getFailedAccessAttempts(labId?: string, hours?: number): Promise<SecurityAuditLog[]>;
 
+  // PHASE 3: Enhanced Permission Management Operations
+  getLabMember(userId: string, labId: string): Promise<LabMember | undefined>;
+  updateLabMemberPermissions(userId: string, labId: string, permissions: any): Promise<void>;
+  getPermissionTemplate(templateId: string): Promise<PermissionTemplate | undefined>;
+  getResourcePermissions(userId: string, resourceType: string, resourceId: string): Promise<ResourcePermission[]>;
+  getCrossLabAccess(userId: string, targetLabId: string): Promise<CrossLabAccess[]>;
+
   // PHASE 3: PROJECT MANAGEMENT OPERATIONS
   createStatusHistory(history: InsertStatusHistory): Promise<StatusHistory>;
   getStatusHistory(entityType: string, entityId: string): Promise<StatusHistory[]>;
@@ -830,6 +837,82 @@ export class DatabaseStorage implements IStorage {
 
   async moveTask(id: string, updates: { status?: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'BLOCKED'; position?: string; studyId?: string }): Promise<Task> {
     return this.updateTask(id, updates);
+  }
+
+  // PHASE 3: Enhanced Permission Management Implementation
+  async getLabMember(userId: string, labId: string): Promise<any> {
+    try {
+      const [labMember] = await db
+        .select()
+        .from(labMembers)
+        .where(and(eq(labMembers.userId, userId), eq(labMembers.labId, labId)))
+        .limit(1);
+      return labMember;
+    } catch (error) {
+      console.error("Failed to get lab member:", error);
+      return undefined;
+    }
+  }
+
+  async updateLabMemberPermissions(userId: string, labId: string, permissions: any): Promise<void> {
+    try {
+      await db
+        .update(labMembers)
+        .set({
+          ...permissions,
+          lastPermissionUpdate: new Date(),
+          updatedAt: new Date()
+        })
+        .where(and(eq(labMembers.userId, userId), eq(labMembers.labId, labId)));
+    } catch (error) {
+      console.error("Failed to update lab member permissions:", error);
+      throw error;
+    }
+  }
+
+  async getPermissionTemplate(templateId: string): Promise<any> {
+    try {
+      const [template] = await db
+        .select()
+        .from(permissionTemplates)
+        .where(eq(permissionTemplates.id, templateId))
+        .limit(1);
+      return template;
+    } catch (error) {
+      console.error("Failed to get permission template:", error);
+      return undefined;
+    }
+  }
+
+  async getResourcePermissions(userId: string, resourceType: string, resourceId: string): Promise<any[]> {
+    try {
+      return await db
+        .select()
+        .from(resourcePermissions)
+        .where(and(
+          eq(resourcePermissions.userId, userId),
+          eq(resourcePermissions.resourceType, resourceType as any),
+          eq(resourcePermissions.resourceId, resourceId)
+        ));
+    } catch (error) {
+      console.error("Failed to get resource permissions:", error);
+      return [];
+    }
+  }
+
+  async getCrossLabAccess(userId: string, targetLabId: string): Promise<any[]> {
+    try {
+      return await db
+        .select()
+        .from(crossLabAccess)
+        .where(and(
+          eq(crossLabAccess.userId, userId),
+          eq(crossLabAccess.targetLabId, targetLabId)
+        ));
+    } catch (error) {
+      console.error("Failed to get cross lab access:", error);
+      return [];
+    }
   }
 
   // Standup operations

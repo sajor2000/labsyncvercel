@@ -461,7 +461,7 @@ export const studyStatusUpdates = pgTable("study_status_updates", {
   extractedAt: timestamp("extracted_at").defaultNow(),
 });
 
-// Enhanced LabMember with role-specific permissions for multi-lab support
+// PHASE 3: Enhanced LabMember with Advanced RBAC permissions for multi-lab support
 export const labMembers = pgTable("lab_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -470,20 +470,77 @@ export const labMembers = pgTable("lab_members", {
   // Lab-specific role
   labRole: userRoleEnum("lab_role").default("RESEARCH_ASSISTANT"), // Role specific to this lab
   
-  // Permissions based on role
-  isAdmin: boolean("is_admin").default(false), // Can manage lab settings
-  canCreateProjects: boolean("can_create_projects").default(false),
-  canAssignTasks: boolean("can_assign_tasks").default(false),
-  canViewAllProjects: boolean("can_view_all_projects").default(false),
-  canEditAllProjects: boolean("can_edit_all_projects").default(false),
+  // PHASE 3: Enhanced Administrative Permissions
+  isAdmin: boolean("is_admin").default(false), // Full lab administration
+  isSuperAdmin: boolean("is_super_admin").default(false), // Cross-lab administration
   canManageMembers: boolean("can_manage_members").default(false),
+  canManageLabSettings: boolean("can_manage_lab_settings").default(false),
+  canViewAuditLogs: boolean("can_view_audit_logs").default(false),
+  canManagePermissions: boolean("can_manage_permissions").default(false),
+  
+  // PHASE 3: Project & Study Management Permissions
+  canCreateProjects: boolean("can_create_projects").default(false),
+  canEditAllProjects: boolean("can_edit_all_projects").default(false),
+  canDeleteProjects: boolean("can_delete_projects").default(false),
+  canViewAllProjects: boolean("can_view_all_projects").default(false),
+  canArchiveProjects: boolean("can_archive_projects").default(false),
+  canRestoreProjects: boolean("can_restore_projects").default(false),
+  
+  // PHASE 3: Task Management Permissions
+  canAssignTasks: boolean("can_assign_tasks").default(false),
+  canEditAllTasks: boolean("can_edit_all_tasks").default(false),
+  canDeleteTasks: boolean("can_delete_tasks").default(false),
+  canViewAllTasks: boolean("can_view_all_tasks").default(false),
+  canManageTaskTemplates: boolean("can_manage_task_templates").default(false),
+  canSetTaskPriorities: boolean("can_set_task_priorities").default(false),
+  
+  // PHASE 3: Idea & Innovation Management
   canApproveIdeas: boolean("can_approve_ideas").default(false),
+  canRejectIdeas: boolean("can_reject_ideas").default(false),
+  canEditAllIdeas: boolean("can_edit_all_ideas").default(false),
+  canDeleteIdeas: boolean("can_delete_ideas").default(false),
+  canImplementIdeas: boolean("can_implement_ideas").default(false),
+  
+  // PHASE 3: Data & Reporting Permissions
   canAccessReports: boolean("can_access_reports").default(false),
+  canExportData: boolean("can_export_data").default(false),
+  canViewAnalytics: boolean("can_view_analytics").default(false),
+  canManageDeadlines: boolean("can_manage_deadlines").default(false),
+  canViewFinancials: boolean("can_view_financials").default(false),
+  
+  // PHASE 3: Cross-Lab Collaboration Permissions
+  canInviteExternalUsers: boolean("can_invite_external_users").default(false),
+  canShareAcrossLabs: boolean("can_share_across_labs").default(false),
+  canAccessSharedProjects: boolean("can_access_shared_projects").default(false),
+  canCreateCrossLabProjects: boolean("can_create_cross_lab_projects").default(false),
+  
+  // PHASE 3: Meeting & Communication Permissions
+  canScheduleMeetings: boolean("can_schedule_meetings").default(false),
+  canManageStandups: boolean("can_manage_standups").default(false),
+  canSendLabAnnouncements: boolean("can_send_lab_announcements").default(false),
+  canModerateDiscussions: boolean("can_moderate_discussions").default(false),
+  
+  // PHASE 3: Resource & Asset Management
+  canManageAssets: boolean("can_manage_assets").default(false),
+  canAllocateBudget: boolean("can_allocate_budget").default(false),
+  canManageEquipment: boolean("can_manage_equipment").default(false),
+  canManageDocuments: boolean("can_manage_documents").default(false),
+  
+  // PHASE 3: Time-Based Access Control
+  accessStartDate: timestamp("access_start_date"),
+  accessEndDate: timestamp("access_end_date"),
+  temporaryPermissions: json("temporary_permissions"), // Time-bound special permissions
+  
+  // PHASE 3: Permission Context & Restrictions
+  permissionScope: varchar("permission_scope").default("LAB"), // LAB, CROSS_LAB, GLOBAL
+  restrictedEntities: json("restricted_entities"), // Specific entities user cannot access
+  allowedEntityTypes: json("allowed_entity_types"), // Restrict to specific entity types
   
   // Status and dates
   isActive: boolean("is_active").default(true),
   joinedAt: timestamp("joined_at").defaultNow(),
   leftAt: timestamp("left_at"),
+  lastPermissionUpdate: timestamp("last_permission_update").defaultNow(),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -491,6 +548,8 @@ export const labMembers = pgTable("lab_members", {
   uniqueUserLab: index("unique_user_lab").on(table.userId, table.labId),
   labActiveIndex: index("lab_active_idx").on(table.labId, table.isActive),
   userActiveIndex: index("user_active_idx").on(table.userId, table.isActive),
+  permissionScopeIndex: index("permission_scope_idx").on(table.permissionScope),
+  accessDateIndex: index("access_date_idx").on(table.accessStartDate, table.accessEndDate),
 }));
 
 // Team Members table for lab personnel management (keeping for backward compatibility)
@@ -1174,6 +1233,132 @@ export const insertSecurityAuditLogSchema = createInsertSchema(securityAuditLogs
 // Type exports for audit logging
 export type SecurityAuditLog = typeof securityAuditLogs.$inferSelect;
 export type InsertSecurityAuditLog = typeof securityAuditLogs.$inferInsert;
+
+// PHASE 3: Advanced Permission Management Tables
+
+// Permission Templates for standardized role setups
+export const permissionTemplates = pgTable("permission_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(), // "Principal Investigator", "Research Coordinator", etc.
+  description: text("description"),
+  labId: varchar("lab_id").references(() => labs.id), // Lab-specific or global template
+  
+  // Template permissions (mirrors labMembers permissions)
+  permissions: json("permissions").notNull(), // JSON object with all permission fields
+  
+  isDefault: boolean("is_default").default(false),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  nameLabIndex: index("template_name_lab_idx").on(table.name, table.labId),
+  defaultTemplateIndex: index("default_template_idx").on(table.isDefault, table.isActive),
+}));
+
+// Resource-Level Permissions for fine-grained access control
+export const resourcePermissions = pgTable("resource_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  labId: varchar("lab_id").notNull().references(() => labs.id),
+  
+  // Resource identification
+  resourceType: auditEntityEnum("resource_type").notNull(), // STUDY, TASK, BUCKET, etc.
+  resourceId: varchar("resource_id").notNull(),
+  
+  // Specific permissions for this resource
+  canView: boolean("can_view").default(false),
+  canEdit: boolean("can_edit").default(false),
+  canDelete: boolean("can_delete").default(false),
+  canShare: boolean("can_share").default(false),
+  canAssign: boolean("can_assign").default(false),
+  
+  // Permission metadata
+  grantedBy: varchar("granted_by").references(() => users.id),
+  grantReason: varchar("grant_reason"), // "Project collaboration", "Temporary access", etc.
+  
+  // Time-based permissions
+  validFrom: timestamp("valid_from").defaultNow(),
+  validUntil: timestamp("valid_until"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+  revokedBy: varchar("revoked_by").references(() => users.id),
+}, (table) => ({
+  userResourceIndex: index("user_resource_idx").on(table.userId, table.resourceType, table.resourceId),
+  labResourceIndex: index("lab_resource_idx").on(table.labId, table.resourceType),
+  validityIndex: index("validity_idx").on(table.validFrom, table.validUntil),
+  activePermissionIndex: index("active_permission_idx").on(table.userId, table.revokedAt),
+}));
+
+// Cross-Lab Access Grants for inter-lab collaboration
+export const crossLabAccess = pgTable("cross_lab_access", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Source and target labs
+  sourceLabId: varchar("source_lab_id").notNull().references(() => labs.id),
+  targetLabId: varchar("target_lab_id").notNull().references(() => labs.id),
+  
+  // User being granted access
+  userId: varchar("user_id").notNull().references(() => users.id),
+  
+  // Access details
+  accessType: varchar("access_type").notNull(), // "READ_ONLY", "COLLABORATOR", "GUEST"
+  specificResources: json("specific_resources"), // Specific projects/studies accessible
+  
+  // Access permissions
+  canViewProjects: boolean("can_view_projects").default(false),
+  canEditSharedProjects: boolean("can_edit_shared_projects").default(false),
+  canCommentOnProjects: boolean("can_comment_on_projects").default(false),
+  canJoinMeetings: boolean("can_join_meetings").default(false),
+  canViewReports: boolean("can_view_reports").default(false),
+  
+  // Approval workflow
+  requestedBy: varchar("requested_by").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvalDate: timestamp("approval_date"),
+  
+  // Validity period
+  validFrom: timestamp("valid_from").defaultNow(),
+  validUntil: timestamp("valid_until"),
+  
+  // Status
+  status: varchar("status").default("PENDING"), // PENDING, APPROVED, DENIED, EXPIRED, REVOKED
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+  revokedBy: varchar("revoked_by").references(() => users.id),
+}, (table) => ({
+  userLabsIndex: index("user_labs_idx").on(table.userId, table.sourceLabId, table.targetLabId),
+  targetLabIndex: index("target_lab_idx").on(table.targetLabId, table.status),
+  validityIndex: index("cross_lab_validity_idx").on(table.validFrom, table.validUntil),
+  statusIndex: index("cross_lab_status_idx").on(table.status, table.validUntil),
+}));
+
+// PHASE 3: Permission Management Insert Schemas
+export const insertPermissionTemplateSchema = createInsertSchema(permissionTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertResourcePermissionSchema = createInsertSchema(resourcePermissions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCrossLabAccessSchema = createInsertSchema(crossLabAccess).omit({
+  id: true,
+  createdAt: true,
+});
+
+// PHASE 3: Enhanced Type Exports
+export type PermissionTemplate = typeof permissionTemplates.$inferSelect;
+export type InsertPermissionTemplate = typeof permissionTemplates.$inferInsert;
+export type ResourcePermission = typeof resourcePermissions.$inferSelect;
+export type InsertResourcePermission = typeof resourcePermissions.$inferInsert;
+export type CrossLabAccess = typeof crossLabAccess.$inferSelect;
+export type InsertCrossLabAccess = typeof crossLabAccess.$inferInsert;
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
