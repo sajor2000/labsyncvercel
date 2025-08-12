@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useLabContext } from "@/hooks/useLabContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 
 interface CalendarEvent {
@@ -79,12 +79,53 @@ export default function Calendar() {
     // Standups (Blue)
     ...standups.map((standup: any) => ({
       id: `standup-${standup.id}`,
-      title: standup.title,
+      title: 'Standup Meeting',
       type: "standup" as const,
       date: standup.scheduledDate,
-      description: standup.description,
-      participants: standup.participantIds?.length || 0,
-      status: standup.status,
+      time: (() => {
+        if (standup.startTime && standup.startTime.includes(':')) {
+          // Handle time string format like "14:30:00"
+          const [hours, minutes] = standup.startTime.split(':');
+          const startDate = new Date();
+          startDate.setHours(parseInt(hours), parseInt(minutes), 0);
+          let timeStr = startDate.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+          });
+          
+          if (standup.endTime && standup.endTime.includes(':')) {
+            const [endHours, endMinutes] = standup.endTime.split(':');
+            const endDate = new Date();
+            endDate.setHours(parseInt(endHours), parseInt(endMinutes), 0);
+            const endTimeStr = endDate.toLocaleTimeString('en-US', { 
+              hour: 'numeric', 
+              minute: '2-digit',
+              hour12: true 
+            });
+            timeStr += ` - ${endTimeStr}`;
+          }
+          return timeStr;
+        }
+        return undefined;
+      })(),
+      description: standup.aiSummary || standup.transcript || 'Weekly standup meeting',
+      participants: (() => {
+        if (typeof standup.participants === 'string') {
+          try {
+            return JSON.parse(standup.participants).length;
+          } catch {
+            return 0;
+          }
+        }
+        return Array.isArray(standup.participants) ? standup.participants.length : 0;
+      })(),
+      status: standup.isActive ? 'SCHEDULED' : 'COMPLETED',
+      metadata: {
+        meetingType: standup.meetingType || 'Weekly Standup',
+        hasRecording: !!standup.recordingUrl,
+        hasTranscript: !!standup.transcript,
+      }
     })),
     
     // Deadlines (Red)
@@ -598,45 +639,75 @@ export default function Calendar() {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${getEventTypeColor(selectedEvent.type)}`} />
-                <span>{selectedEvent.title}</span>
-                <Badge className={`${getEventTypeColor(selectedEvent.type)} text-white ml-2`}>
-                  {selectedEvent.type}
+                <div className={`w-4 h-4 rounded-full ${getEventTypeColor(selectedEvent.type)}`} />
+                <span className="text-xl font-semibold">{selectedEvent.title}</span>
+                <Badge className={`${getEventTypeColor(selectedEvent.type)} text-white ml-2 text-xs px-2 py-1`}>
+                  {selectedEvent.type.charAt(0).toUpperCase() + selectedEvent.type.slice(1)}
                 </Badge>
               </DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                View detailed information about this event
+              </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4">
-              {/* Basic Event Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <CalendarEventIcon className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Date:</span>
-                  <span className="text-sm">{new Date(selectedEvent.date).toLocaleDateString()}</span>
+            <div className="space-y-6">
+              {/* Event Header Card */}
+              <div className="bg-gradient-to-r from-background to-muted/30 p-4 rounded-lg border">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <CalendarEventIcon className="w-5 h-5 text-primary" />
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">Event Date</span>
+                        <p className="text-base font-semibold">
+                          {new Date(selectedEvent.date).toLocaleDateString('en-US', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    {selectedEvent.time && (
+                      <div className="flex items-center space-x-3">
+                        <Clock className="w-5 h-5 text-primary" />
+                        <div>
+                          <span className="text-sm font-medium text-muted-foreground">Time</span>
+                          <p className="text-base font-semibold">{selectedEvent.time}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    {selectedEvent.status && (
+                      <div className="flex items-center space-x-3">
+                        <Target className="w-5 h-5 text-primary" />
+                        <div>
+                          <span className="text-sm font-medium text-muted-foreground">Status</span>
+                          <div className="mt-1">
+                            <Badge variant="outline" className="text-sm px-3 py-1">
+                              {selectedEvent.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedEvent.priority && (
+                      <div className="flex items-center space-x-3">
+                        <Target className="w-5 h-5 text-primary" />
+                        <div>
+                          <span className="text-sm font-medium text-muted-foreground">Priority</span>
+                          <div className="mt-1">
+                            <Badge variant={selectedEvent.priority === 'HIGH' ? 'destructive' : selectedEvent.priority === 'MEDIUM' ? 'default' : 'secondary'} className="text-sm px-3 py-1">
+                              {selectedEvent.priority}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {selectedEvent.time && (
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Time:</span>
-                    <span className="text-sm">{selectedEvent.time}</span>
-                  </div>
-                )}
-                {selectedEvent.status && (
-                  <div className="flex items-center space-x-2">
-                    <Target className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Status:</span>
-                    <Badge variant="outline">{selectedEvent.status}</Badge>
-                  </div>
-                )}
-                {selectedEvent.priority && (
-                  <div className="flex items-center space-x-2">
-                    <Target className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Priority:</span>
-                    <Badge variant={selectedEvent.priority === 'HIGH' ? 'destructive' : 'secondary'}>
-                      {selectedEvent.priority}
-                    </Badge>
-                  </div>
-                )}
               </div>
 
               {/* Description */}
@@ -651,10 +722,14 @@ export default function Calendar() {
 
               {/* Participants */}
               {selectedEvent.participants && selectedEvent.participants > 0 && (
-                <div className="flex items-center space-x-2">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Participants:</span>
-                  <span className="text-sm">{selectedEvent.participants} people</span>
+                <div className="bg-muted/30 p-4 rounded-lg border">
+                  <div className="flex items-center space-x-3">
+                    <Users className="w-5 h-5 text-primary" />
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Team Participation</span>
+                      <p className="text-base font-semibold">{selectedEvent.participants} team members</p>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -725,51 +800,85 @@ export default function Calendar() {
         <Dialog open={!!selectedDate} onOpenChange={() => setSelectedDate(null)}>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
-              <DialogTitle className="flex items-center space-x-2">
-                <CalendarIcon className="w-5 h-5" />
-                <span>Events for {selectedDate.toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}</span>
+              <DialogTitle className="flex items-center space-x-3">
+                <CalendarIcon className="w-6 h-6 text-primary" />
+                <span className="text-xl font-semibold">
+                  {selectedDate.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </span>
               </DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                All events scheduled for this day ({getEventsForDay(selectedDate).length} events)
+              </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4">
               {getEventsForDay(selectedDate).length > 0 ? (
                 <div className="space-y-3">
-                  {getEventsForDay(selectedDate).map(event => (
-                    <div key={event.id} className="border rounded-lg p-4 hover:bg-muted/50">
+                  {getEventsForDay(selectedDate)
+                    .sort((a, b) => {
+                      if (a.time && b.time) {
+                        return a.time.localeCompare(b.time);
+                      }
+                      return 0;
+                    })
+                    .map(event => (
+                    <div key={event.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                       <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${getEventTypeColor(event.type)}`} />
-                          <div>
-                            <h4 className="font-medium">{event.title}</h4>
-                            <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
-                              <div className="flex items-center space-x-1">
-                                <Badge className={`${getEventTypeColor(event.type)} text-white text-xs`}>
-                                  {event.type}
-                                </Badge>
-                              </div>
+                        <div className="flex items-start space-x-4 flex-1">
+                          <div className={`w-4 h-4 rounded-full ${getEventTypeColor(event.type)} mt-1 flex-shrink-0`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h4 className="font-semibold text-lg truncate">{event.title}</h4>
+                              <Badge className={`${getEventTypeColor(event.type)} text-white text-xs px-2 py-1 flex-shrink-0`}>
+                                {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
+                              </Badge>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                               {event.time && (
-                                <div className="flex items-center space-x-1">
-                                  <Clock className="w-3 h-3" />
-                                  <span>{event.time}</span>
+                                <div className="flex items-center space-x-2">
+                                  <Clock className="w-4 h-4 text-primary flex-shrink-0" />
+                                  <div>
+                                    <span className="text-xs text-muted-foreground block">Time</span>
+                                    <span className="text-sm font-medium">{event.time}</span>
+                                  </div>
                                 </div>
                               )}
                               {event.participants && (
-                                <div className="flex items-center space-x-1">
-                                  <Users className="w-3 h-3" />
-                                  <span>{event.participants} participants</span>
+                                <div className="flex items-center space-x-2">
+                                  <Users className="w-4 h-4 text-primary flex-shrink-0" />
+                                  <div>
+                                    <span className="text-xs text-muted-foreground block">Participants</span>
+                                    <span className="text-sm font-medium">{event.participants} people</span>
+                                  </div>
                                 </div>
                               )}
                               {event.status && (
-                                <Badge variant="outline" className="text-xs">
-                                  {event.status}
-                                </Badge>
+                                <div className="flex items-center space-x-2">
+                                  <Target className="w-4 h-4 text-primary flex-shrink-0" />
+                                  <div>
+                                    <span className="text-xs text-muted-foreground block">Status</span>
+                                    <Badge variant="outline" className="text-xs mt-1">
+                                      {event.status}
+                                    </Badge>
+                                  </div>
+                                </div>
                               )}
                             </div>
+                            
+                            {event.description && (
+                              <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
+                                {event.description.length > 120 
+                                  ? `${event.description.substring(0, 120)}...` 
+                                  : event.description
+                                }
+                              </p>
+                            )}
                           </div>
                         </div>
                         <Button 
@@ -777,15 +886,11 @@ export default function Calendar() {
                           size="sm"
                           onClick={() => setSelectedEvent(event)}
                           data-testid={`view-event-${event.id}`}
+                          className="ml-4 flex-shrink-0"
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
                       </div>
-                      {event.description && (
-                        <p className="text-sm text-muted-foreground mt-2 pl-6">
-                          {event.description}
-                        </p>
-                      )}
                     </div>
                   ))}
                 </div>
