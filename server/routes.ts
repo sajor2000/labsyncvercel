@@ -168,6 +168,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Global search endpoint
+  app.get('/api/search', isAuthenticated, async (req: any, res) => {
+    try {
+      const { q: searchQuery, limit = 15 } = req.query;
+      const userId = (req.user as any)?.claims?.sub;
+
+      if (!searchQuery || searchQuery.trim().length === 0) {
+        return res.json({ results: [] });
+      }
+
+      const results = await storage.globalSearch(searchQuery.trim(), parseInt(limit), userId);
+      res.json({ results });
+    } catch (error) {
+      console.error("Error performing global search:", error);
+      res.status(500).json({ message: "Search failed", error: error.message });
+    }
+  });
+
   app.put('/api/auth/profile', isAuthenticated, async (req: any, res) => {
     try {
       const userId = (req.user as any)?.claims?.sub;

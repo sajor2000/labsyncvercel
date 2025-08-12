@@ -359,6 +359,9 @@ export interface IStorage {
   createAttachment(attachment: InsertAttachment): Promise<Attachment>;
   getAttachmentsByEntity(entityType: string, entityId: string): Promise<Attachment[]>;
   deleteAttachment(attachmentId: string): Promise<void>;
+
+  // Global search methods
+  globalSearch(query: string, limit: number, userId: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2729,6 +2732,116 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
+  // Global search implementation
+  async globalSearch(query: string, limit: number, userId: string): Promise<any[]> {
+    const results: any[] = [];
+    
+    try {
+      // Search across studies
+      const studyResults = await db
+        .select()
+        .from(studies)
+        .where(and(
+          eq(studies.isActive, true),
+          sql`(LOWER(${studies.title}) LIKE LOWER(${'%' + query + '%'}) 
+              OR LOWER(${studies.description}) LIKE LOWER(${'%' + query + '%'}))`
+        ))
+        .limit(limit);
+
+      studyResults.forEach(study => {
+        results.push({
+          id: study.id,
+          title: study.title,
+          description: study.description,
+          type: 'study',
+          icon: '📊',
+          url: `/task-management?studyId=${study.id}`
+        });
+      });
+
+      // Search across tasks
+      const taskResults = await db
+        .select()
+        .from(tasks)
+        .where(and(
+          eq(tasks.isActive, true),
+          sql`(LOWER(${tasks.title}) LIKE LOWER(${'%' + query + '%'}) 
+              OR LOWER(${tasks.description}) LIKE LOWER(${'%' + query + '%'}))`
+        ))
+        .limit(limit);
+
+      taskResults.forEach(task => {
+        results.push({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          type: 'task',
+          icon: '✓',
+          url: `/task-management?taskId=${task.id}`
+        });
+      });
+
+      // Search across ideas
+      const ideaResults = await db
+        .select()
+        .from(ideas)
+        .where(and(
+          eq(ideas.isActive, true),
+          sql`(LOWER(${ideas.title}) LIKE LOWER(${'%' + query + '%'}) 
+              OR LOWER(${ideas.description}) LIKE LOWER(${'%' + query + '%'}))`
+        ))
+        .limit(limit);
+
+      ideaResults.forEach(idea => {
+        results.push({
+          id: idea.id,
+          title: idea.title,
+          description: idea.description,
+          type: 'idea',
+          icon: '💡',
+          url: `/ideas`
+        });
+      });
+
+      // Search across attachments/documents
+      const attachmentResults = await db
+        .select()
+        .from(attachments)
+        .where(
+          sql`(LOWER(${attachments.fileName}) LIKE LOWER(${'%' + query + '%'}) 
+              OR LOWER(${attachments.description}) LIKE LOWER(${'%' + query + '%'}))`
+        )
+        .limit(limit);
+
+      attachmentResults.forEach(attachment => {
+        results.push({
+          id: attachment.id,
+          title: attachment.fileName,
+          description: attachment.description || 'Document',
+          type: 'document',
+          icon: '📎',
+          url: attachment.entityType === 'study' 
+            ? `/task-management?studyId=${attachment.entityId}` 
+            : `/task-management?taskId=${attachment.entityId}`
+        });
+      });
+
+      // Sort by relevance (title matches first, then description matches)
+      return results
+        .sort((a, b) => {
+          const aTitle = a.title.toLowerCase().includes(query.toLowerCase());
+          const bTitle = b.title.toLowerCase().includes(query.toLowerCase());
+          
+          if (aTitle && !bTitle) return -1;
+          if (!aTitle && bTitle) return 1;
+          return 0;
+        })
+        .slice(0, limit);
+    } catch (error) {
+      console.error('Error performing global search:', error);
+      return [];
+    }
+  }
 
 }
 
