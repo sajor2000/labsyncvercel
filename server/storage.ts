@@ -2743,16 +2743,15 @@ export class DatabaseStorage implements IStorage {
         .from(studies)
         .where(and(
           eq(studies.isActive, true),
-          sql`(LOWER(${studies.title}) LIKE LOWER(${'%' + query + '%'}) 
-              OR LOWER(${studies.description}) LIKE LOWER(${'%' + query + '%'}))`
+          sql`LOWER(${studies.name}) LIKE LOWER(${'%' + query + '%'})`
         ))
         .limit(limit);
 
       studyResults.forEach(study => {
         results.push({
           id: study.id,
-          title: study.title,
-          description: study.description,
+          title: study.name,
+          description: `${study.status || 'Study'} - ORA: ${study.oraNumber || 'N/A'}`,
           type: 'study',
           icon: '📊',
           url: `/task-management?studyId=${study.id}`
@@ -2785,11 +2784,10 @@ export class DatabaseStorage implements IStorage {
       const ideaResults = await db
         .select()
         .from(ideas)
-        .where(and(
-          eq(ideas.isActive, true),
+        .where(
           sql`(LOWER(${ideas.title}) LIKE LOWER(${'%' + query + '%'}) 
               OR LOWER(${ideas.description}) LIKE LOWER(${'%' + query + '%'}))`
-        ))
+        )
         .limit(limit);
 
       ideaResults.forEach(idea => {
@@ -2803,24 +2801,45 @@ export class DatabaseStorage implements IStorage {
         });
       });
 
+      // Search across deadlines
+      const deadlineResults = await db
+        .select()
+        .from(deadlines)
+        .where(
+          sql`(LOWER(${deadlines.title}) LIKE LOWER(${'%' + query + '%'}) 
+              OR LOWER(${deadlines.description}) LIKE LOWER(${'%' + query + '%'}))`
+        )
+        .limit(limit);
+
+      deadlineResults.forEach(deadline => {
+        results.push({
+          id: deadline.id,
+          title: deadline.title,
+          description: deadline.description,
+          type: 'deadline',
+          icon: '⏰',
+          url: `/calendar`,
+          dueDate: deadline.dueDate
+        });
+      });
+
       // Search across attachments/documents
       const attachmentResults = await db
         .select()
         .from(attachments)
         .where(
-          sql`(LOWER(${attachments.fileName}) LIKE LOWER(${'%' + query + '%'}) 
-              OR LOWER(${attachments.description}) LIKE LOWER(${'%' + query + '%'}))`
+          sql`LOWER(${attachments.filename}) LIKE LOWER(${'%' + query + '%'})`
         )
         .limit(limit);
 
       attachmentResults.forEach(attachment => {
         results.push({
           id: attachment.id,
-          title: attachment.fileName,
-          description: attachment.description || 'Document',
+          title: attachment.filename,
+          description: 'Document',
           type: 'document',
           icon: '📎',
-          url: attachment.entityType === 'study' 
+          url: attachment.entityType === 'PROJECT' 
             ? `/task-management?studyId=${attachment.entityId}` 
             : `/task-management?taskId=${attachment.entityId}`
         });

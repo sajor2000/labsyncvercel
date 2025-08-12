@@ -72,7 +72,7 @@ export function TopHeader({ onMenuClick }: TopHeaderProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const results = searchResults?.results || [];
+  const results = (searchResults as any)?.results || [];
 
   return (
     <header className="h-16 glass border-b border-border/50 flex items-center justify-between px-6 backdrop-blur-xl bg-gradient-to-r from-card via-card to-muted/30">
@@ -102,7 +102,7 @@ export function TopHeader({ onMenuClick }: TopHeaderProps) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search studies, tasks, or documents..."
+              placeholder="Search studies, tasks, ideas, deadlines, or documents..."
               className="pl-10 pr-4 py-2 w-80 border border-input/50 rounded-lg bg-background/50 backdrop-blur-sm text-black placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200 hover:bg-background/70"
               data-testid="input-search"
               value={searchQuery}

@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import Landing from "@/pages/Landing";
 import Studies from "@/pages/Studies";
 import RegistrationRequest from "@/pages/RegistrationRequest";
+import SearchResults from "@/pages/SearchResults";
 
 import TaskManagement from "@/pages/TaskManagement";
 import StudyManagement from "@/pages/StudyManagement";
@@ -42,10 +43,12 @@ function Router() {
       ) : (
         <LabProvider>
           <Route path="/" component={() => <Layout><Dashboard /></Layout>} />
+          <Route path="/search" component={() => <Layout><SearchResults /></Layout>} />
           <Route path="/studies" component={() => <Layout><Studies /></Layout>} />
           <Route path="/study-management" component={() => <Layout><StudyManagement /></Layout>} />
 
           <Route path="/tasks" component={() => <Layout><TaskManagement /></Layout>} />
+          <Route path="/task-management" component={() => <Layout><TaskManagement /></Layout>} />
           <Route path="/stacked" component={() => <Layout><StackedView /></Layout>} />
           <Route path="/team-members" component={() => <Layout><TeamMembersEnhanced /></Layout>} />
           <Route path="/ideas" component={() => <Layout><Ideas /></Layout>} />
