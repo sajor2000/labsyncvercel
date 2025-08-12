@@ -113,7 +113,9 @@ Navigation Cleanup: Removed redundant "Task Board" page since Task Management al
   - **✅ Permission Template System**: Role-based default permissions for all lab positions
   - **✅ Granular Resource Permissions**: Fine-grained control over entity-level access rights
   - **✅ Cross-Lab Access Control**: Secure collaboration framework between research labs
-  - **✅ Default Permissions for All Members**: Every lab member can create studies, tasks, ideas, and deadlines
+  - **✅ Enhanced Delete Permissions**: All lab members can create AND delete their own content
+  - **✅ Audit Log Security**: Audit logs restricted to admin/PI roles only for enhanced security
+  - **✅ Ownership-Based Authorization**: Secure deletion validation through ownership checking
   - **✅ Enhanced Storage Layer**: Complete permission management infrastructure with validation
   - **✅ Administrative Interfaces**: Permission template application and bulk member upgrade endpoints
   - **✅ Enterprise-Grade Security**: Full RBAC implementation meeting enterprise security standards

@@ -98,6 +98,7 @@ export const DEFAULT_PERMISSIONS = {
     canExportData: true,
     canViewAnalytics: true,
     canManageDeadlines: true,
+    canDeleteDeadlines: true, // ENHANCED: Can delete own deadlines
     canViewFinancials: false,
     
     // Cross-Lab Collaboration
@@ -126,30 +127,30 @@ export const DEFAULT_PERMISSIONS = {
     isSuperAdmin: false,
     canManageMembers: false,
     canManageLabSettings: false,
-    canViewAuditLogs: false,
+    canViewAuditLogs: false, // RESTRICTED: Only admins/PIs
     canManagePermissions: false,
     
-    // Project & Study Management - ENHANCED: All members can create/manage
+    // Project & Study Management - ENHANCED: All members can create/delete own content
     canCreateProjects: true,
     canEditAllProjects: false, // Can only edit own projects
-    canDeleteProjects: false, // Can only delete own projects
+    canDeleteProjects: true, // ENHANCED: Can delete own projects
     canViewAllProjects: true,
     canArchiveProjects: false,
     canRestoreProjects: false,
     
-    // Task Management - ENHANCED: All members can create/manage
+    // Task Management - ENHANCED: All members can create/delete own content
     canAssignTasks: true,
     canEditAllTasks: false, // Can only edit own tasks
-    canDeleteTasks: false, // Can only delete own tasks
+    canDeleteTasks: true, // ENHANCED: Can delete own tasks
     canViewAllTasks: true,
     canManageTaskTemplates: false,
     canSetTaskPriorities: false,
     
-    // Idea & Innovation Management - ENHANCED: All members can create/manage
+    // Idea & Innovation Management - ENHANCED: All members can create/delete own content
     canApproveIdeas: false,
     canRejectIdeas: false,
     canEditAllIdeas: false, // Can only edit own ideas
-    canDeleteIdeas: false, // Can only delete own ideas
+    canDeleteIdeas: true, // ENHANCED: Can delete own ideas
     canImplementIdeas: true,
     
     // Data & Reporting
@@ -157,6 +158,7 @@ export const DEFAULT_PERMISSIONS = {
     canExportData: false,
     canViewAnalytics: true,
     canManageDeadlines: true, // ENHANCED: All members can manage deadlines
+    canDeleteDeadlines: true, // ENHANCED: Can delete own deadlines
     canViewFinancials: false,
     
     // Cross-Lab Collaboration
@@ -184,30 +186,30 @@ export const DEFAULT_PERMISSIONS = {
     isSuperAdmin: false,
     canManageMembers: false,
     canManageLabSettings: false,
-    canViewAuditLogs: false,
+    canViewAuditLogs: false, // RESTRICTED: Only admins/PIs
     canManagePermissions: false,
     
-    // Project & Study Management - ENHANCED: All members can create/manage
+    // Project & Study Management - ENHANCED: All members can create/delete own content
     canCreateProjects: true,
     canEditAllProjects: false,
-    canDeleteProjects: false,
+    canDeleteProjects: true, // ENHANCED: Can delete own projects
     canViewAllProjects: true,
     canArchiveProjects: false,
     canRestoreProjects: false,
     
-    // Task Management - ENHANCED: All members can create/manage
+    // Task Management - ENHANCED: All members can create/delete own content
     canAssignTasks: true,
     canEditAllTasks: false,
-    canDeleteTasks: false,
+    canDeleteTasks: true, // ENHANCED: Can delete own tasks
     canViewAllTasks: true,
     canManageTaskTemplates: false,
     canSetTaskPriorities: true,
     
-    // Idea & Innovation Management - ENHANCED: All members can create/manage
+    // Idea & Innovation Management - ENHANCED: All members can create/delete own content
     canApproveIdeas: false,
     canRejectIdeas: false,
     canEditAllIdeas: false,
-    canDeleteIdeas: false,
+    canDeleteIdeas: true, // ENHANCED: Can delete own ideas
     canImplementIdeas: true,
     
     // Data & Reporting
@@ -215,6 +217,7 @@ export const DEFAULT_PERMISSIONS = {
     canExportData: true,
     canViewAnalytics: true,
     canManageDeadlines: true, // ENHANCED: All members can manage deadlines
+    canDeleteDeadlines: true, // ENHANCED: Can delete own deadlines
     canViewFinancials: false,
     
     // Cross-Lab Collaboration
@@ -278,7 +281,7 @@ export async function upgradeLabMemberPermissions(labId: string): Promise<void> 
     
     for (const member of labMembers) {
       if (member.isActive) {
-        await applyDefaultPermissions(member.userId, labId, member.labRole);
+        await applyDefaultPermissions(member.id, labId, member.role || 'RESEARCH_ASSISTANT');
       }
     }
     
