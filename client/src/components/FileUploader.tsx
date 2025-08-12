@@ -70,8 +70,9 @@ export function FileUploader({
       .on("complete", async (result) => {
         const attachments = [];
         
-        for (const file of result.successful) {
-          try {
+        if (result.successful) {
+          for (const file of result.successful) {
+            try {
             // Create attachment record in database
             const response = await fetch("/api/attachments", {
               method: "POST",
@@ -93,8 +94,9 @@ export function FileUploader({
               const attachment = await response.json();
               attachments.push(attachment);
             }
-          } catch (error) {
-            console.error("Error creating attachment record:", error);
+            } catch (error) {
+              console.error("Error creating attachment record:", error);
+            }
           }
         }
         
