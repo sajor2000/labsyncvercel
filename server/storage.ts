@@ -2737,6 +2737,8 @@ export class DatabaseStorage implements IStorage {
     const results: any[] = [];
     
     try {
+      console.log(`🔍 Starting search for: "${query}" with limit: ${limit}`);
+      
       // Search across studies
       const studyResults = await db
         .select()
@@ -2746,6 +2748,11 @@ export class DatabaseStorage implements IStorage {
           sql`LOWER(${studies.name}) LIKE LOWER(${'%' + query + '%'})`
         ))
         .limit(limit);
+
+      console.log(`📊 Found ${studyResults.length} studies matching "${query}"`);
+      studyResults.forEach((study, index) => {
+        console.log(`  Study ${index + 1}: ${study.name}`);
+      });
 
       studyResults.forEach(study => {
         results.push({
@@ -2846,7 +2853,7 @@ export class DatabaseStorage implements IStorage {
       });
 
       // Sort by relevance (title matches first, then description matches)
-      return results
+      const sortedResults = results
         .sort((a, b) => {
           const aTitle = a.title.toLowerCase().includes(query.toLowerCase());
           const bTitle = b.title.toLowerCase().includes(query.toLowerCase());
@@ -2856,6 +2863,13 @@ export class DatabaseStorage implements IStorage {
           return 0;
         })
         .slice(0, limit);
+        
+      console.log(`✅ Search completed. Total results: ${sortedResults.length}`);
+      sortedResults.forEach((result, index) => {
+        console.log(`  Result ${index + 1}: ${result.type} - ${result.title}`);
+      });
+      
+      return sortedResults;
     } catch (error) {
       console.error('Error performing global search:', error);
       return [];
