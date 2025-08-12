@@ -1754,6 +1754,13 @@ export class DatabaseStorage implements IStorage {
     return newAttachment;
   }
   
+  async updateAttachmentFilename(attachmentId: string, newFilename: string): Promise<void> {
+    await db
+      .update(attachments)
+      .set({ filename: newFilename })
+      .where(eq(attachments.id, attachmentId));
+  }
+
   async deleteAttachment(attachmentId: string): Promise<void> {
     await db
       .update(attachments)

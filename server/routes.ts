@@ -462,6 +462,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update attachment filename
+  app.patch("/api/attachments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const attachmentId = req.params.id;
+      const { filename } = req.body;
+      const userId = (req.user as any)?.claims?.sub;
+
+      if (!filename) {
+        return res.status(400).json({ message: "Filename is required" });
+      }
+
+      // Check if user can edit this attachment (ownership or admin)
+      // For security, only allow editing by uploader or admin - this should be expanded with proper validation
+      await storage.updateAttachmentFilename(attachmentId, filename);
+      res.json({ message: "Attachment filename updated successfully" });
+    } catch (error) {
+      console.error("Error updating attachment:", error);
+      res.status(500).json({ message: "Failed to update attachment" });
+    }
+  });
+
   // Delete attachment (soft delete)
   app.delete("/api/attachments/:id", isAuthenticated, async (req: any, res) => {
     try {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLabContext } from "@/hooks/useLabContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Folder, 
   FolderOpen, 
@@ -23,9 +27,13 @@ import {
   ChevronRight,
   ChevronDown,
   Files,
-  Archive
+  Archive,
+  Edit,
+  Trash2,
+  MoreVertical
 } from "lucide-react";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Study, Task, Idea, Deadline, Attachment } from "@shared/schema";
 
 interface FileSystemNode {
@@ -45,6 +53,9 @@ export default function FileManagement() {
   const [fileTypeFilter, setFileTypeFilter] = useState("ALL");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['studies', 'ideas', 'deadlines']));
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
+  const [editingAttachment, setEditingAttachment] = useState<Attachment | null>(null);
+  const [newFilename, setNewFilename] = useState("");
+  const { toast } = useToast();
 
   // Fetch all data
   const { data: studies = [] } = useQuery<Study[]>({
@@ -67,6 +78,56 @@ export default function FileManagement() {
     queryKey: ["/api/attachments"],
   });
 
+  // Edit filename mutation
+  const editFilenameMutation = useMutation({
+    mutationFn: async ({ attachmentId, newFilename }: { attachmentId: string; newFilename: string }) => {
+      return await apiRequest(`/api/attachments/${attachmentId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ filename: newFilename }),
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/attachments"] });
+      toast({
+        title: "File renamed successfully",
+        description: "The file name has been updated.",
+      });
+      setEditingAttachment(null);
+      setNewFilename("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to rename file",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete attachment mutation
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: async (attachmentId: string) => {
+      return await apiRequest(`/api/attachments/${attachmentId}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/attachments"] });
+      toast({
+        title: "File deleted successfully",
+        description: "The file has been removed.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to delete file",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Filter data by lab context
   const labFilteredStudies = selectedLab ? studies.filter(study => study.labId === selectedLab.id) : studies;
   const labFilteredTasks = selectedLab ? tasks.filter(task => {
@@ -80,21 +141,7 @@ export default function FileManagement() {
   const buildFileSystem = (): FileSystemNode[] => {
     const root: FileSystemNode[] = [];
     
-    // Debug logging
-    console.log('Building file system with:', {
-      studies: labFilteredStudies.length,
-      ideas: labFilteredIdeas.length,
-      deadlines: labFilteredDeadlines.length,
-      attachments: attachments.length
-    });
-    if (attachments.length > 0) {
-      console.log('Sample attachment:', attachments[0]);
-      console.log('All attachments:', attachments.map(a => ({
-        filename: a.filename,
-        entityType: a.entityType,
-        entityId: a.entityId
-      })));
-    }
+
 
     // Studies folder
     const studiesFolder: FileSystemNode = {
@@ -177,13 +224,7 @@ export default function FileManagement() {
         }
       }
 
-      // Debug logging for each study
-      console.log(`Study ${study.name}:`, {
-        studyId: study.id,
-        attachmentCount: studyAttachments.length,
-        taskCount: studyTasks.length,
-        attachments: studyAttachments.map(a => ({ filename: a.filename, entityType: a.entityType }))
-      });
+
 
       // Show study folder (always show studies, add placeholder if no files)
       if (studyAttachments.length === 0 && studyTasks.every(task => 
@@ -418,12 +459,36 @@ export default function FileManagement() {
               <Badge variant="outline" className="text-xs">
                 {(parseInt(node.attachment.fileSize) / 1024).toFixed(1)} KB
               </Badge>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" data-testid="button-view-file">
                 <Eye className="h-3 w-3" />
               </Button>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" data-testid="button-download-file">
                 <Download className="h-3 w-3" />
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" data-testid="button-file-options">
+                    <MoreVertical className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => {
+                    setEditingAttachment(node.attachment!);
+                    setNewFilename(node.attachment!.filename);
+                  }} data-testid="menu-edit-filename">
+                    <Edit className="h-3 w-3 mr-2" />
+                    Rename
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => deleteAttachmentMutation.mutate(node.attachment!.id)}
+                    className="text-destructive focus:text-destructive"
+                    data-testid="menu-delete-file"
+                  >
+                    <Trash2 className="h-3 w-3 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
         </div>
@@ -549,6 +614,58 @@ export default function FileManagement() {
           </Card>
         </div>
       </div>
+
+      {/* Edit Filename Dialog */}
+      <Dialog open={!!editingAttachment} onOpenChange={(open) => {
+        if (!open) {
+          setEditingAttachment(null);
+          setNewFilename("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename File</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="new-filename">New filename</Label>
+              <Input
+                id="new-filename"
+                value={newFilename}
+                onChange={(e) => setNewFilename(e.target.value)}
+                placeholder="Enter new filename"
+                data-testid="input-new-filename"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setEditingAttachment(null);
+                  setNewFilename("");
+                }}
+                data-testid="button-cancel-rename"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (editingAttachment && newFilename.trim()) {
+                    editFilenameMutation.mutate({
+                      attachmentId: editingAttachment.id,
+                      newFilename: newFilename.trim()
+                    });
+                  }
+                }}
+                disabled={!newFilename.trim() || editFilenameMutation.isPending}
+                data-testid="button-save-rename"
+              >
+                {editFilenameMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
