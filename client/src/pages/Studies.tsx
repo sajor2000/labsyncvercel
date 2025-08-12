@@ -8,7 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Filter, Search, Eye, Edit, Trash2, Calendar as CalendarIcon, MoreVertical } from "lucide-react";
+import { Plus, Filter, Search, Eye, Edit, Trash2, Calendar as CalendarIcon, MoreVertical, Paperclip } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -22,6 +22,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { Study, Lab, Bucket, TeamMember } from "@shared/schema";
+import { FileUploader } from "@/components/FileUploader";
 
 // Pretty labels for status display
 const statusLabels = {
@@ -793,6 +794,26 @@ export default function Studies() {
                         >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onSelect={(e) => e.preventDefault()}
+                          data-testid={`menu-attach-study-${study.id}`}
+                        >
+                          <FileUploader
+                            entityType="PROJECT"
+                            entityId={study.id}
+                            onComplete={() => {
+                              toast({
+                                title: "File uploaded successfully",
+                                description: "File has been attached to the study.",
+                              });
+                            }}
+                          >
+                            <div className="flex items-center w-full">
+                              <Paperclip className="h-4 w-4 mr-2" />
+                              Attach Files
+                            </div>
+                          </FileUploader>
                         </DropdownMenuItem>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
