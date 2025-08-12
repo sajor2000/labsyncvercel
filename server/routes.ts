@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { SecurityAuditLogger, auditAuthenticationMiddleware } from "./auditLogger";
 import multer from "multer";
 import { studyMilestones, users, labs, buckets, studies, tasks, teamMembers, standupMeetings, sessions, deadlines, labMembers, ideas } from "@shared/schema";
 import { db } from "./db";
@@ -11,6 +12,9 @@ import { eq } from "drizzle-orm";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+  
+  // Add audit logging middleware for all routes
+  app.use(auditAuthenticationMiddleware);
 
   // Configure multer for file uploads (audio files)
   const upload = multer({ 
@@ -197,6 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check authorization 
       const authResult = await storage.canDeleteEntity(userId, 'bucket', bucketId);
       if (!authResult.canDelete) {
+        await SecurityAuditLogger.logDeleteAttempt(req, 'BUCKET', bucketId, false, undefined, authResult.reason);
         return res.status(403).json({ 
           error: "Forbidden", 
           message: authResult.reason 
@@ -204,11 +209,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteBucket(bucketId);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'BUCKET', bucketId, authResult.method);
       res.json({ 
         message: "Bucket deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
+      await SecurityAuditLogger.logDeleteAttempt(req, 'BUCKET', bucketId, false, undefined, error.message);
       console.error("Error deleting bucket:", error);
       res.status(500).json({ message: (error as Error).message || "Failed to delete bucket" });
     }
@@ -277,6 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check authorization
       const authResult = await storage.canDeleteEntity(userId, 'study', studyId);
       if (!authResult.canDelete) {
+        await SecurityAuditLogger.logDeleteAttempt(req, 'STUDY', studyId, false, undefined, authResult.reason);
         return res.status(403).json({ 
           error: "Forbidden", 
           message: authResult.reason 
@@ -284,11 +292,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteStudy(studyId, cascade);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'STUDY', studyId, authResult.method);
       res.json({ 
         message: "Study deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
+      await SecurityAuditLogger.logDeleteAttempt(req, 'STUDY', studyId, false, undefined, error.message);
       console.error("Error deleting study:", error);
       const errorMessage = (error as Error).message || "Failed to delete study";
       
@@ -459,6 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check authorization
       const authResult = await storage.canDeleteEntity(userId, 'task', taskId);
       if (!authResult.canDelete) {
+        await SecurityAuditLogger.logDeleteAttempt(req, 'TASK', taskId, false, undefined, authResult.reason);
         return res.status(403).json({ 
           error: "Forbidden", 
           message: authResult.reason 
@@ -466,11 +477,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteTask(taskId);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'TASK', taskId, authResult.method);
       res.json({ 
         message: "Task deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
+      await SecurityAuditLogger.logDeleteAttempt(req, 'TASK', taskId, false, undefined, error.message);
       console.error("Error deleting task:", error);
       res.status(500).json({ message: "Failed to delete task" });
     }
@@ -714,6 +727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check authorization
       const authResult = await storage.canDeleteEntity(userId, 'idea', ideaId);
       if (!authResult.canDelete) {
+        await SecurityAuditLogger.logDeleteAttempt(req, 'IDEA', ideaId, false, undefined, authResult.reason);
         return res.status(403).json({ 
           error: "Forbidden", 
           message: authResult.reason 
@@ -721,11 +735,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteIdea(ideaId);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'IDEA', ideaId, authResult.method);
       res.json({ 
         message: "Idea deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
+      await SecurityAuditLogger.logDeleteAttempt(req, 'IDEA', ideaId, false, undefined, error.message);
       console.error("Error deleting idea:", error);
       res.status(500).json({ message: "Failed to delete idea" });
     }
@@ -771,6 +787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check authorization
       const authResult = await storage.canDeleteEntity(userId, 'deadline', deadlineId);
       if (!authResult.canDelete) {
+        await SecurityAuditLogger.logDeleteAttempt(req, 'DEADLINE', deadlineId, false, undefined, authResult.reason);
         return res.status(403).json({ 
           error: "Forbidden", 
           message: authResult.reason 
@@ -778,11 +795,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteDeadline(deadlineId);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'DEADLINE', deadlineId, authResult.method);
       res.json({ 
         message: "Deadline deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
+      await SecurityAuditLogger.logDeleteAttempt(req, 'DEADLINE', deadlineId, false, undefined, error.message);
       console.error("Error deleting deadline:", error);
       res.status(500).json({ message: "Failed to delete deadline" });
     }
@@ -1567,6 +1586,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting study milestone:", error);
       res.status(500).json({ error: "Failed to delete study milestone" });
+    }
+  });
+
+  // PHASE 2: Security Audit Logging API Endpoints
+  app.get("/api/security/audit-logs", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const userLab = req.headers['x-current-lab'] as string;
+      
+      // Only allow lab admins to view audit logs
+      if (userLab) {
+        const labMember = await storage.getLabMember(userId, userLab);
+        if (!labMember?.isAdmin) {
+          await SecurityAuditLogger.logAccessDenied(req, 'USER', 'Not a lab administrator', userId);
+          return res.status(403).json({ message: "Unauthorized: Admin access required" });
+        }
+      }
+      
+      const filters = {
+        labId: userLab,
+        userId: req.query.userId as string,
+        entityType: req.query.entityType as string,
+        action: req.query.action as string,
+        startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
+        endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 100
+      };
+      
+      const auditLogs = await storage.getSecurityAuditLogs(filters);
+      res.json(auditLogs);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  app.get("/api/security/failed-attempts", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const userLab = req.headers['x-current-lab'] as string;
+      
+      // Only allow lab admins to view failed attempts
+      if (userLab) {
+        const labMember = await storage.getLabMember(userId, userLab);
+        if (!labMember?.isAdmin) {
+          await SecurityAuditLogger.logAccessDenied(req, 'USER', 'Not a lab administrator', userId);
+          return res.status(403).json({ message: "Unauthorized: Admin access required" });
+        }
+      }
+      
+      const hours = req.query.hours ? parseInt(req.query.hours as string) : 24;
+      const failedAttempts = await storage.getFailedAccessAttempts(userLab, hours);
+      res.json(failedAttempts);
+    } catch (error) {
+      console.error("Error fetching failed attempts:", error);
+      res.status(500).json({ message: "Failed to fetch failed attempts" });
     }
   });
 

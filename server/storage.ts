@@ -18,6 +18,7 @@ import {
   attachments,
   notifications,
   mentions,
+  securityAuditLogs,
   type User,
   type UpsertUser,
   type Lab,
@@ -233,6 +234,19 @@ export interface IStorage {
   getAttachments(entityType: string, entityId: string): Promise<Attachment[]>;
   createAttachment(attachment: InsertAttachment): Promise<Attachment>;
   deleteAttachment(attachmentId: string): Promise<void>;
+
+  // PHASE 2: Security Audit Logging Operations
+  createSecurityAuditLog(log: InsertSecurityAuditLog): Promise<SecurityAuditLog>;
+  getSecurityAuditLogs(filters?: {
+    userId?: string;
+    labId?: string;
+    entityType?: string;
+    action?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }): Promise<SecurityAuditLog[]>;
+  getFailedAccessAttempts(labId?: string, hours?: number): Promise<SecurityAuditLog[]>;
 
   // PHASE 3: PROJECT MANAGEMENT OPERATIONS
   createStatusHistory(history: InsertStatusHistory): Promise<StatusHistory>;
@@ -751,6 +765,67 @@ export class DatabaseStorage implements IStorage {
       canDelete: false, 
       reason: `Unauthorized: Not the ${entityType} owner and no admin permissions` 
     };
+  }
+
+  // PHASE 2: Security Audit Logging Implementation
+  async createSecurityAuditLog(log: any): Promise<any> {
+    try {
+      const [auditLog] = await db.insert(securityAuditLogs).values(log).returning();
+      return auditLog;
+    } catch (error) {
+      console.error("Failed to create audit log:", error);
+      // Don't throw error to avoid breaking main functionality
+      return null;
+    }
+  }
+
+  async getSecurityAuditLogs(filters: any = {}): Promise<any[]> {
+    try {
+      let query = db.select().from(securityAuditLogs);
+      
+      const conditions = [];
+      if (filters.userId) conditions.push(eq(securityAuditLogs.userId, filters.userId));
+      if (filters.labId) conditions.push(eq(securityAuditLogs.labId, filters.labId));
+      if (filters.entityType) conditions.push(eq(securityAuditLogs.entityType, filters.entityType));
+      if (filters.action) conditions.push(eq(securityAuditLogs.action, filters.action));
+      if (filters.startDate) conditions.push(gte(securityAuditLogs.timestamp, filters.startDate));
+      if (filters.endDate) conditions.push(lte(securityAuditLogs.timestamp, filters.endDate));
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+      
+      return await query
+        .orderBy(desc(securityAuditLogs.timestamp))
+        .limit(filters.limit || 100);
+    } catch (error) {
+      console.error("Failed to fetch audit logs:", error);
+      return [];
+    }
+  }
+
+  async getFailedAccessAttempts(labId?: string, hours: number = 24): Promise<any[]> {
+    try {
+      const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+      const conditions = [
+        eq(securityAuditLogs.wasAuthorized, false),
+        gte(securityAuditLogs.timestamp, since)
+      ];
+      
+      if (labId) {
+        conditions.push(eq(securityAuditLogs.labId, labId));
+      }
+      
+      return await db
+        .select()
+        .from(securityAuditLogs)
+        .where(and(...conditions))
+        .orderBy(desc(securityAuditLogs.timestamp))
+        .limit(50);
+    } catch (error) {
+      console.error("Failed to fetch failed access attempts:", error);
+      return [];
+    }
   }
 
   async moveTask(id: string, updates: { status?: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'BLOCKED'; position?: string; studyId?: string }): Promise<Task> {

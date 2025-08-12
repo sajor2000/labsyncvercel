@@ -113,6 +113,28 @@ export const commentableTypeEnum = pgEnum("commentable_type", [
   "BUCKET"
 ]);
 
+export const auditActionEnum = pgEnum("audit_action", [
+  "CREATE",
+  "UPDATE",
+  "DELETE",
+  "LOGIN",
+  "LOGOUT",
+  "ACCESS_DENIED",
+  "PERMISSION_CHANGE"
+]);
+
+export const auditEntityEnum = pgEnum("audit_entity", [
+  "USER",
+  "LAB",
+  "BUCKET", 
+  "STUDY",
+  "TASK",
+  "IDEA",
+  "DEADLINE",
+  "TEAM_MEMBER",
+  "LAB_MEMBER"
+]);
+
 export const attachableTypeEnum = pgEnum("attachable_type", [
   "PROJECT",
   "TASK",
@@ -514,6 +536,47 @@ export const teamMemberAssignments = pgTable("team_member_assignments", {
   assignmentType: varchar("assignment_type").notNull(), // lead, collaborator, reviewer
   assignedAt: timestamp("assigned_at").defaultNow(),
 });
+
+// PHASE 2: Security Audit Logging System
+export const securityAuditLogs = pgTable("security_audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Core audit information
+  action: auditActionEnum("action").notNull(),
+  entityType: auditEntityEnum("entity_type").notNull(),
+  entityId: varchar("entity_id"),
+  
+  // User and context
+  userId: varchar("user_id").references(() => users.id),
+  userEmail: varchar("user_email"), // Snapshot in case user is deleted
+  labId: varchar("lab_id").references(() => labs.id),
+  
+  // Authorization details
+  authorizationMethod: varchar("authorization_method"), // "ownership", "admin", "permission"
+  requiredPermission: varchar("required_permission"), // "canEditAllProjects", etc.
+  wasAuthorized: boolean("was_authorized").notNull(),
+  
+  // Request context
+  ipAddress: varchar("ip_address"),
+  userAgent: varchar("user_agent"),
+  endpoint: varchar("endpoint"), // API endpoint accessed
+  httpMethod: varchar("http_method"), // GET, POST, PUT, DELETE
+  
+  // Additional details
+  details: json("details"), // Flexible field for extra context
+  errorMessage: varchar("error_message"), // If action failed
+  
+  // Metadata
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  sessionId: varchar("session_id"), // For correlating related events
+}, (table) => ({
+  // Indexes for efficient querying
+  userTimeIndex: index("audit_user_time_idx").on(table.userId, table.timestamp),
+  entityTimeIndex: index("audit_entity_time_idx").on(table.entityType, table.entityId, table.timestamp),
+  labTimeIndex: index("audit_lab_time_idx").on(table.labId, table.timestamp),
+  actionTimeIndex: index("audit_action_time_idx").on(table.action, table.timestamp),
+  unauthorizedIndex: index("audit_unauthorized_idx").on(table.wasAuthorized, table.timestamp),
+}));
 
 // Project Members - for better project team management with lab-level security
 export const projectMembers = pgTable("project_members", {
@@ -1101,6 +1164,16 @@ export const insertAttachmentSchema = createInsertSchema(attachments).omit({
   id: true,
   uploadedAt: true,
 });
+
+// PHASE 2: Audit Logging Insert Schema
+export const insertSecurityAuditLogSchema = createInsertSchema(securityAuditLogs).omit({
+  id: true,
+  timestamp: true,
+});
+
+// Type exports for audit logging
+export type SecurityAuditLog = typeof securityAuditLogs.$inferSelect;
+export type InsertSecurityAuditLog = typeof securityAuditLogs.$inferInsert;
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
