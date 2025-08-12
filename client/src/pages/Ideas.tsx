@@ -89,6 +89,7 @@ const statusColors = {
 export default function Ideas() {
   const { selectedLab } = useLabContext();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
