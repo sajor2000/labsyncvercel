@@ -33,6 +33,13 @@ export function TopHeader({ onMenuClick }: TopHeaderProps) {
   // Search results query
   const { data: searchResults, isLoading: isSearching } = useQuery({
     queryKey: ["/api/search", debouncedQuery],
+    queryFn: async () => {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}&limit=15`);
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+      return response.json();
+    },
     enabled: debouncedQuery.trim().length > 0,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
