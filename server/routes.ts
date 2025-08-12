@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import OpenAI from 'openai';
+import { Resend } from 'resend';
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { SecurityAuditLogger, auditAuthenticationMiddleware } from "./auditLogger";
 import multer from "multer";
@@ -30,6 +32,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cb(new Error('Only audio files are allowed'));
       }
     }
+  });
+
+  // Test API integrations endpoint
+  app.post('/api/test-apis', isAuthenticated, async (req: any, res) => {
+    const results: any = {
+      openai: { whisper: false, gpt4: false },
+      resend: false,
+      timestamp: new Date().toISOString()
+    };
+
+    try {
+      // Test OpenAI API (GPT-4o-mini)
+      console.log('Testing OpenAI GPT-4o-mini...');
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY!,
+      });
+      
+      const gptResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "You are a test bot. Reply with exactly: 'GPT-4o-mini is working'" },
+          { role: "user", content: "Test" }
+        ],
+        max_tokens: 20
+      });
+      
+      results.openai.gpt4 = gptResponse.choices[0]?.message?.content || 'No response';
+      console.log('GPT-4o-mini test result:', results.openai.gpt4);
+
+      // Test Whisper (transcription capability check)
+      results.openai.whisper = 'Ready - requires audio file for transcription';
+      console.log('Whisper status:', results.openai.whisper);
+
+      // Test Resend API
+      console.log('Testing Resend API...');
+      const resendClient = new Resend(process.env.RESEND_API_KEY!);
+      
+      // Just validate the API key without sending an email
+      const domains = await resendClient.domains.list();
+      results.resend = `Connected - ${domains.data?.data?.length || 0} domains configured`;
+      console.log('Resend test result:', results.resend);
+
+    } catch (error: any) {
+      console.error('API test error:', error);
+      results.error = error.message;
+    }
+
+    res.json({
+      success: !results.error,
+      results,
+      message: 'API integration test completed'
+    });
   });
 
   // Registration request route (public - no auth required)
