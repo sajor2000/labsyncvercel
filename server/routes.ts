@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import multer from "multer";
-import { studyMilestones, insertStudyMilestoneSchema, users, labs, buckets, studies, tasks, teamMembers, standupMeetings, actionItems, sessions, deadlines } from "@shared/schema";
+import { studyMilestones, users, labs, buckets, studies, tasks, teamMembers, standupMeetings, sessions, deadlines } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
