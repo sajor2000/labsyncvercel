@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Filter, Search, Edit, Trash2, ChevronDown, ChevronRight, GripVertical, Table as TableIcon, Columns, Eye, Calendar, Clock, X, Settings, CalendarDays } from "lucide-react";
+import { Plus, Filter, Search, Edit, Trash2, ChevronDown, ChevronRight, GripVertical, Table as TableIcon, Columns, Eye, Calendar, Clock, X, Settings, CalendarDays, Paperclip } from "lucide-react";
+import { TaskDetailModal } from "@/components/TaskDetailModal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -93,7 +94,7 @@ const fundingColors = {
 };
 
 // Sortable Task Row Component for drag and drop
-function SortableTaskRow({ task, assignee, onEdit, onDelete, onPreview, bulkOperationMode, isSelected, onSelect }: {
+function SortableTaskRow({ task, assignee, onEdit, onDelete, onPreview, bulkOperationMode, isSelected, onSelect, attachmentCount }: {
   task: Task;
   assignee?: TeamMember;
   onEdit: () => void;
@@ -102,6 +103,7 @@ function SortableTaskRow({ task, assignee, onEdit, onDelete, onPreview, bulkOper
   bulkOperationMode?: boolean;
   isSelected?: boolean;
   onSelect?: (taskId: string, isSelected: boolean) => void;
+  attachmentCount?: number;
 }) {
   const {
     attributes,
@@ -148,7 +150,15 @@ function SortableTaskRow({ task, assignee, onEdit, onDelete, onPreview, bulkOper
       </TableCell>
       <TableCell className="font-medium pl-4">
         <div className="flex flex-col gap-1 cursor-pointer" onClick={onPreview}>
-          <span className="text-sm hover:text-primary transition-colors">{task.title}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm hover:text-primary transition-colors">{task.title}</span>
+            {attachmentCount && attachmentCount > 0 && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Paperclip className="h-3 w-3" />
+                <span>{attachmentCount}</span>
+              </div>
+            )}
+          </div>
           {task.description && (
             <span className="text-xs text-muted-foreground line-clamp-1">
               {task.description}
@@ -206,12 +216,13 @@ function SortableTaskRow({ task, assignee, onEdit, onDelete, onPreview, bulkOper
 }
 
 // Enhanced Task Card Component for Kanban View
-function TaskCard({ task, assignee, onEdit, onDelete, onPreview }: {
+function TaskCard({ task, assignee, onEdit, onDelete, onPreview, attachmentCount }: {
   task: Task;
   assignee?: TeamMember;
   onEdit: () => void;
   onDelete: () => void;
   onPreview: () => void;
+  attachmentCount?: number;
 }) {
   const {
     attributes,
@@ -300,11 +311,17 @@ function TaskCard({ task, assignee, onEdit, onDelete, onPreview }: {
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             {task.estimatedHours && (
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <Clock className="h-3 w-3" />
                 <span>{task.estimatedHours}h</span>
+              </div>
+            )}
+            {attachmentCount && attachmentCount > 0 && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <Paperclip className="h-3 w-3" />
+                <span>{attachmentCount}</span>
               </div>
             )}
           </div>
@@ -480,6 +497,7 @@ export default function TaskManagement() {
   const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'timeline'>('table');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showPreviewPanel, setShowPreviewPanel] = useState(false);
+  const [taskDetailModal, setTaskDetailModal] = useState<Task | null>(null);
   
   // Phase 4: Advanced Filtering
   const [dateRangeFilter, setDateRangeFilter] = useState<{start?: Date, end?: Date}>({});
@@ -547,6 +565,12 @@ export default function TaskManagement() {
     queryKey: ['/api/buckets', contextLab?.id],
     enabled: isAuthenticated && !!contextLab,
   }) as { data: Bucket[] };
+
+  // Fetch attachment counts for all tasks
+  const { data: taskAttachmentCounts = {} } = useQuery({
+    queryKey: ['/api/attachments/counts', 'TASK'],
+    enabled: isAuthenticated && tasks.length > 0,
+  }) as { data: Record<string, number> };
 
   // Quick task form
   const quickForm = useForm<QuickTaskFormValues>({
@@ -1605,9 +1629,9 @@ export default function TaskManagement() {
                           onEdit={() => console.log('Edit task:', task.id)}
                           onDelete={() => setTaskToDelete(task)}
                           onPreview={() => {
-                            setSelectedTask(task);
-                            setShowPreviewPanel(true);
+                            setTaskDetailModal(task);
                           }}
+                          attachmentCount={taskAttachmentCounts[task.id] || 0}
                         />
                       );
                     }) : [])
@@ -1939,6 +1963,18 @@ export default function TaskManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Task Detail Modal */}
+      <TaskDetailModal
+        task={taskDetailModal}
+        isOpen={!!taskDetailModal}
+        onClose={() => setTaskDetailModal(null)}
+        onEdit={() => {
+          // Handle edit functionality
+          setTaskDetailModal(null);
+        }}
+        teamMembers={teamMembers}
+      />
     </main>
   );
 }

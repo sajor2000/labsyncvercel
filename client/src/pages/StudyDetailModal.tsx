@@ -28,6 +28,8 @@ import {
   EyeOff
 } from "lucide-react";
 import { insertStudySchema, type Study, type InsertStudy, type Bucket } from "@shared/schema";
+import { FileUploader } from "@/components/FileUploader";
+import { AttachmentList } from "@/components/AttachmentList";
 
 // Status color mapping
 const statusColors: Record<string, string> = {
@@ -548,6 +550,35 @@ export default function StudyDetailModal({ study, isOpen, onClose, buckets }: St
                       <div className="bg-muted/50 rounded-lg p-3 min-h-[80px]">
                         {study.notes || "No notes"}
                       </div>
+                    )}
+                  </div>
+
+                  {/* File Attachments */}
+                  <div className="space-y-4">
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileText className="h-4 w-4" />
+                        File Attachments
+                      </div>
+                      {study && (
+                        <FileUploader
+                          entityType="PROJECT"
+                          entityId={study.id}
+                          onComplete={() => {
+                            // Refresh attachment list after upload
+                          }}
+                        />
+                      )}
+                    </div>
+                    {study && (
+                      <AttachmentList
+                        entityType="PROJECT"
+                        entityId={study.id}
+                        onAttachmentUpdate={() => {
+                          // Handle attachment updates if needed
+                        }}
+                      />
                     )}
                   </div>
                 </div>

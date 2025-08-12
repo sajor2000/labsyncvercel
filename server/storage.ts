@@ -231,9 +231,10 @@ export interface IStorage {
   getNotifications(userId: string): Promise<Notification[]>;
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationRead(notificationId: string): Promise<void>;
-  getAttachments(entityType: string, entityId: string): Promise<Attachment[]>;
+  getAttachmentsByEntity(entityType: string, entityId: string): Promise<Attachment[]>;
   createAttachment(attachment: InsertAttachment): Promise<Attachment>;
   deleteAttachment(attachmentId: string): Promise<void>;
+  getAttachmentCounts(entityType: "STUDY" | "TASK"): Promise<Record<string, number>>;
 
   // PHASE 2: Security Audit Logging Operations
   createSecurityAuditLog(log: InsertSecurityAuditLog): Promise<SecurityAuditLog>;
@@ -352,6 +353,11 @@ export interface IStorage {
   generateTaskFromTemplate(templateId: string, executionId: string, projectId?: string): Promise<TaskGenerationLog>;
   processRecurringTasks(): Promise<void>;
   checkTriggerConditions(triggerType: string, entityData: any): Promise<WorkflowTrigger[]>;
+  
+  // File attachment methods
+  createAttachment(attachment: InsertAttachment): Promise<Attachment>;
+  getAttachmentsByEntity(entityType: string, entityId: string): Promise<Attachment[]>;
+  deleteAttachment(attachmentId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1702,7 +1708,7 @@ export class DatabaseStorage implements IStorage {
   
   // PHASE 2: ATTACHMENT OPERATIONS
   
-  async getAttachments(entityType: string, entityId: string): Promise<Attachment[]> {
+  async getAttachmentsByEntity(entityType: string, entityId: string): Promise<Attachment[]> {
     return await db
       .select()
       .from(attachments)
@@ -1729,6 +1735,28 @@ export class DatabaseStorage implements IStorage {
       .update(attachments)
       .set({ isDeleted: true })
       .where(eq(attachments.id, attachmentId));
+  }
+
+  async getAttachmentCounts(entityType: "STUDY" | "TASK"): Promise<Record<string, number>> {
+    const results = await db
+      .select({
+        entityId: attachments.entityId,
+        count: sql<number>`count(*)::int`
+      })
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.entityType, entityType),
+          eq(attachments.isDeleted, false)
+        )
+      )
+      .groupBy(attachments.entityId);
+
+    const counts: Record<string, number> = {};
+    for (const result of results) {
+      counts[result.entityId] = result.count;
+    }
+    return counts;
   }
 
   // PHASE 3: PROJECT MANAGEMENT OPERATIONS
@@ -2477,6 +2505,33 @@ export class DatabaseStorage implements IStorage {
     }
 
     return true;
+  }
+
+  // File attachment methods
+  async createAttachment(attachment: InsertAttachment): Promise<Attachment> {
+    const [newAttachment] = await db.insert(attachments).values(attachment).returning();
+    return newAttachment;
+  }
+
+  async getAttachmentsByEntity(entityType: string, entityId: string): Promise<Attachment[]> {
+    return await db
+      .select()
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.entityType, entityType as any),
+          eq(attachments.entityId, entityId),
+          eq(attachments.isDeleted, false)
+        )
+      )
+      .orderBy(desc(attachments.uploadedAt));
+  }
+
+  async deleteAttachment(attachmentId: string): Promise<void> {
+    await db
+      .update(attachments)
+      .set({ isDeleted: true })
+      .where(eq(attachments.id, attachmentId));
   }
 }
 

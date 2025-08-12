@@ -143,6 +143,22 @@ export const attachableTypeEnum = pgEnum("attachable_type", [
   "ACTION_ITEM"
 ]);
 
+// File types for attachments
+export const fileTypeEnum = pgEnum("file_type", [
+  "PDF",
+  "DOCX", 
+  "DOC",
+  "XLSX",
+  "XLS",
+  "PPTX",
+  "PPT",
+  "TXT",
+  "CSV",
+  "JSON",
+  "IMAGE",
+  "OTHER"
+]);
+
 export const notificationTypeEnum = pgEnum("notification_type", [
   "TASK_ASSIGNED",
   "TASK_COMPLETED",

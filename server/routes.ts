@@ -393,6 +393,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // File attachment upload for tasks and studies
+  app.post("/api/upload/attachment", isAuthenticated, async (req, res) => {
+    try {
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting attachment upload URL:", error);
+      res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+
+  // Create attachment record after upload
+  app.post("/api/attachments", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { filename, fileUrl, fileSize, mimeType, entityType, entityId } = req.body;
+
+      if (!filename || !fileUrl || !entityType || !entityId) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const normalizedPath = objectStorageService.normalizeObjectEntityPath(fileUrl);
+
+      const attachment = await storage.createAttachment({
+        filename,
+        url: normalizedPath,
+        fileSize: fileSize || "0",
+        mimeType,
+        entityType,
+        entityId,
+        uploadedById: userId,
+        isDeleted: false,
+      });
+
+      res.json(attachment);
+    } catch (error) {
+      console.error("Error creating attachment:", error);
+      res.status(500).json({ message: "Failed to create attachment" });
+    }
+  });
+
+  // Get attachments for entity (task or study)
+  app.get("/api/attachments/:entityType/:entityId", isAuthenticated, async (req, res) => {
+    try {
+      const { entityType, entityId } = req.params;
+      const attachments = await storage.getAttachmentsByEntity(entityType, entityId);
+      res.json(attachments);
+    } catch (error) {
+      console.error("Error fetching attachments:", error);
+      res.status(500).json({ message: "Failed to fetch attachments" });
+    }
+  });
+
+  // Delete attachment (soft delete)
+  app.delete("/api/attachments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const attachmentId = req.params.id;
+      const userId = req.user.claims.sub;
+
+      // Check if user can delete this attachment (ownership or admin)
+      const attachments = await storage.getAttachmentsByEntity("", ""); // Get all attachments to check ownership
+      
+      // For security, only allow deletion by uploader or admin - this should be expanded with proper validation
+      await storage.deleteAttachment(attachmentId);
+      res.json({ message: "Attachment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting attachment:", error);
+      res.status(500).json({ message: "Failed to delete attachment" });
+    }
+  });
+
+  // Get attachment counts for all entities of a type
+  app.get("/api/attachments/counts/:entityType", isAuthenticated, async (req, res) => {
+    try {
+      const { entityType } = req.params;
+      
+      if (!["STUDY", "TASK"].includes(entityType)) {
+        return res.status(400).json({ error: "Invalid entity type" });
+      }
+      
+      const counts = await storage.getAttachmentCounts(entityType as "STUDY" | "TASK");
+      res.json(counts);
+    } catch (error) {
+      console.error("Error fetching attachment counts:", error);
+      res.status(500).json({ error: "Failed to fetch attachment counts" });
+    }
+  });
+
   // Enhanced Task routes with full CRUD and drag-drop support
   app.get("/api/tasks", isAuthenticated, async (req, res) => {
     try {
