@@ -145,6 +145,11 @@ export default function Labs() {
     setShowViewDialog(true);
   };
 
+  const navigateToLabBuckets = (labId: string) => {
+    // Navigate to buckets page filtered by this lab
+    window.location.href = `/buckets?lab=${labId}`;
+  };
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -369,7 +374,13 @@ export default function Labs() {
                       <Eye className="h-3 w-3 mr-1" />
                       View
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1" data-testid={`button-manage-lab-${lab.id}`}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => navigateToLabBuckets(lab.id)}
+                      data-testid={`button-manage-lab-${lab.id}`}
+                    >
                       <Folder className="h-3 w-3 mr-1" />
                       Buckets
                     </Button>
