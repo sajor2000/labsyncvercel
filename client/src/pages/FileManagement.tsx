@@ -89,7 +89,9 @@ export default function FileManagement() {
     };
 
     labFilteredStudies.forEach(study => {
-      const studyAttachments = attachments.filter(att => att.entityType === 'PROJECT' && att.entityId === study.id);
+      const studyAttachments = attachments.filter(att => 
+        (att.entityType === 'PROJECT' || att.entityType === 'STUDY') && att.entityId === study.id
+      );
       const studyTasks = labFilteredTasks.filter(task => task.studyId === study.id);
       
       const studyNode: FileSystemNode = {
@@ -159,7 +161,23 @@ export default function FileManagement() {
         }
       }
 
-      studiesFolder.children!.push(studyNode);
+      // Always show studies even if they don't have attachments
+      if (studyAttachments.length > 0 || studyTasks.some(task => 
+        attachments.some(att => att.entityType === 'TASK' && att.entityId === task.id)
+      )) {
+        studiesFolder.children!.push(studyNode);
+      } else {
+        // Show empty study folder to indicate it exists but has no files
+        studyNode.children!.push({
+          type: 'file',
+          name: '(No files attached)',
+          path: `studies/${study.id}/empty`,
+          entityType: 'PROJECT',
+          entityId: study.id,
+          entityData: study
+        });
+        studiesFolder.children!.push(studyNode);
+      }
     });
 
     root.push(studiesFolder);
@@ -175,17 +193,17 @@ export default function FileManagement() {
     labFilteredIdeas.forEach(idea => {
       const ideaAttachments = attachments.filter(att => att.entityType === 'IDEA' && att.entityId === idea.id);
       
-      if (ideaAttachments.length > 0) {
-        const ideaNode: FileSystemNode = {
-          type: 'folder',
-          name: idea.title,
-          path: `ideas/${idea.id}`,
-          entityType: 'IDEA',
-          entityId: idea.id,
-          entityData: idea,
-          children: []
-        };
+      const ideaNode: FileSystemNode = {
+        type: 'folder',
+        name: idea.title,
+        path: `ideas/${idea.id}`,
+        entityType: 'IDEA',
+        entityId: idea.id,
+        entityData: idea,
+        children: []
+      };
 
+      if (ideaAttachments.length > 0) {
         ideaAttachments.forEach(attachment => {
           ideaNode.children!.push({
             type: 'file',
@@ -197,9 +215,19 @@ export default function FileManagement() {
             entityData: idea
           });
         });
-
-        ideasFolder.children!.push(ideaNode);
+      } else {
+        // Show placeholder for ideas without attachments
+        ideaNode.children!.push({
+          type: 'file',
+          name: '(No files attached)',
+          path: `ideas/${idea.id}/empty`,
+          entityType: 'IDEA',
+          entityId: idea.id,
+          entityData: idea
+        });
       }
+
+      ideasFolder.children!.push(ideaNode);
     });
 
     root.push(ideasFolder);
@@ -215,17 +243,17 @@ export default function FileManagement() {
     labFilteredDeadlines.forEach(deadline => {
       const deadlineAttachments = attachments.filter(att => att.entityType === 'DEADLINE' && att.entityId === deadline.id);
       
-      if (deadlineAttachments.length > 0) {
-        const deadlineNode: FileSystemNode = {
-          type: 'folder',
-          name: deadline.title,
-          path: `deadlines/${deadline.id}`,
-          entityType: 'DEADLINE',
-          entityId: deadline.id,
-          entityData: deadline,
-          children: []
-        };
+      const deadlineNode: FileSystemNode = {
+        type: 'folder',
+        name: deadline.title,
+        path: `deadlines/${deadline.id}`,
+        entityType: 'DEADLINE',
+        entityId: deadline.id,
+        entityData: deadline,
+        children: []
+      };
 
+      if (deadlineAttachments.length > 0) {
         deadlineAttachments.forEach(attachment => {
           deadlineNode.children!.push({
             type: 'file',
@@ -237,9 +265,19 @@ export default function FileManagement() {
             entityData: deadline
           });
         });
-
-        deadlinesFolder.children!.push(deadlineNode);
+      } else {
+        // Show placeholder for deadlines without attachments
+        deadlineNode.children!.push({
+          type: 'file',
+          name: '(No files attached)',
+          path: `deadlines/${deadline.id}/empty`,
+          entityType: 'DEADLINE',
+          entityId: deadline.id,
+          entityData: deadline
+        });
       }
+
+      deadlinesFolder.children!.push(deadlineNode);
     });
 
     root.push(deadlinesFolder);
@@ -335,10 +373,22 @@ export default function FileManagement() {
       return (
         <div
           key={node.path}
-          className={`flex items-center gap-2 p-2 hover:bg-muted/50 cursor-pointer rounded ${indentClass} ml-8`}
-          onClick={() => setSelectedEntity(node.entityId || null)}
+          className={`flex items-center gap-2 p-2 rounded ${indentClass} ml-8 ${
+            node.name === '(No files attached)' 
+              ? 'text-muted-foreground cursor-default' 
+              : 'hover:bg-muted/50 cursor-pointer'
+          }`}
+          onClick={() => {
+            if (node.name !== '(No files attached)') {
+              setSelectedEntity(node.entityId || null);
+            }
+          }}
         >
-          <FileText className="h-4 w-4 text-gray-500" />
+          <FileText className={`h-4 w-4 ${
+            node.name === '(No files attached)' 
+              ? 'text-muted-foreground' 
+              : 'text-gray-500'
+          }`} />
           <span className="flex-1">{node.name}</span>
           {node.attachment && (
             <div className="flex items-center gap-2">
