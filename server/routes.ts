@@ -933,9 +933,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/standups/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteStandup(req.params.id);
-      res.json({ message: "Standup deleted successfully" });
+      const userId = (req.user as any)?.claims?.sub;
+      const standupId = req.params.id;
+      
+      // Check authorization
+      const authResult = await storage.canDeleteEntity(userId, 'standup', standupId);
+      if (!authResult.canDelete) {
+        await SecurityAuditLogger.logDeleteAttempt(req, 'STANDUP', standupId, false, undefined, authResult.reason);
+        return res.status(403).json({ 
+          error: "Forbidden", 
+          message: authResult.reason 
+        });
+      }
+      
+      await storage.deleteStandup(standupId);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'STANDUP', standupId, authResult.method);
+      res.json({ 
+        message: "Standup deleted successfully",
+        deletedBy: authResult.method 
+      });
     } catch (error) {
+      await SecurityAuditLogger.logDeleteAttempt(req, 'STANDUP', req.params.id, false, undefined, (error as Error).message);
       console.error("Error deleting standup:", error);
       res.status(500).json({ message: "Failed to delete standup" });
     }
@@ -1328,9 +1346,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/workflow-triggers/:id', isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteWorkflowTrigger(req.params.id);
-      res.json({ message: 'Workflow trigger deleted successfully' });
+      const userId = (req.user as any)?.claims?.sub;
+      const triggerId = req.params.id;
+      
+      // Check authorization
+      const authResult = await storage.canDeleteEntity(userId, 'workflow_trigger', triggerId);
+      if (!authResult.canDelete) {
+        await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TRIGGER', triggerId, false, undefined, authResult.reason);
+        return res.status(403).json({ 
+          error: "Forbidden", 
+          message: authResult.reason 
+        });
+      }
+      
+      await storage.deleteWorkflowTrigger(triggerId);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'WORKFLOW_TRIGGER', triggerId, authResult.method);
+      res.json({ 
+        message: 'Workflow trigger deleted successfully',
+        deletedBy: authResult.method 
+      });
     } catch (error) {
+      await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TRIGGER', req.params.id, false, undefined, (error as Error).message);
       console.error('Error deleting workflow trigger:', error);
       res.status(500).json({ message: 'Failed to delete workflow trigger' });
     }
@@ -1388,9 +1424,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/automation-rules/:id', isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteAutomationRule(req.params.id);
-      res.json({ message: 'Automation rule deleted successfully' });
+      const userId = (req.user as any)?.claims?.sub;
+      const ruleId = req.params.id;
+      
+      // Check authorization
+      const authResult = await storage.canDeleteEntity(userId, 'automation_rule', ruleId);
+      if (!authResult.canDelete) {
+        await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATION_RULE', ruleId, false, undefined, authResult.reason);
+        return res.status(403).json({ 
+          error: "Forbidden", 
+          message: authResult.reason 
+        });
+      }
+      
+      await storage.deleteAutomationRule(ruleId);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'AUTOMATION_RULE', ruleId, authResult.method);
+      res.json({ 
+        message: 'Automation rule deleted successfully',
+        deletedBy: authResult.method 
+      });
     } catch (error) {
+      await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATION_RULE', req.params.id, false, undefined, (error as Error).message);
       console.error('Error deleting automation rule:', error);
       res.status(500).json({ message: 'Failed to delete automation rule' });
     }
@@ -1497,9 +1551,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/automated-schedules/:id', isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteAutomatedSchedule(req.params.id);
-      res.json({ message: 'Automated schedule deleted successfully' });
+      const userId = (req.user as any)?.claims?.sub;
+      const scheduleId = req.params.id;
+      
+      // Check authorization
+      const authResult = await storage.canDeleteEntity(userId, 'automated_schedule', scheduleId);
+      if (!authResult.canDelete) {
+        await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATED_SCHEDULE', scheduleId, false, undefined, authResult.reason);
+        return res.status(403).json({ 
+          error: "Forbidden", 
+          message: authResult.reason 
+        });
+      }
+      
+      await storage.deleteAutomatedSchedule(scheduleId);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'AUTOMATED_SCHEDULE', scheduleId, authResult.method);
+      res.json({ 
+        message: 'Automated schedule deleted successfully',
+        deletedBy: authResult.method 
+      });
     } catch (error) {
+      await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATED_SCHEDULE', req.params.id, false, undefined, (error as Error).message);
       console.error('Error deleting automated schedule:', error);
       res.status(500).json({ message: 'Failed to delete automated schedule' });
     }
@@ -1557,9 +1629,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/workflow-templates/:id', isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteWorkflowTemplate(req.params.id);
-      res.json({ message: 'Workflow template deleted successfully' });
+      const userId = (req.user as any)?.claims?.sub;
+      const templateId = req.params.id;
+      
+      // Check authorization
+      const authResult = await storage.canDeleteEntity(userId, 'workflow_template', templateId);
+      if (!authResult.canDelete) {
+        await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TEMPLATE', templateId, false, undefined, authResult.reason);
+        return res.status(403).json({ 
+          error: "Forbidden", 
+          message: authResult.reason 
+        });
+      }
+      
+      await storage.deleteWorkflowTemplate(templateId);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'WORKFLOW_TEMPLATE', templateId, authResult.method);
+      res.json({ 
+        message: 'Workflow template deleted successfully',
+        deletedBy: authResult.method 
+      });
     } catch (error) {
+      await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TEMPLATE', req.params.id, false, undefined, (error as Error).message);
       console.error('Error deleting workflow template:', error);
       res.status(500).json({ message: 'Failed to delete workflow template' });
     }

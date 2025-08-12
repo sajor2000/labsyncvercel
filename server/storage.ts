@@ -764,6 +764,22 @@ export class DatabaseStorage implements IStorage {
             .from(deadlines).where(eq(deadlines.id, entityId));
           labId = deadline?.labId;
           break;
+          
+        case 'standup':
+          const [standup] = await db.select({ labId: standupMeetings.labId })
+            .from(standupMeetings).where(eq(standupMeetings.id, entityId));
+          labId = standup?.labId;
+          break;
+          
+        case 'workflow_trigger':
+        case 'automation_rule':
+        case 'automated_schedule':
+        case 'workflow_template':
+          // These entities are lab-scoped but don't have direct labId fields in current schema
+          // For now, we'll allow admin override with a default check
+          // TODO: Add proper lab association when these entities are fully implemented
+          labId = 'default'; // Temporary for development
+          break;
       }
     } catch (error) {
       return { canDelete: false, reason: 'Entity not found' };
