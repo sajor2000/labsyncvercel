@@ -64,7 +64,7 @@ export function FilePreview({ attachment, isOpen, onClose }: FilePreviewProps) {
           <div className="flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg min-h-[400px]">
             {!imageError ? (
               <img
-                src={`/api/attachments/${attachment.id}/download`}
+                src={attachment.url}
                 alt={attachment.filename}
                 className="max-w-full max-h-[600px] object-contain rounded-lg"
                 onError={() => setImageError(true)}

@@ -504,18 +504,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Found attachment: ${attachment.filename}, URL: ${attachment.url}`);
 
-      // Use the object storage service to serve the file
-      const { ObjectStorageService } = await import("./objectStorage");
-      const objectStorageService = new ObjectStorageService();
-      const objectFile = await objectStorageService.getObjectEntityFile(attachment.url);
-      
-      // Set appropriate headers for inline viewing (not forced download)
-      res.set({
-        'Content-Type': attachment.mimeType || 'application/octet-stream',
-        'Cache-Control': 'public, max-age=3600'
-      });
-      
-      objectStorageService.downloadObject(objectFile, res);
+      // If URL starts with /objects/, use object storage
+      if (attachment.url && attachment.url.startsWith('/objects/')) {
+        const { ObjectStorageService } = await import("./objectStorage");
+        const objectStorageService = new ObjectStorageService();
+        const objectFile = await objectStorageService.getObjectEntityFile(attachment.url);
+        
+        // Set appropriate headers for inline viewing (not forced download)
+        res.set({
+          'Content-Type': attachment.mimeType || 'application/octet-stream',
+          'Cache-Control': 'public, max-age=3600'
+        });
+        
+        objectStorageService.downloadObject(objectFile, res);
+      } else {
+        // Handle external URLs or legacy attachments
+        res.status(404).json({ message: "File not found in storage" });
+      }
     } catch (error) {
       console.error("Error downloading attachment:", error);
       res.status(500).json({ message: "Failed to download attachment" });
