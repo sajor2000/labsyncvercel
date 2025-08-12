@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { SecurityAuditLogger, auditAuthenticationMiddleware } from "./auditLogger";
 import multer from "multer";
-import { studyMilestones, users, labs, buckets, studies, tasks, teamMembers, standupMeetings, sessions, deadlines, labMembers, ideas } from "@shared/schema";
+import { studyMilestones, users, labs, buckets, studies, tasks, teamMembers, standupMeetings, sessions, deadlines, labMembers, ideas, attachments } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
@@ -489,23 +489,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const attachmentId = req.params.id;
       const userId = (req.user as any)?.claims?.sub;
       
-      // Get attachment details
-      const attachments = await storage.getAllAttachments(userId);
-      const attachment = attachments.find(a => a.id === attachmentId);
+      console.log(`Download request for attachment: ${attachmentId}`);
       
-      if (!attachment) {
+      // Get attachment details directly from database
+      const attachment = await db.select()
+        .from(attachments)
+        .where(eq(attachments.id, attachmentId))
+        .then(results => results[0]);
+      
+      if (!attachment || attachment.isDeleted) {
+        console.log(`Attachment not found or deleted: ${attachmentId}`);
         return res.status(404).json({ message: "Attachment not found" });
       }
+
+      console.log(`Found attachment: ${attachment.filename}, URL: ${attachment.url}`);
 
       // Use the object storage service to serve the file
       const { ObjectStorageService } = await import("./objectStorage");
       const objectStorageService = new ObjectStorageService();
       const objectFile = await objectStorageService.getObjectEntityFile(attachment.url);
       
-      // Set appropriate headers for download
+      // Set appropriate headers for inline viewing (not forced download)
       res.set({
-        'Content-Disposition': `attachment; filename="${attachment.filename}"`,
-        'Content-Type': attachment.mimeType || 'application/octet-stream'
+        'Content-Type': attachment.mimeType || 'application/octet-stream',
+        'Cache-Control': 'public, max-age=3600'
       });
       
       objectStorageService.downloadObject(objectFile, res);
