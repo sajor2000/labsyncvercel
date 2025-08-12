@@ -64,10 +64,10 @@ export default function TeamMembers() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
 
-  // Fetch lab members with enhanced multi-lab support
+  // Fetch ALL team members from ALL labs
   const { data: allMembers = [], isLoading: membersLoading } = useQuery<TeamMember[]>({
-    queryKey: ['/api/lab-members', selectedLab?.id],
-    enabled: isAuthenticated && !!selectedLab,
+    queryKey: ['/api/team-members'], // Changed to fetch all team members
+    enabled: isAuthenticated,
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error as Error)) {
         toast({
@@ -84,8 +84,8 @@ export default function TeamMembers() {
     },
   });
 
-  // Filter members by current lab context
-  const labMembers = selectedLab ? allMembers.filter(member => member.labId === selectedLab.id) : allMembers;
+  // Show all members - no filtering by lab
+  const labMembers = allMembers;
 
   // Filter members based on search and filters
   const filteredMembers = labMembers.filter(member => {
@@ -510,9 +510,14 @@ export default function TeamMembers() {
                     />
                     <div className="flex-1 min-w-0">
                       <CardTitle className="text-lg truncate">{member.name}</CardTitle>
-                      <Badge className="mt-1" variant="secondary">
-                        {roleOptions.find(r => r.value === member.role)?.label || member.role}
-                      </Badge>
+                      <div className="flex gap-2 mt-1">
+                        <Badge className="bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200">
+                          {member.labId === '069efa27-bbf8-4c27-8c1e-3800148e4985' ? 'RHEDAS' : 'RICCC'}
+                        </Badge>
+                        <Badge variant="secondary">
+                          {roleOptions.find(r => r.value === member.role)?.label || member.role}
+                        </Badge>
+                      </div>
                       {member.department && (
                         <p className="text-sm text-muted-foreground mt-1 truncate">
                           {member.department}
