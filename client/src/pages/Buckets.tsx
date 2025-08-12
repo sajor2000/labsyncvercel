@@ -7,7 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Folder, FlaskConical, Settings, Eye, Edit, Trash2, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Folder, FlaskConical, Settings, Eye, Edit, Trash2, Calendar as CalendarIcon, MoreVertical, FolderOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -775,7 +775,7 @@ export default function Buckets() {
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div 
                       className="w-4 h-4 rounded-full flex-shrink-0" 
-                      style={{ backgroundColor: bucket.color }}
+                      style={{ backgroundColor: bucket.color || '#3b82f6' }}
                     />
                     <div className="min-w-0 flex-1">
                       <CardTitle className="text-base font-medium truncate">{bucket.name}</CardTitle>
@@ -789,11 +789,11 @@ export default function Buckets() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openEditDialog(bucket)} data-testid={`menu-edit-bucket-${bucket.id}`}>
+                      <DropdownMenuItem onClick={() => openEditBucketDialog(bucket)} data-testid={`menu-edit-bucket-${bucket.id}`}>
                         <Edit className="h-3 w-3 mr-2" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigateToStudies(bucket.id)} data-testid={`menu-view-studies-${bucket.id}`}>
+                      <DropdownMenuItem onClick={() => viewBucketStudies(bucket.id)} data-testid={`menu-view-studies-${bucket.id}`}>
                         <FolderOpen className="h-3 w-3 mr-2" />
                         View Studies
                       </DropdownMenuItem>
@@ -810,7 +810,7 @@ export default function Buckets() {
                 <div className="space-y-4">
                   {/* Study Count */}
                   <div className="text-sm text-muted-foreground">
-                    <span className="font-medium">Studies:</span> {bucket.studyCount || 0}
+                    <span className="font-medium">Studies:</span> {allStudies.filter(s => s.bucketId === bucket.id).length}
                   </div>
 
                   {/* Action Buttons */}

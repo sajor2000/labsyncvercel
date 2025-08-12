@@ -945,7 +945,7 @@ export class DatabaseStorage implements IStorage {
       ...studies.slice(0, 5).map(s => ({
         type: 'study',
         action: 'created',
-        item: s.title,
+        item: s.name,
         timestamp: s.createdAt,
         id: s.id
       })),
@@ -966,7 +966,11 @@ export class DatabaseStorage implements IStorage {
     ];
     
     return activities
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort((a, b) => {
+        const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return bTime - aTime;
+      })
       .slice(0, 10);
   }
 
