@@ -160,14 +160,27 @@ export default function Buckets() {
       }
       return apiRequest(`/api/buckets/${selectedBucketForEdit.id}`, 'PUT', data);
     },
-    onSuccess: () => {
+    onSuccess: (updatedBucket) => {
+      // Force immediate cache update and re-render
+      queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
       queryClient.invalidateQueries({ queryKey: ['/api/buckets', currentLab?.id] });
+      
+      // Update the cached data immediately to show color change
+      queryClient.setQueryData(['/api/buckets', currentLab?.id], (oldData: Bucket[] | undefined) => {
+        if (!oldData) return oldData;
+        return oldData.map(bucket => 
+          bucket.id === selectedBucketForEdit?.id 
+            ? { ...bucket, ...updatedBucket }
+            : bucket
+        );
+      });
+      
       setIsEditOpen(false);
       setSelectedBucketForEdit(null);
       form.reset();
       toast({
         title: "Success",
-        description: "Bucket updated successfully",
+        description: "Bucket color updated successfully",
       });
     },
     onError: (error) => {
@@ -789,7 +802,8 @@ export default function Buckets() {
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div 
                       className="w-4 h-4 rounded-full flex-shrink-0" 
-                      style={{ backgroundColor: bucket.color || '#3b82f6' }}
+                      style={{ backgroundColor: bucket.color || '#4C9A92' }}
+                      key={`bucket-color-${bucket.id}-${bucket.color}`}
                     />
                     <div className="min-w-0 flex-1">
                       <CardTitle className="text-base font-medium truncate">{bucket.name}</CardTitle>
