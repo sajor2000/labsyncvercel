@@ -33,6 +33,7 @@ import {
   MoreVertical
 } from "lucide-react";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
+import { FilePreview } from "@/components/FilePreview";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Study, Task, Idea, Deadline, Attachment } from "@shared/schema";
 
@@ -53,6 +54,7 @@ export default function FileManagement() {
   const [fileTypeFilter, setFileTypeFilter] = useState("ALL");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['studies', 'ideas', 'deadlines']));
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
+  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [editingAttachment, setEditingAttachment] = useState<Attachment | null>(null);
   const [newFilename, setNewFilename] = useState("");
   const { toast } = useToast();
@@ -453,10 +455,29 @@ export default function FileManagement() {
               <Badge variant="outline" className="text-xs">
                 {(parseInt(node.attachment.fileSize) / 1024).toFixed(1)} KB
               </Badge>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" data-testid="button-view-file">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0" 
+                data-testid="button-view-file"
+                onClick={() => setPreviewAttachment(node.attachment!)}
+              >
                 <Eye className="h-3 w-3" />
               </Button>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" data-testid="button-download-file">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0" 
+                data-testid="button-download-file"
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = `/api/attachments/${node.attachment!.id}/download`;
+                  link.download = node.attachment!.filename;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+              >
                 <Download className="h-3 w-3" />
               </Button>
               <DropdownMenu>
@@ -660,6 +681,13 @@ export default function FileManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* File Preview Modal */}
+      <FilePreview 
+        attachment={previewAttachment}
+        isOpen={!!previewAttachment}
+        onClose={() => setPreviewAttachment(null)}
+      />
     </main>
   );
 }

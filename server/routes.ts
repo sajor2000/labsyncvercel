@@ -483,6 +483,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Download attachment
+  app.get("/api/attachments/:id/download", isAuthenticated, async (req, res) => {
+    try {
+      const attachmentId = req.params.id;
+      const userId = (req.user as any)?.claims?.sub;
+      
+      // Get attachment details
+      const attachments = await storage.getAllAttachments(userId);
+      const attachment = attachments.find(a => a.id === attachmentId);
+      
+      if (!attachment) {
+        return res.status(404).json({ message: "Attachment not found" });
+      }
+
+      // Use the object storage service to serve the file
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getObjectEntityFile(attachment.url);
+      
+      // Set appropriate headers for download
+      res.set({
+        'Content-Disposition': `attachment; filename="${attachment.filename}"`,
+        'Content-Type': attachment.mimeType || 'application/octet-stream'
+      });
+      
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error downloading attachment:", error);
+      res.status(500).json({ message: "Failed to download attachment" });
+    }
+  });
+
   // Delete attachment (soft delete)
   app.delete("/api/attachments/:id", isAuthenticated, async (req: any, res) => {
     try {
@@ -490,7 +522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = (req.user as any)?.claims?.sub;
 
       // Check if user can delete this attachment (ownership or admin)
-      const attachments = await storage.getAttachmentsByEntity("", ""); // Get all attachments to check ownership
+      const attachments = await storage.getAllAttachments(userId);
       
       // For security, only allow deletion by uploader or admin - this should be expanded with proper validation
       await storage.deleteAttachment(attachmentId);
