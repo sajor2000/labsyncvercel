@@ -234,9 +234,18 @@ function SortableStudyCard({ study, teamMembers }: { study: Study; teamMembers: 
 }
 
 // Study Form Schema
-const studyFormSchema = insertStudySchema.extend({
+const studyFormSchema = z.object({
+  name: z.string().min(1, "Study name is required"),
+  studyType: z.string().nullable().optional(),
+  status: z.enum(["PLANNING", "IRB_SUBMISSION", "IRB_APPROVED", "DATA_COLLECTION", "ANALYSIS", "MANUSCRIPT", "UNDER_REVIEW", "PUBLISHED", "ON_HOLD", "CANCELLED"]).default("PLANNING"),
+  funding: z.enum(["NIH", "NSF", "INDUSTRY_SPONSORED", "INTERNAL", "FOUNDATION", "OTHER"]).default("OTHER"),
+  fundingSource: z.string().nullable().optional(),
+  externalCollaborators: z.string().nullable().optional(),
   assignees: z.array(z.string()).optional(),
-}).omit({ id: true, createdAt: true, updatedAt: true, createdBy: true, position: true });
+  bucketId: z.string().min(1, "Bucket is required"),
+  labId: z.string().min(1, "Lab is required"),
+  createdBy: z.string().optional(),
+});
 
 export default function StudyManagement() {
   const { toast } = useToast();
@@ -308,13 +317,10 @@ export default function StudyManagement() {
       const firstBucket = buckets[0];
       if (!firstBucket) throw new Error("No buckets available");
       
-      return apiRequest('/api/studies', {
-        method: 'POST',
-        body: { 
-          ...data, 
-          labId: selectedLab.id,
-          bucketId: data.bucketId || firstBucket.id
-        },
+      return apiRequest('POST', '/api/studies', { 
+        ...data, 
+        labId: selectedLab.id,
+        bucketId: data.bucketId || firstBucket.id
       });
     },
     onSuccess: () => {
@@ -344,10 +350,7 @@ export default function StudyManagement() {
   const updateStudyMutation = useMutation({
     mutationFn: async (data: z.infer<typeof studyFormSchema>) => {
       if (!editingStudy?.id) throw new Error("No study selected");
-      return apiRequest(`/api/studies/${editingStudy.id}`, {
-        method: 'PUT',
-        body: data,
-      });
+      return apiRequest('PUT', `/api/studies/${editingStudy.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/studies"] });
@@ -667,7 +670,7 @@ export default function StudyManagement() {
                   <FormItem>
                     <FormLabel>Study Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter study name" {...field} value={field.value || ""} data-testid="input-study-name" />
+                      <Input placeholder="Enter study name" {...field} data-testid="input-study-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -694,7 +697,7 @@ export default function StudyManagement() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value || ""} data-testid="select-study-status">
+                    <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-study-status">
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select status" />
@@ -724,7 +727,7 @@ export default function StudyManagement() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Funding</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value || ""} data-testid="select-study-funding">
+                    <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-study-funding">
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select funding type" />

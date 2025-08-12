@@ -50,7 +50,7 @@ export class AdvancedPermissionManager {
           action: 'PERMISSION_CHANGE',
           entityType: entityType as any,
           entityId,
-          authorizationMethod: 'lab_role',
+          authorizationMethod: 'permission',
           wasAuthorized: true,
           details: { permissionCheck: action, method: 'lab_role' }
         });
@@ -65,7 +65,7 @@ export class AdvancedPermissionManager {
             action: 'PERMISSION_CHANGE',
             entityType: entityType as any,
             entityId,
-            authorizationMethod: 'resource_permission',
+            authorizationMethod: 'permission',
             wasAuthorized: true,
             details: { permissionCheck: action, method: 'resource_permission' }
           });
@@ -80,7 +80,7 @@ export class AdvancedPermissionManager {
           action: 'PERMISSION_CHANGE',
           entityType: entityType as any,
           entityId,
-          authorizationMethod: 'cross_lab_access',
+          authorizationMethod: 'admin',
           wasAuthorized: true,
           details: { permissionCheck: action, method: 'cross_lab_access' }
         });
@@ -110,8 +110,8 @@ export class AdvancedPermissionManager {
         entityType: context.entityType as any,
         entityId: context.entityId,
         wasAuthorized: false,
-        errorMessage: error.message,
-        details: { permissionCheck: context.action, error: error.message }
+        errorMessage: String(error),
+        details: { permissionCheck: context.action, error: String(error) }
       });
       
       return {

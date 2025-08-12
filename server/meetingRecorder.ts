@@ -230,11 +230,11 @@ Return both HTML summary and JSON structure.`;
       const processed = await this.processTranscript(params.transcript, meetingDate);
       
       const meetingId = await this.saveMeetingToDatabase(
+        params.labId || "",
         params.transcript,
         processed.processedNotes,
-        JSON.stringify(processed.extractedTasks),
-        params.labId,
-        params.userId
+        params.attendeeNames || [],
+        processed.extractedTasks || []
       );
 
       // Get the created meeting
