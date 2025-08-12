@@ -79,6 +79,22 @@ export default function FileManagement() {
   // Build file system structure
   const buildFileSystem = (): FileSystemNode[] => {
     const root: FileSystemNode[] = [];
+    
+    // Debug logging
+    console.log('Building file system with:', {
+      studies: labFilteredStudies.length,
+      ideas: labFilteredIdeas.length,
+      deadlines: labFilteredDeadlines.length,
+      attachments: attachments.length
+    });
+    if (attachments.length > 0) {
+      console.log('Sample attachment:', attachments[0]);
+      console.log('All attachments:', attachments.map(a => ({
+        filename: a.filename,
+        entityType: a.entityType,
+        entityId: a.entityId
+      })));
+    }
 
     // Studies folder
     const studiesFolder: FileSystemNode = {
@@ -161,12 +177,18 @@ export default function FileManagement() {
         }
       }
 
-      // Always show studies even if they don't have attachments
-      if (studyAttachments.length > 0 || studyTasks.some(task => 
-        attachments.some(att => att.entityType === 'TASK' && att.entityId === task.id)
+      // Debug logging for each study
+      console.log(`Study ${study.name}:`, {
+        studyId: study.id,
+        attachmentCount: studyAttachments.length,
+        taskCount: studyTasks.length,
+        attachments: studyAttachments.map(a => ({ filename: a.filename, entityType: a.entityType }))
+      });
+
+      // Show study folder (always show studies, add placeholder if no files)
+      if (studyAttachments.length === 0 && studyTasks.every(task => 
+        !attachments.some(att => att.entityType === 'TASK' && att.entityId === task.id)
       )) {
-        studiesFolder.children!.push(studyNode);
-      } else {
         // Show empty study folder to indicate it exists but has no files
         studyNode.children!.push({
           type: 'file',
@@ -176,8 +198,9 @@ export default function FileManagement() {
           entityId: study.id,
           entityData: study
         });
-        studiesFolder.children!.push(studyNode);
       }
+      
+      studiesFolder.children!.push(studyNode);
     });
 
     root.push(studiesFolder);
@@ -482,6 +505,9 @@ export default function FileManagement() {
                       {searchTerm || fileTypeFilter !== "ALL" 
                         ? "No files match your filters" 
                         : "No files found in this lab"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Total attachments: {attachments.length}, Studies: {labFilteredStudies.length}, Ideas: {labFilteredIdeas.length}, Deadlines: {labFilteredDeadlines.length}
                     </p>
                   </div>
                 ) : (

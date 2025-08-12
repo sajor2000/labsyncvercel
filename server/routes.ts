@@ -438,6 +438,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all attachments
+  app.get("/api/attachments", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.claims?.sub;
+      const attachments = await storage.getAllAttachments(userId);
+      res.json(attachments);
+    } catch (error) {
+      console.error("Error fetching all attachments:", error);
+      res.status(500).json({ message: "Failed to fetch attachments" });
+    }
+  });
+
   // Get attachments for entity (task or study)
   app.get("/api/attachments/:entityType/:entityId", isAuthenticated, async (req, res) => {
     try {

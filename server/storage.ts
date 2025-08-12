@@ -960,20 +960,7 @@ export class DatabaseStorage implements IStorage {
   async getLabMembers(labId: string): Promise<any[]> {
     try {
       return await db
-        .select({
-          id: labMembers.id,
-          userId: labMembers.userId,
-          labId: labMembers.labId,
-          role: labMembers.role, // Use role instead of lab_role
-          isAdmin: labMembers.isAdmin,
-          canEditAllProjects: labMembers.canEditAllProjects,
-          canManageMembers: labMembers.canManageMembers,
-          canApproveIdeas: labMembers.canApproveIdeas,
-          joinedAt: labMembers.joinedAt,
-          isActive: labMembers.isActive,
-          createdAt: labMembers.createdAt,
-          updatedAt: labMembers.updatedAt
-        })
+        .select()
         .from(labMembers)
         .where(eq(labMembers.labId, labId));
     } catch (error) {
@@ -1737,6 +1724,14 @@ export class DatabaseStorage implements IStorage {
   
   // PHASE 2: ATTACHMENT OPERATIONS
   
+  async getAllAttachments(userId?: string): Promise<Attachment[]> {
+    return await db
+      .select()
+      .from(attachments)
+      .where(eq(attachments.isDeleted, false))
+      .orderBy(desc(attachments.uploadedAt));
+  }
+
   async getAttachmentsByEntity(entityType: string, entityId: string): Promise<Attachment[]> {
     return await db
       .select()
