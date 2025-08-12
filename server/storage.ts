@@ -113,6 +113,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserAvatar(id: string, avatarUrl: string): Promise<User>;
+  findTeamMemberByEmailOrName(email: string, firstName?: string, lastName?: string): Promise<User | undefined>;
   
   // Lab operations
   getLabs(): Promise<Lab[]>;
@@ -380,6 +381,41 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+  
+  async findTeamMemberByEmailOrName(email: string, firstName?: string, lastName?: string): Promise<User | undefined> {
+    // First try exact email match
+    if (email) {
+      const [userByEmail] = await db
+        .select()
+        .from(users)
+        .where(and(
+          eq(users.email, email),
+          eq(users.isActive, true)
+        ))
+        .limit(1);
+      
+      if (userByEmail) return userByEmail;
+    }
+    
+    // If no email match and we have name info, try name matching
+    if (firstName && lastName) {
+      // Try to match by first and last name (case-insensitive)
+      const [userByName] = await db
+        .select()
+        .from(users)
+        .where(and(
+          sql`LOWER(${users.firstName}) = LOWER(${firstName})`,
+          sql`LOWER(${users.lastName}) = LOWER(${lastName})`,
+          eq(users.isActive, true)
+        ))
+        .limit(1);
+      
+      if (userByName) return userByName;
+    }
+    
+    // No match found
+    return undefined;
   }
 
   async updateUserAvatar(id: string, avatarUrl: string): Promise<User> {

@@ -57,12 +57,30 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
+  // Try to match existing user by multiple criteria
+  const email = claims["email"];
+  const firstName = claims["first_name"];
+  const lastName = claims["last_name"];
+  
+  // First, check if user exists in our team members database
+  const existingUser = await storage.findTeamMemberByEmailOrName(
+    email,
+    firstName,
+    lastName
+  );
+  
+  if (!existingUser) {
+    // User not in our team members list - deny access
+    throw new Error("Access denied: You must be a registered team member to access this system. Please contact your lab administrator.");
+  }
+  
+  // User exists in our system - update their auth info
   await storage.upsertUser({
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
+    id: existingUser.id, // Use existing user ID, not Replit's sub
+    email: email || existingUser.email,
+    firstName: firstName || existingUser.firstName,
+    lastName: lastName || existingUser.lastName,
+    profileImageUrl: claims["profile_image_url"] || existingUser.profileImageUrl,
   });
 }
 
@@ -78,10 +96,16 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+    try {
+      const user = {};
+      updateUserSession(user, tokens);
+      await upsertUser(tokens.claims());
+      verified(null, user);
+    } catch (error) {
+      // User not authorized - show friendly error
+      console.error("Authentication failed:", error);
+      verified(new Error("Access denied: You must be a registered team member. Please contact your lab administrator."), false);
+    }
   };
 
   for (const domain of process.env
