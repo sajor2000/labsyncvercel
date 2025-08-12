@@ -58,9 +58,11 @@ async function upsertUser(
   claims: any,
 ) {
   // Try to match existing user by multiple criteria
-  const email = claims["email"];
-  const firstName = claims["first_name"];
-  const lastName = claims["last_name"];
+  const email = claims["email"] || "";
+  const firstName = claims["first_name"] || "";
+  const lastName = claims["last_name"] || "";
+  
+  console.log(`Authentication attempt - Email: ${email}, Name: ${firstName} ${lastName}`);
   
   // First, check if user exists in our team members database
   const existingUser = await storage.findTeamMemberByEmailOrName(
@@ -71,15 +73,18 @@ async function upsertUser(
   
   if (!existingUser) {
     // User not in our team members list - deny access
-    throw new Error("Access denied: You must be a registered team member to access this system. Please contact your lab administrator.");
+    console.error(`Access denied for: ${email} (${firstName} ${lastName}) - Not in registered team members list`);
+    throw new Error("Access denied: You must be a registered team member to access this system. Please contact your lab administrator (J.C. Rojas).");
   }
   
-  // User exists in our system - update their auth info
+  console.log(`Access granted for team member: ${existingUser.firstName} ${existingUser.lastName} (ID: ${existingUser.id})`);
+  
+  // User exists in our system - update their auth info but preserve their existing ID
   await storage.upsertUser({
-    id: existingUser.id, // Use existing user ID, not Replit's sub
-    email: email || existingUser.email,
-    firstName: firstName || existingUser.firstName,
-    lastName: lastName || existingUser.lastName,
+    id: existingUser.id, // Use existing user ID from our database
+    email: existingUser.email, // Keep their registered email
+    firstName: existingUser.firstName, // Keep their registered name
+    lastName: existingUser.lastName,
     profileImageUrl: claims["profile_image_url"] || existingUser.profileImageUrl,
   });
 }

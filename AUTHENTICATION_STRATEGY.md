@@ -31,16 +31,22 @@ When a user logs in via Replit Auth:
 ```
 
 #### 3. **Smart Matching Algorithm**
-The system uses a two-tier matching approach:
+The system uses a two-tier matching approach (ALL CASE-INSENSITIVE):
 
 **Tier 1: Email Match**
-- Exact match with registered email
+- Case-insensitive exact match with registered email
 - Works for both @rush.edu and personal emails
+- Example: `Kevin_Buell@rush.edu` matches `kevin_buell@RUSH.EDU`
 
 **Tier 2: Name Match** (if email doesn't match)
 - Case-insensitive match on First + Last name
+- Handles variations like "J.C." vs "JC" vs "j.c."
+- Trims extra spaces automatically
 - Useful when user logs in with different email than registered
-- Example: Registered as `jc.rojas@rush.edu`, logs in with `juancroj@gmail.com`
+- Examples:
+  - Registered as `juan_rojas@rush.edu`, logs in with `juancroj@gmail.com` → Matched by name
+  - Name in Replit: "mia mcclintic" → Matches "Mia McClintic" in database
+  - Name variations: "J.C. Rojas" matches "JC Rojas" or "j.c. rojas"
 
 ### Security Features
 
@@ -91,11 +97,14 @@ To grant access to new team members:
 
 ### Benefits of This Approach
 
-✅ **Flexible**: Works with any email provider  
-✅ **Secure**: Only registered team members get access  
-✅ **User-Friendly**: No need to remember specific email  
+✅ **Flexible**: Works with any email provider (Rush or personal)  
+✅ **Case-Insensitive**: Handles name/email variations automatically  
+✅ **Secure**: Only registered 12 team members get access  
+✅ **User-Friendly**: No need to remember exact email or capitalization  
+✅ **Dual Email Support**: Team members can use either Rush or personal emails  
+✅ **Smart Matching**: Finds users even with name variations (J.C. vs JC)  
 ✅ **Maintainable**: Simple admin interface for managing access  
-✅ **Audit Trail**: All access attempts are logged  
+✅ **Audit Trail**: All access attempts are logged with details  
 
 ### Alternative Approaches Considered
 

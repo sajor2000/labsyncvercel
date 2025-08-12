@@ -384,13 +384,13 @@ export class DatabaseStorage implements IStorage {
   }
   
   async findTeamMemberByEmailOrName(email: string, firstName?: string, lastName?: string): Promise<User | undefined> {
-    // First try exact email match
+    // First try exact email match (case-insensitive)
     if (email) {
       const [userByEmail] = await db
         .select()
         .from(users)
         .where(and(
-          eq(users.email, email),
+          sql`LOWER(${users.email}) = LOWER(${email})`,
           eq(users.isActive, true)
         ))
         .limit(1);
@@ -398,20 +398,40 @@ export class DatabaseStorage implements IStorage {
       if (userByEmail) return userByEmail;
     }
     
-    // If no email match and we have name info, try name matching
+    // If no email match and we have name info, try name matching (case-insensitive)
     if (firstName && lastName) {
-      // Try to match by first and last name (case-insensitive)
+      // Clean and normalize names - remove extra spaces and make case-insensitive
+      const cleanFirst = firstName.trim();
+      const cleanLast = lastName.trim();
+      
+      // Try exact name match first (case-insensitive)
       const [userByName] = await db
         .select()
         .from(users)
         .where(and(
-          sql`LOWER(${users.firstName}) = LOWER(${firstName})`,
-          sql`LOWER(${users.lastName}) = LOWER(${lastName})`,
+          sql`LOWER(TRIM(${users.firstName})) = LOWER(${cleanFirst})`,
+          sql`LOWER(TRIM(${users.lastName})) = LOWER(${cleanLast})`,
           eq(users.isActive, true)
         ))
         .limit(1);
       
       if (userByName) return userByName;
+      
+      // Also try matching with periods removed (for names like "J.C." vs "JC")
+      const firstNoPeriods = cleanFirst.replace(/\./g, '');
+      const lastNoPeriods = cleanLast.replace(/\./g, '');
+      
+      const [userByNameNoPeriods] = await db
+        .select()
+        .from(users)
+        .where(and(
+          sql`LOWER(REPLACE(${users.firstName}, '.', '')) = LOWER(${firstNoPeriods})`,
+          sql`LOWER(REPLACE(${users.lastName}, '.', '')) = LOWER(${lastNoPeriods})`,
+          eq(users.isActive, true)
+        ))
+        .limit(1);
+      
+      if (userByNameNoPeriods) return userByNameNoPeriods;
     }
     
     // No match found
