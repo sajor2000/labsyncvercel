@@ -28,6 +28,9 @@ interface CalendarEvent {
     assignees?: string[];
     irbStatus?: string;
     deliverables?: string[];
+    meetingType?: string;
+    hasRecording?: boolean;
+    hasTranscript?: boolean;
   };
 }
 

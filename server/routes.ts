@@ -35,7 +35,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -46,7 +46,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/auth/profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const user = await storage.updateUserProfile(userId, req.body);
       res.json(user);
     } catch (error) {
@@ -57,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/auth/settings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const settings = await storage.updateUserSettings(userId, req.body);
       res.json(settings);
     } catch (error) {
@@ -68,7 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/auth/export-data', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const userData = await storage.exportUserData(userId);
       res.json(userData);
     } catch (error) {
@@ -79,7 +79,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/auth/delete-account', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
       await storage.deleteUser(userId);
       res.json({ message: "Account deleted successfully" });
     } catch (error) {
@@ -183,7 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const bucketData = {
         ...req.body,
-        createdBy: req.user.claims.sub // Set ownership
+        createdBy: (req.user as any)?.claims?.sub // Set ownership
       };
       const bucket = await storage.createBucket(bucketData);
       res.json(bucket);
@@ -195,7 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/buckets/:id", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const bucketId = req.params.id;
       
       // Check authorization 
@@ -277,7 +277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/studies/:id", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const studyId = req.params.id;
       const cascade = req.query.cascade === 'true';
       
@@ -363,7 +363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/auth/avatar", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const { avatarUrl } = req.body;
       
       const { ObjectStorageService } = await import("./objectStorage");
@@ -409,7 +409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create attachment record after upload
   app.post("/api/attachments", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const { filename, fileUrl, fileSize, mimeType, entityType, entityId } = req.body;
 
       if (!filename || !fileUrl || !entityType || !entityId) {
@@ -454,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/attachments/:id", isAuthenticated, async (req: any, res) => {
     try {
       const attachmentId = req.params.id;
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
 
       // Check if user can delete this attachment (ownership or admin)
       const attachments = await storage.getAttachmentsByEntity("", ""); // Get all attachments to check ownership
@@ -555,7 +555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/tasks/:id", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const taskId = req.params.id;
       
       // Check authorization
@@ -813,7 +813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/ideas/:id", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const ideaId = req.params.id;
       
       // Check authorization
@@ -873,7 +873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/deadlines/:id", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const deadlineId = req.params.id;
       
       // Check authorization

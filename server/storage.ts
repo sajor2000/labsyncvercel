@@ -1737,7 +1737,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(attachments.id, attachmentId));
   }
 
-  async getAttachmentCounts(entityType: "STUDY" | "TASK" | "IDEA" | "DEADLINE"): Promise<Record<string, number>> {
+  async getAttachmentCounts(entityType: "PROJECT" | "TASK" | "IDEA" | "DEADLINE"): Promise<Record<string, number>> {
     const results = await db
       .select({
         entityId: attachments.entityId,
@@ -1746,7 +1746,7 @@ export class DatabaseStorage implements IStorage {
       .from(attachments)
       .where(
         and(
-          eq(attachments.entityType, entityType),
+          eq(attachments.entityType, entityType as any),
           eq(attachments.isDeleted, false)
         )
       )
@@ -2507,32 +2507,7 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
-  // File attachment methods
-  async createAttachment(attachment: InsertAttachment): Promise<Attachment> {
-    const [newAttachment] = await db.insert(attachments).values(attachment).returning();
-    return newAttachment;
-  }
 
-  async getAttachmentsByEntity(entityType: string, entityId: string): Promise<Attachment[]> {
-    return await db
-      .select()
-      .from(attachments)
-      .where(
-        and(
-          eq(attachments.entityType, entityType as any),
-          eq(attachments.entityId, entityId),
-          eq(attachments.isDeleted, false)
-        )
-      )
-      .orderBy(desc(attachments.uploadedAt));
-  }
-
-  async deleteAttachment(attachmentId: string): Promise<void> {
-    await db
-      .update(attachments)
-      .set({ isDeleted: true })
-      .where(eq(attachments.id, attachmentId));
-  }
 }
 
 export const storage = new DatabaseStorage();

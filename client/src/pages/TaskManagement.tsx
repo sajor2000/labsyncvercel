@@ -1361,13 +1361,11 @@ export default function TaskManagement() {
                   <FileUploader
                     entityType="TASK"
                     entityId=""
-                    maxFiles={10}
+                    maxNumberOfFiles={10}
                     maxFileSize={50 * 1024 * 1024}
-                    acceptedFileTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.png', '.jpg', '.jpeg']}
-                    onFilesUploaded={(files) => {
-                      setUploadedFiles(prev => [...prev, ...files]);
+                    onComplete={(attachments: any[]) => {
+                      setUploadedFiles(prev => [...prev, ...attachments.map(a => a.url || a.fileUrl)]);
                     }}
-                    disabled={false}
                   />
                   
                   {uploadedFiles.length > 0 && (
@@ -1378,22 +1376,9 @@ export default function TaskManagement() {
                       <AttachmentList
                         entityType="TASK"
                         entityId=""
-                        attachments={uploadedFiles.map((url, index) => ({
-                          id: `temp-${index}`,
-                          entityType: 'TASK' as const,
-                          entityId: '',
-                          fileName: extractFileNameFromUrl(url),
-                          fileUrl: url,
-                          fileSize: 0,
-                          mimeType: 'application/octet-stream',
-                          uploadedAt: new Date(),
-                          uploadedBy: user?.id || '',
-                        }))}
-                        onDelete={(attachmentId) => {
-                          const index = parseInt(attachmentId.replace('temp-', ''));
-                          setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+                        onAttachmentUpdate={() => {
+                          // Refresh component when attachments change
                         }}
-                        readOnly={false}
                       />
                     </div>
                   )}

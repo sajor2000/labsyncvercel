@@ -140,7 +140,8 @@ export const attachableTypeEnum = pgEnum("attachable_type", [
   "TASK",
   "COMMENT",
   "IDEA",
-  "ACTION_ITEM"
+  "ACTION_ITEM",
+  "DEADLINE"
 ]);
 
 // File types for attachments

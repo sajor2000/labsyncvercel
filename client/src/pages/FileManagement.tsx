@@ -213,7 +213,7 @@ export default function FileManagement() {
     };
 
     labFilteredDeadlines.forEach(deadline => {
-      const deadlineAttachments = attachments.filter(att => att.entityType === 'IDEA' && att.entityId === deadline.id); // Note: DEADLINE not in schema, using IDEA for now
+      const deadlineAttachments = attachments.filter(att => att.entityType === 'DEADLINE' && att.entityId === deadline.id);
       
       if (deadlineAttachments.length > 0) {
         const deadlineNode: FileSystemNode = {

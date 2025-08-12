@@ -258,7 +258,7 @@ export default function MeetingPreview() {
               </Card>
 
               {/* Action Items */}
-              {selectedMeeting.aiSummary?.taskExtraction?.tasks && selectedMeeting.aiSummary.taskExtraction.tasks.length > 0 && (
+              {(selectedMeeting.aiSummary as any)?.taskExtraction?.tasks && (selectedMeeting.aiSummary as any).taskExtraction.tasks.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
