@@ -59,6 +59,8 @@ export default function Buckets() {
   const [selectedBucketForStudy, setSelectedBucketForStudy] = useState<string | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedBucketForEdit, setSelectedBucketForEdit] = useState<Bucket | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedBucketForDelete, setSelectedBucketForDelete] = useState<Bucket | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -188,6 +190,8 @@ export default function Buckets() {
     },
   });
 
+
+
   // Get studies count for each bucket
   const { data: allStudies = [] } = useQuery<Study[]>({
     queryKey: ['/api/studies', currentLab?.id],
@@ -205,10 +209,9 @@ export default function Buckets() {
       return apiRequest(`/api/buckets/${bucketId}`, 'DELETE');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/buckets'] });
       queryClient.invalidateQueries({ queryKey: ['/api/buckets', currentLab?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/studies'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/studies', currentLab?.id] });
+      setIsDeleteDialogOpen(false);
+      setSelectedBucketForDelete(null);
       toast({
         title: "Success",
         description: "Bucket deleted successfully",
@@ -344,6 +347,17 @@ export default function Buckets() {
   const getLabName = (labId: string) => {
     const lab = labs.find(l => l.id === labId);
     return lab?.name || 'Unknown Lab';
+  };
+
+  const openDeleteDialog = (bucket: Bucket) => {
+    setSelectedBucketForDelete(bucket);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (selectedBucketForDelete) {
+      deleteBucketMutation.mutate(selectedBucketForDelete.id);
+    }
   };
 
   if (isLoading) {
@@ -801,6 +815,14 @@ export default function Buckets() {
                         <Eye className="h-3 w-3 mr-2" />
                         View
                       </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => openDeleteDialog(bucket)} 
+                        data-testid={`menu-delete-bucket-${bucket.id}`}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -847,6 +869,29 @@ export default function Buckets() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Bucket</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedBucketForDelete?.name}"? 
+              This action cannot be undone and will permanently remove the bucket and all its associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
