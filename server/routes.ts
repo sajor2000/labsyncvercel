@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import multer from "multer";
-import { studyMilestones, users, labs, buckets, studies, tasks, teamMembers, standupMeetings, sessions, deadlines } from "@shared/schema";
+import { studyMilestones, users, labs, buckets, studies, tasks, teamMembers, standupMeetings, sessions, deadlines, labMembers, ideas } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
@@ -177,7 +177,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/buckets", isAuthenticated, async (req, res) => {
     try {
-      const bucket = await storage.createBucket(req.body);
+      const bucketData = {
+        ...req.body,
+        createdBy: req.user.claims.sub // Set ownership
+      };
+      const bucket = await storage.createBucket(bucketData);
       res.json(bucket);
     } catch (error) {
       console.error("Error creating bucket:", error);
@@ -187,8 +191,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/buckets/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteBucket(req.params.id);
-      res.json({ message: "Bucket deleted successfully" });
+      const userId = req.user.claims.sub;
+      const bucketId = req.params.id;
+      
+      // Check authorization 
+      const authResult = await storage.canDeleteEntity(userId, 'bucket', bucketId);
+      if (!authResult.canDelete) {
+        return res.status(403).json({ 
+          error: "Forbidden", 
+          message: authResult.reason 
+        });
+      }
+      
+      await storage.deleteBucket(bucketId);
+      res.json({ 
+        message: "Bucket deleted successfully",
+        deletedBy: authResult.method 
+      });
     } catch (error) {
       console.error("Error deleting bucket:", error);
       res.status(500).json({ message: (error as Error).message || "Failed to delete bucket" });
@@ -251,22 +270,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/studies/:id", isAuthenticated, async (req, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const studyId = req.params.id;
       const cascade = req.query.cascade === 'true';
-      await storage.deleteStudy(req.params.id, cascade);
-      res.json({ message: "Study deleted successfully" });
+      
+      // Check authorization
+      const authResult = await storage.canDeleteEntity(userId, 'study', studyId);
+      if (!authResult.canDelete) {
+        return res.status(403).json({ 
+          error: "Forbidden", 
+          message: authResult.reason 
+        });
+      }
+      
+      await storage.deleteStudy(studyId, cascade);
+      res.json({ 
+        message: "Study deleted successfully",
+        deletedBy: authResult.method 
+      });
     } catch (error) {
       console.error("Error deleting study:", error);
       const errorMessage = (error as Error).message || "Failed to delete study";
       
-      // Return specific status codes for different error types
       if (errorMessage.includes("Cannot delete study. It contains") && errorMessage.includes("task")) {
-        // Get the associated tasks to provide more details
         const tasks = await storage.getTasks(req.params.id);
         res.status(409).json({ 
           message: errorMessage,
           taskCount: tasks.length,
           associatedTasks: tasks.map(task => ({ id: task.id, title: task.title }))
-        }); // 409 Conflict for dependency constraint
+        });
       } else {
         res.status(500).json({ message: errorMessage });
       }
@@ -421,8 +453,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/tasks/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteTask(req.params.id);
-      res.json({ message: "Task deleted successfully" });
+      const userId = req.user.claims.sub;
+      const taskId = req.params.id;
+      
+      // Check authorization
+      const authResult = await storage.canDeleteEntity(userId, 'task', taskId);
+      if (!authResult.canDelete) {
+        return res.status(403).json({ 
+          error: "Forbidden", 
+          message: authResult.reason 
+        });
+      }
+      
+      await storage.deleteTask(taskId);
+      res.json({ 
+        message: "Task deleted successfully",
+        deletedBy: authResult.method 
+      });
     } catch (error) {
       console.error("Error deleting task:", error);
       res.status(500).json({ message: "Failed to delete task" });
@@ -661,8 +708,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/ideas/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteIdea(req.params.id);
-      res.json({ message: "Idea deleted successfully" });
+      const userId = req.user.claims.sub;
+      const ideaId = req.params.id;
+      
+      // Check authorization
+      const authResult = await storage.canDeleteEntity(userId, 'idea', ideaId);
+      if (!authResult.canDelete) {
+        return res.status(403).json({ 
+          error: "Forbidden", 
+          message: authResult.reason 
+        });
+      }
+      
+      await storage.deleteIdea(ideaId);
+      res.json({ 
+        message: "Idea deleted successfully",
+        deletedBy: authResult.method 
+      });
     } catch (error) {
       console.error("Error deleting idea:", error);
       res.status(500).json({ message: "Failed to delete idea" });
@@ -703,8 +765,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/deadlines/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteDeadline(req.params.id);
-      res.json({ message: "Deadline deleted successfully" });
+      const userId = req.user.claims.sub;
+      const deadlineId = req.params.id;
+      
+      // Check authorization
+      const authResult = await storage.canDeleteEntity(userId, 'deadline', deadlineId);
+      if (!authResult.canDelete) {
+        return res.status(403).json({ 
+          error: "Forbidden", 
+          message: authResult.reason 
+        });
+      }
+      
+      await storage.deleteDeadline(deadlineId);
+      res.json({ 
+        message: "Deadline deleted successfully",
+        deletedBy: authResult.method 
+      });
     } catch (error) {
       console.error("Error deleting deadline:", error);
       res.status(500).json({ message: "Failed to delete deadline" });

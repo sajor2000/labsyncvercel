@@ -321,6 +321,7 @@ export const buckets = pgTable("buckets", {
   position: varchar("position").default("0"), // For kanban column ordering
   isActive: boolean("is_active").default(true),
   labId: varchar("lab_id").notNull().references(() => labs.id),
+  createdBy: varchar("created_by").references(() => users.id), // Add ownership field
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

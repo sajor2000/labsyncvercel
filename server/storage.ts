@@ -602,6 +602,157 @@ export class DatabaseStorage implements IStorage {
     await db.delete(tasks).where(eq(tasks.id, id));
   }
 
+  // SECURITY: Ownership validation methods
+  async validateOwnership(userId: string, entityType: string, entityId: string): Promise<boolean> {
+    try {
+      switch (entityType) {
+        case 'task':
+          const [task] = await db.select({ createdBy: tasks.createdBy })
+            .from(tasks).where(eq(tasks.id, entityId));
+          return task?.createdBy === userId;
+          
+        case 'study': 
+          const [study] = await db.select({ createdBy: studies.createdBy })
+            .from(studies).where(eq(studies.id, entityId));
+          return study?.createdBy === userId;
+          
+        case 'bucket':
+          const [bucket] = await db.select({ createdBy: buckets.createdBy })
+            .from(buckets).where(eq(buckets.id, entityId));
+          return bucket?.createdBy === userId;
+          
+        case 'idea':
+          const [idea] = await db.select({ proposedBy: ideas.proposedBy })
+            .from(ideas).where(eq(ideas.id, entityId));
+          if (idea?.proposedBy) {
+            const [teamMember] = await db.select()
+              .from(teamMembers).where(eq(teamMembers.id, idea.proposedBy));
+            return teamMember?.email === userId; // Compare with user email since team members store email
+          }
+          return false;
+          
+        case 'deadline':
+          const [deadline] = await db.select({ createdBy: deadlines.createdBy })
+            .from(deadlines).where(eq(deadlines.id, entityId));
+          if (deadline?.createdBy) {
+            const [teamMember] = await db.select()
+              .from(teamMembers).where(eq(teamMembers.id, deadline.createdBy));
+            return teamMember?.email === userId; // Compare with user email since team members store email
+          }
+          return false;
+          
+        default:
+          return false;
+      }
+    } catch {
+      return false;
+    }
+  }
+
+  async validateAdminOverride(userId: string, labId: string, permission: string): Promise<boolean> {
+    try {
+      const [member] = await db
+        .select({
+          isAdmin: labMembers.isAdmin,
+          canEditAllProjects: labMembers.canEditAllProjects,
+          canManageMembers: labMembers.canManageMembers,
+          canApproveIdeas: labMembers.canApproveIdeas,
+        })
+        .from(labMembers)
+        .where(and(
+          eq(labMembers.userId, userId),
+          eq(labMembers.labId, labId),
+          eq(labMembers.isActive, true)
+        ));
+      
+      if (!member) return false;
+      
+      switch (permission) {
+        case 'canEditAllProjects':
+          return (member.isAdmin ?? false) || (member.canEditAllProjects ?? false);
+        case 'canManageMembers':
+          return (member.isAdmin ?? false) || (member.canManageMembers ?? false);
+        case 'canApproveIdeas':
+          return (member.isAdmin ?? false) || (member.canApproveIdeas ?? false);
+        case 'isAdmin':
+          return member.isAdmin ?? false;
+        default:
+          return member.isAdmin ?? false;
+      }
+    } catch {
+      return false;
+    }
+  }
+
+  async canDeleteEntity(userId: string, entityType: string, entityId: string): Promise<{
+    canDelete: boolean;
+    reason?: string;
+    method?: 'ownership' | 'admin';
+  }> {
+    // Check ownership first
+    const isOwner = await this.validateOwnership(userId, entityType, entityId);
+    if (isOwner) {
+      return { canDelete: true, method: 'ownership' };
+    }
+    
+    // Get entity's lab for admin check
+    let labId: string | null = null;
+    try {
+      switch (entityType) {
+        case 'task':
+          const [task] = await db.select({ labId: studies.labId })
+            .from(tasks)
+            .innerJoin(studies, eq(tasks.studyId, studies.id))
+            .where(eq(tasks.id, entityId));
+          labId = task?.labId;
+          break;
+          
+        case 'study':
+          const [study] = await db.select({ labId: studies.labId })
+            .from(studies).where(eq(studies.id, entityId));
+          labId = study?.labId;
+          break;
+          
+        case 'bucket':
+          const [bucket] = await db.select({ labId: buckets.labId })
+            .from(buckets).where(eq(buckets.id, entityId));
+          labId = bucket?.labId;
+          break;
+          
+        case 'idea':
+          const [idea] = await db.select({ labId: ideas.labId })
+            .from(ideas).where(eq(ideas.id, entityId));
+          labId = idea?.labId;
+          break;
+          
+        case 'deadline':
+          const [deadline] = await db.select({ labId: deadlines.labId })
+            .from(deadlines).where(eq(deadlines.id, entityId));
+          labId = deadline?.labId;
+          break;
+      }
+    } catch (error) {
+      return { canDelete: false, reason: 'Entity not found' };
+    }
+    
+    if (!labId) {
+      return { canDelete: false, reason: 'Cannot determine lab context' };
+    }
+    
+    // Check admin permissions
+    const permission = entityType === 'idea' ? 'canApproveIdeas' : 'canEditAllProjects';
+    const hasAdminPermission = await this.validateAdminOverride(userId, labId, permission);
+    
+    if (hasAdminPermission) {
+      return { canDelete: true, method: 'admin' };
+    }
+    
+    return { 
+      canDelete: false, 
+      reason: `Unauthorized: Not the ${entityType} owner and no admin permissions` 
+    };
+  }
+
   async moveTask(id: string, updates: { status?: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'BLOCKED'; position?: string; studyId?: string }): Promise<Task> {
     return this.updateTask(id, updates);
   }
