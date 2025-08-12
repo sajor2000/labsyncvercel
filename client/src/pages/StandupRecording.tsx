@@ -722,7 +722,7 @@ export default function StandupRecording() {
                   {showEmailPreview ? 'Hide' : 'Show'} Email Preview
                 </Button>
                 
-                {showEmailPreview && meetingEmail && (
+                {showEmailPreview && !!meetingEmail && (
                   <div className="mt-4 border rounded-lg p-4 bg-white dark:bg-gray-900 max-h-96 overflow-y-auto">
                     <div 
                       dangerouslySetInnerHTML={{ __html: String((meetingEmail as any)?.html || '') }}

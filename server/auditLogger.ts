@@ -4,7 +4,7 @@ import { storage } from './storage';
 
 export interface AuditContext {
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'ACCESS_DENIED' | 'PERMISSION_CHANGE';
-  entityType: 'USER' | 'LAB' | 'BUCKET' | 'STUDY' | 'TASK' | 'IDEA' | 'DEADLINE' | 'TEAM_MEMBER' | 'LAB_MEMBER';
+  entityType: 'USER' | 'LAB' | 'BUCKET' | 'STUDY' | 'TASK' | 'IDEA' | 'DEADLINE' | 'TEAM_MEMBER' | 'LAB_MEMBER' | 'STANDUP' | 'WORKFLOW_TRIGGER' | 'AUTOMATION_RULE' | 'AUTOMATED_SCHEDULE' | 'WORKFLOW_TEMPLATE';
   entityId?: string;
   authorizationMethod?: 'ownership' | 'admin' | 'permission';
   requiredPermission?: string;

@@ -303,7 +303,7 @@ export class AdvancedPermissionManager {
   }
   
   private static getPermissionKey(entityType: string, action: string): string | null {
-    const mapping = {
+    const mapping: Record<string, string> = {
       'STUDY_CREATE': 'canCreateProjects',
       'STUDY_EDIT': 'canEditAllProjects',
       'STUDY_DELETE': 'canDeleteProjects',
@@ -317,7 +317,8 @@ export class AdvancedPermissionManager {
       'DEADLINE_EDIT': 'canManageDeadlines',
       'DEADLINE_DELETE': 'canManageDeadlines',
     };
-    return mapping[`${entityType}_${action}`] || null;
+    const key = `${entityType}_${action}`;
+    return mapping[key] || null;
   }
   
   private static actionMatchesPermission(action: string, permission: any): boolean {

@@ -263,12 +263,12 @@ export default function MeetingPreview() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <CheckCircle className="h-5 w-5" />
-                      Action Items & Tasks ({selectedMeeting.aiSummary.taskExtraction.tasks.length})
+                      Action Items & Tasks ({selectedMeeting.aiSummary?.taskExtraction.tasks.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {selectedMeeting.aiSummary.taskExtraction.tasks.map((task: any, index: number) => (
+                      {selectedMeeting.aiSummary?.taskExtraction.tasks.map((task: any, index: number) => (
                         <div key={index} className="border rounded-lg p-4 space-y-3">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">

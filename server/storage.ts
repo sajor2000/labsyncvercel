@@ -19,6 +19,9 @@ import {
   notifications,
   mentions,
   securityAuditLogs,
+  permissionTemplates,
+  resourcePermissions,
+  crossLabAccess,
   type User,
   type UpsertUser,
   type Lab,
@@ -104,9 +107,15 @@ import {
   type InsertAutomatedSchedule,
   type WorkflowTemplate,
   type InsertWorkflowTemplate,
+  type PermissionTemplate,
+  type InsertPermissionTemplate,
+  type ResourcePermission,
+  type InsertResourcePermission,
+  type CrossLabAccess,
+  type InsertCrossLabAccess,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, asc, inArray, sql, gte, lte, or, ne } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -238,7 +247,7 @@ export interface IStorage {
   getAttachmentCounts(entityType: "PROJECT" | "TASK" | "IDEA" | "DEADLINE"): Promise<Record<string, number>>;
 
   // PHASE 2: Security Audit Logging Operations
-  createSecurityAuditLog(log: InsertSecurityAuditLog): Promise<SecurityAuditLog>;
+  createSecurityAuditLog(log: any): Promise<any>;
   getSecurityAuditLogs(filters?: {
     userId?: string;
     labId?: string;
@@ -247,8 +256,8 @@ export interface IStorage {
     startDate?: Date;
     endDate?: Date;
     limit?: number;
-  }): Promise<SecurityAuditLog[]>;
-  getFailedAccessAttempts(labId?: string, hours?: number): Promise<SecurityAuditLog[]>;
+  }): Promise<any[]>;
+  getFailedAccessAttempts(labId?: string, hours?: number): Promise<any[]>;
 
   // PHASE 3: Enhanced Permission Management Operations
   getLabMember(userId: string, labId: string): Promise<LabMember | undefined>;
@@ -257,7 +266,7 @@ export interface IStorage {
   createPermissionTemplate(template: any): Promise<PermissionTemplate>;
   getResourcePermissions(userId: string, resourceType: string, resourceId: string): Promise<ResourcePermission[]>;
   getCrossLabAccess(userId: string, targetLabId: string): Promise<CrossLabAccess[]>;
-  getLabMembers(labId: string): Promise<LabMember[]>;
+  getLabMembers(labId: string): Promise<any[]>;
   getBucket(bucketId: string): Promise<Bucket | undefined>;
   getStudy(studyId: string): Promise<Study | undefined>;
   getTask(taskId: string): Promise<Task | undefined>;
@@ -503,7 +512,7 @@ export class DatabaseStorage implements IStorage {
     return lab;
   }
 
-  async getLabMembers(labId: string): Promise<User[]> {
+  async getLabMembers(labId: string): Promise<any[]> {
     // Get team members directly from team_members table which has lab_id
     const members = await db.select({
       id: teamMembers.id,
@@ -887,7 +896,7 @@ export class DatabaseStorage implements IStorage {
       if (filters.endDate) conditions.push(lte(securityAuditLogs.timestamp, filters.endDate));
       
       if (conditions.length > 0) {
-        query = query.where(and(...conditions));
+        query = query.where(and(...conditions)) as any;
       }
       
       return await query
@@ -1016,44 +1025,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getLabMembers(labId: string): Promise<any[]> {
-    try {
-      // Get users who are members of this specific lab
-      const members = await db
-        .select({
-          id: users.id,
-          name: sql`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-          role: users.role,
-          title: users.title,
-          department: users.department,
-          phone: users.phone,
-          avatar: users.avatar,
-          profileImageUrl: users.profileImageUrl,
-          capacity: users.capacity,
-          expertise: users.expertise,
-          skills: users.skills,
-          labId: labMembers.labId,
-          labRole: labMembers.labRole,
-          isAdmin: labMembers.isAdmin,
-          isActive: labMembers.isActive
-        })
-        .from(users)
-        .innerJoin(labMembers, eq(users.id, labMembers.userId))
-        .where(and(
-          eq(labMembers.labId, labId),
-          eq(labMembers.isActive, true)
-        ))
-        .orderBy(asc(users.firstName), asc(users.lastName));
-      
-      return members;
-    } catch (error) {
-      console.error("Failed to get lab members:", error);
-      return [];
-    }
-  }
+
 
   async getBucket(bucketId: string): Promise<any> {
     try {
@@ -1069,19 +1041,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getStudy(studyId: string): Promise<any> {
-    try {
-      const [study] = await db
-        .select()
-        .from(studies)
-        .where(eq(studies.id, studyId))
-        .limit(1);
-      return study;
-    } catch (error) {
-      console.error("Failed to get study:", error);
-      return undefined;
-    }
-  }
+
 
   async getTask(taskId: string): Promise<any> {
     try {

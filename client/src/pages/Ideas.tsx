@@ -179,7 +179,7 @@ export default function Ideas() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const { data: ideas = [], isLoading } = useQuery({
+  const { data: ideas = [], isLoading } = useQuery<Idea[]>({
     queryKey: ["/api/ideas", selectedLab?.id],
     enabled: !!selectedLab?.id,
   });
@@ -309,9 +309,11 @@ export default function Ideas() {
 
   // Quick filter suggestions based on current ideas
   const quickFilters = useMemo(() => {
-    const categories = [...new Set(ideas.map((idea: Idea) => idea.category).filter(Boolean))];
-    const tags = [...new Set(ideas.flatMap((idea: Idea) => idea.tags || []))];
-    return { categories, tags: tags.slice(0, 8) }; // Limit tags for UI
+    const categoriesSet = new Set(ideas.map((idea: Idea) => idea.category).filter(Boolean));
+    const tagsSet = new Set(ideas.flatMap((idea: Idea) => idea.tags || []));
+    const categories = Array.from(categoriesSet);
+    const tags = Array.from(tagsSet).slice(0, 8); // Limit tags for UI
+    return { categories, tags };
   }, [ideas]);
 
   if (!selectedLab) {
@@ -622,7 +624,7 @@ export default function Ideas() {
                     onClick={() => setCategoryFilter(cat)}
                     className="h-7"
                   >
-                    {categoryLabels[cat]}
+                    {categoryLabels[cat as keyof typeof categoryLabels] || cat}
                   </Button>
                 ))}
               </div>

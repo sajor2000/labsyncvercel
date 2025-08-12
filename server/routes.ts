@@ -186,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ results });
     } catch (error) {
       console.error("Error performing global search:", error);
-      res.status(500).json({ message: "Search failed", error: error.message });
+      res.status(500).json({ message: "Search failed", error: (error as Error).message });
     }
   });
 
@@ -354,14 +354,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      await storage.deleteBucket(bucketId);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'BUCKET', bucketId, authResult.method);
+      await storage.deleteBucket(req.params.id!);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'BUCKET', req.params.id as string, authResult.method as string);
       res.json({ 
         message: "Bucket deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'BUCKET', bucketId, false, undefined, error.message);
+      await SecurityAuditLogger.logDeleteAttempt(req, 'BUCKET', req.params.id!, false, undefined, (error as Error).message);
       console.error("Error deleting bucket:", error);
       res.status(500).json({ message: (error as Error).message || "Failed to delete bucket" });
     }
@@ -437,14 +437,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      await storage.deleteStudy(studyId, cascade);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'STUDY', studyId, authResult.method);
+      await storage.deleteStudy(req.params.id!, cascade);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'STUDY', req.params.id as string, authResult.method as string);
       res.json({ 
         message: "Study deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'STUDY', studyId, false, undefined, error.message);
+      await SecurityAuditLogger.logDeleteAttempt(req, 'STUDY', req.params.id!, false, undefined, (error as Error).message);
       console.error("Error deleting study:", error);
       const errorMessage = (error as Error).message || "Failed to delete study";
       
@@ -791,14 +791,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      await storage.deleteTask(taskId);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'TASK', taskId, authResult.method);
+      await storage.deleteTask(req.params.id!);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'TASK', req.params.id as string, authResult.method as string);
       res.json({ 
         message: "Task deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'TASK', taskId, false, undefined, error.message);
+      await SecurityAuditLogger.logDeleteAttempt(req, 'TASK', req.params.id!, false, undefined, (error as Error).message);
       console.error("Error deleting task:", error);
       res.status(500).json({ message: "Failed to delete task" });
     }
@@ -1049,14 +1049,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      await storage.deleteIdea(ideaId);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'IDEA', ideaId, authResult.method);
+      await storage.deleteIdea(req.params.id!);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'IDEA', req.params.id as string, authResult.method as string);
       res.json({ 
         message: "Idea deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'IDEA', ideaId, false, undefined, error.message);
+      await SecurityAuditLogger.logDeleteAttempt(req, 'IDEA', req.params.id!, false, undefined, (error as Error).message);
       console.error("Error deleting idea:", error);
       res.status(500).json({ message: "Failed to delete idea" });
     }
@@ -1109,14 +1109,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      await storage.deleteDeadline(deadlineId);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'DEADLINE', deadlineId, authResult.method);
+      await storage.deleteDeadline(req.params.id!);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'DEADLINE', req.params.id as string, authResult.method as string);
       res.json({ 
         message: "Deadline deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'DEADLINE', deadlineId, false, undefined, error.message);
+      await SecurityAuditLogger.logDeleteAttempt(req, 'DEADLINE', req.params.id!, false, undefined, (error as Error).message);
       console.error("Error deleting deadline:", error);
       res.status(500).json({ message: "Failed to delete deadline" });
     }
@@ -1169,14 +1169,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      await storage.deleteStandup(standupId);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'STANDUP', standupId, authResult.method);
+      await storage.deleteStandup(req.params.id!);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'STANDUP', req.params.id as string, authResult.method as string);
       res.json({ 
         message: "Standup deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'STANDUP', req.params.id, false, undefined, (error as Error).message);
+      await SecurityAuditLogger.logDeleteAttempt(req, 'STANDUP', req.params.id!, false, undefined, (error as Error).message);
       console.error("Error deleting standup:", error);
       res.status(500).json({ message: "Failed to delete standup" });
     }
@@ -1582,14 +1582,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      await storage.deleteWorkflowTrigger(triggerId);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'WORKFLOW_TRIGGER', triggerId, authResult.method);
+      await storage.deleteWorkflowTrigger(req.params.id!);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'WORKFLOW_TRIGGER', req.params.id as string, authResult.method as string);
       res.json({ 
         message: 'Workflow trigger deleted successfully',
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TRIGGER', req.params.id, false, undefined, (error as Error).message);
+      await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TRIGGER', req.params.id!, false, undefined, (error as Error).message);
       console.error('Error deleting workflow trigger:', error);
       res.status(500).json({ message: 'Failed to delete workflow trigger' });
     }
@@ -1661,13 +1661,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteAutomationRule(ruleId);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'AUTOMATION_RULE', ruleId, authResult.method);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'AUTOMATION_RULE', ruleId as string, authResult.method as string);
       res.json({ 
         message: 'Automation rule deleted successfully',
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATION_RULE', req.params.id, false, undefined, (error as Error).message);
+      await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATION_RULE', req.params.id!, false, undefined, (error as Error).message);
       console.error('Error deleting automation rule:', error);
       res.status(500).json({ message: 'Failed to delete automation rule' });
     }
@@ -1788,13 +1788,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteAutomatedSchedule(scheduleId);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'AUTOMATED_SCHEDULE', scheduleId, authResult.method);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'AUTOMATED_SCHEDULE', scheduleId as string, authResult.method as string);
       res.json({ 
         message: 'Automated schedule deleted successfully',
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATED_SCHEDULE', req.params.id, false, undefined, (error as Error).message);
+      await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATED_SCHEDULE', req.params.id!, false, undefined, (error as Error).message);
       console.error('Error deleting automated schedule:', error);
       res.status(500).json({ message: 'Failed to delete automated schedule' });
     }
@@ -1866,13 +1866,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteWorkflowTemplate(templateId);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'WORKFLOW_TEMPLATE', templateId, authResult.method);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'WORKFLOW_TEMPLATE', templateId as string, authResult.method as string);
       res.json({ 
         message: 'Workflow template deleted successfully',
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TEMPLATE', req.params.id, false, undefined, (error as Error).message);
+      await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TEMPLATE', req.params.id!, false, undefined, (error as Error).message);
       console.error('Error deleting workflow template:', error);
       res.status(500).json({ message: 'Failed to delete workflow template' });
     }
@@ -1997,7 +1997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PHASE 2: Security Audit Logging API Endpoints
   app.get("/api/security/audit-logs", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const userLab = req.headers['x-current-lab'] as string;
       
       // Only allow lab admins to view audit logs
@@ -2029,7 +2029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/security/failed-attempts", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req.user as any)?.claims?.sub;
       const userLab = req.headers['x-current-lab'] as string;
       
       // Only allow lab admins to view failed attempts
@@ -2054,7 +2054,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/permissions/apply-template", isAuthenticated, async (req, res) => {
     try {
       const { userId: targetUserId, templateId } = req.body;
-      const adminUserId = req.user?.claims?.sub;
+      const adminUserId = (req.user as any)?.claims?.sub;
       const labId = req.headers['x-current-lab'] as string;
       
       // Check if requesting user is lab admin
@@ -2092,7 +2092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/permissions/upgrade-lab-members", isAuthenticated, async (req, res) => {
     try {
-      const adminUserId = req.user?.claims?.sub;
+      const adminUserId = (req.user as any)?.claims?.sub;
       const labId = req.headers['x-current-lab'] as string;
       
       // Check if requesting user is lab admin
@@ -2108,7 +2108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let upgradedCount = 0;
       for (const member of labMembers) {
         if (member.isActive) {
-          await applyDefaultPermissions(member.userId, labId, member.labRole || 'RESEARCH_ASSISTANT');
+          await applyDefaultPermissions(member.id, labId, member.role || 'RESEARCH_ASSISTANT');
           upgradedCount++;
         }
       }
