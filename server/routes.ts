@@ -174,11 +174,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { q: searchQuery, limit = 15 } = req.query;
       const userId = (req.user as any)?.claims?.sub;
 
+      console.log(`🔍 Search API called with query: "${searchQuery}", limit: ${limit}, userId: ${userId}`);
+
       if (!searchQuery || searchQuery.trim().length === 0) {
+        console.log(`❌ Empty search query, returning empty results`);
         return res.json({ results: [] });
       }
 
       const results = await storage.globalSearch(searchQuery.trim(), parseInt(limit), userId);
+      console.log(`🔍 Search API returning ${results.length} results`);
       res.json({ results });
     } catch (error) {
       console.error("Error performing global search:", error);
