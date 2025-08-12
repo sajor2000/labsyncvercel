@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 interface CalendarEvent {
   id: string;
   title: string;
-  type: "standup" | "deadline" | "meeting" | "milestone" | "task" | "study";
+  type: "standup" | "deadline" | "meeting" | "milestone" | "task" | "study" | "irb" | "regulatory";
   date: string;
   time?: string;
   description?: string;
@@ -21,8 +21,11 @@ interface CalendarEvent {
   metadata?: {
     studyId?: string;
     taskId?: string;
+    milestoneId?: string;
     progress?: number;
     assignees?: string[];
+    irbStatus?: string;
+    deliverables?: string[];
   };
 }
 
@@ -37,6 +40,7 @@ export default function Calendar() {
     studies: true,
     meetings: true,
     milestones: true,
+    irb: true,
   });
   const { selectedLab } = useLabContext();
 
@@ -58,6 +62,11 @@ export default function Calendar() {
 
   const { data: studies = [] } = useQuery<any[]>({
     queryKey: ['/api/studies', selectedLab?.id],
+    enabled: !!selectedLab?.id,
+  });
+
+  const { data: milestones = [] } = useQuery<any[]>({
+    queryKey: ['/api/study-milestones', selectedLab?.id],
     enabled: !!selectedLab?.id,
   });
 
@@ -102,7 +111,41 @@ export default function Calendar() {
         },
       })),
     
-    // Study Milestones (Purple)
+    // Study Milestones (Purple) - now from dedicated milestones table
+    ...milestones.map((milestone: any) => ({
+      id: `milestone-${milestone.id}`,
+      title: `${milestone.name}`,
+      type: "milestone" as const,
+      date: milestone.targetDate,
+      description: milestone.description,
+      status: milestone.status,
+      priority: milestone.priority,
+      metadata: {
+        studyId: milestone.studyId,
+        milestoneId: milestone.id,
+        progress: milestone.progress,
+        deliverables: milestone.deliverables || [],
+      },
+    })),
+
+    // IRB Submissions (Green) - from studies with IRB dates
+    ...studies
+      .filter((study: any) => study.irbSubmissionDate)
+      .map((study: any) => ({
+        id: `irb-${study.id}`,
+        title: `IRB: ${study.name}`,
+        type: "irb" as const,
+        date: study.irbSubmissionDate,
+        description: `IRB submission for ${study.name}`,
+        status: study.irbStatus,
+        priority: "HIGH",
+        metadata: {
+          studyId: study.id,
+          irbStatus: study.irbStatus,
+        },
+      })),
+
+    // Study Due Dates (Indigo) - for studies with general due dates
     ...studies
       .filter((study: any) => study.dueDate)
       .map((study: any) => ({
@@ -128,6 +171,8 @@ export default function Calendar() {
       case "study": return eventFilters.studies;
       case "meeting": return eventFilters.meetings;
       case "milestone": return eventFilters.milestones;
+      case "irb": return eventFilters.irb;
+      case "regulatory": return eventFilters.irb;
       default: return true;
     }
   });
@@ -216,6 +261,8 @@ export default function Calendar() {
       case "milestone": return "bg-purple-500";
       case "task": return "bg-orange-500";
       case "study": return "bg-indigo-500";
+      case "irb":
+      case "regulatory": return "bg-green-600";
       default: return "bg-gray-500";
     }
   };
@@ -327,7 +374,8 @@ export default function Calendar() {
                            type === 'tasks' ? 'Task Deadlines' :
                            type === 'studies' ? 'Study Milestones' :
                            type === 'meetings' ? 'Meetings' :
-                           type === 'milestones' ? 'Milestones' : type}
+                           type === 'milestones' ? 'Milestones' :
+                           type === 'irb' ? 'IRB Submissions' : type}
                         </label>
                       </div>
                     ))}
@@ -506,6 +554,10 @@ export default function Calendar() {
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-purple-500 rounded"></div>
                   <span className="text-sm">Milestones</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-600 rounded"></div>
+                  <span className="text-sm">IRB Submissions</span>
                 </div>
               </div>
             </CardContent>

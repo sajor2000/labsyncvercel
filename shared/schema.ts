@@ -339,6 +339,9 @@ export const studies = pgTable("studies", {
   notes: text("notes"),
   priority: priorityEnum("priority").default("MEDIUM"),
   dueDate: timestamp("due_date"),
+  irbSubmissionDate: timestamp("irb_submission_date"),
+  irbApprovalDate: timestamp("irb_approval_date"),
+  irbStatus: varchar("irb_status").default("PENDING"), // PENDING, SUBMITTED, APPROVED, NEEDS_REVISION
   protocolLink: varchar("protocol_link"),
   dataLink: varchar("data_link"),
   position: varchar("position").default("0"), // For positioning in kanban
@@ -575,6 +578,29 @@ export const deadlines = pgTable("deadlines", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Study Milestones - for tracking study progress milestones
+export const studyMilestones = pgTable("study_milestones", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  studyId: varchar("study_id").notNull().references(() => studies.id),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  targetDate: timestamp("target_date").notNull(),
+  completedDate: timestamp("completed_date"),
+  status: varchar("status").default("PENDING"), // PENDING, IN_PROGRESS, COMPLETED, DELAYED
+  priority: priorityEnum("priority").default("MEDIUM"),
+  progress: decimal("progress", { precision: 5, scale: 2 }).default("0.00"), // Percentage completed
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  dependencies: text("dependencies").array(), // Array of milestone IDs this depends on
+  deliverables: text("deliverables").array(), // Expected deliverables
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  studyTargetDateIndex: index("study_milestones_study_target_idx").on(table.studyId, table.targetDate),
+  statusIndex: index("study_milestones_status_idx").on(table.status, table.targetDate)
+}));
 
 // PHASE 1: CRITICAL SECURITY MODELS
 
