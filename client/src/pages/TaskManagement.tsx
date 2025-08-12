@@ -599,10 +599,11 @@ export default function TaskManagement() {
   // Task operations mutations
   const createTaskMutation = useMutation({
     mutationFn: async (data: QuickTaskFormValues) => {
-      const task = await apiRequest('/api/tasks', 'POST', {
+      const response = await apiRequest('/api/tasks', 'POST', {
         ...data,
         status: 'TODO',
       });
+      const task = await response.json();
       
       // Upload files if any
       if (uploadedFiles.length > 0) {

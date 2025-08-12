@@ -39,6 +39,7 @@ import {
 import type { Deadline, InsertDeadline } from "@shared/schema";
 import { FileUploader } from "@/components/FileUploader";
 import { AttachmentList } from "@/components/AttachmentList";
+import { Paperclip } from "lucide-react";
 
 const deadlineFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -95,6 +96,12 @@ const typeColors = {
   OTHER: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
 };
 
+// Helper function to extract filename from URL
+function extractFileNameFromUrl(url: string): string {
+  const parts = url.split('/');
+  return parts[parts.length - 1] || 'attachment';
+}
+
 export default function Deadlines() {
   const { selectedLab } = useLabContext();
   const queryClient = useQueryClient();
@@ -103,6 +110,7 @@ export default function Deadlines() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingDeadline, setEditingDeadline] = useState<Deadline | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   const { data: deadlines = [], isLoading } = useQuery({
     queryKey: ["/api/deadlines", selectedLab?.id],
@@ -142,11 +150,31 @@ export default function Deadlines() {
         assignedTo: data.assignedTo === "unassigned" ? undefined : data.assignedTo,
         relatedStudyId: data.relatedStudyId === "none" ? undefined : data.relatedStudyId,
       };
-      return apiRequest("POST", "/api/deadlines", deadlineData);
+      
+      const response = await apiRequest("/api/deadlines", "POST", deadlineData);
+      const deadline = await response.json();
+      
+      // Upload files if any
+      if (uploadedFiles.length > 0) {
+        for (const fileUrl of uploadedFiles) {
+          await apiRequest('/api/attachments', 'POST', {
+            entityType: 'DEADLINE',
+            entityId: deadline.id,
+            fileUrl,
+            fileName: extractFileNameFromUrl(fileUrl),
+            fileSize: 0,
+            mimeType: 'application/octet-stream'
+          });
+        }
+      }
+      
+      return deadline;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/deadlines"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/attachments/counts', 'DEADLINE'] });
       setIsCreateOpen(false);
+      setUploadedFiles([]);
       form.reset();
     },
   });
@@ -489,37 +517,84 @@ export default function Deadlines() {
                   )}
                 />
 
-                {/* File Attachments Section */}
-                {editingDeadline && (
-                  <div className="space-y-4">
-                    <Separator />
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <FileText className="h-4 w-4" />
-                        File Attachments
+                {/* File Upload Section */}
+                <div className="space-y-4">
+                  <Separator />
+                  <div className="flex items-center gap-2">
+                    <Paperclip className="h-4 w-4 text-muted-foreground" />
+                    <FormLabel className="text-base font-medium">Attachments</FormLabel>
+                  </div>
+                  
+                  {editingDeadline ? (
+                    // For editing existing deadlines - show current attachments
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <FileText className="h-4 w-4" />
+                          File Attachments
+                        </div>
+                        <FileUploader
+                          entityType="DEADLINE"
+                          entityId={editingDeadline.id}
+                          onComplete={() => {
+                            // Refresh attachment list after upload
+                          }}
+                        />
                       </div>
-                      <FileUploader
+                      <AttachmentList
                         entityType="DEADLINE"
                         entityId={editingDeadline.id}
-                        onComplete={() => {
-                          // Refresh attachment list after upload
-                        }}
                       />
                     </div>
-                    <AttachmentList
-                      entityType="DEADLINE"
-                      entityId={editingDeadline.id}
-                      onAttachmentUpdate={() => {
-                        // Handle attachment updates if needed
-                      }}
-                    />
-                  </div>
-                )}
+                  ) : (
+                    // For new deadlines - show upload preview
+                    <div className="space-y-3">
+                      <FileUploader
+                        entityType="DEADLINE"
+                        entityId=""
+                        onComplete={(attachments: any[]) => {
+                          const fileUrls = attachments.map(att => att.fileUrl || att.url);
+                          setUploadedFiles(prev => [...prev, ...fileUrls]);
+                        }}
+                      />
+                      
+                      {uploadedFiles.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            {uploadedFiles.length} file{uploadedFiles.length !== 1 ? 's' : ''} ready to attach
+                          </p>
+                          <div className="space-y-2">
+                            {uploadedFiles.map((url, index) => (
+                              <Card key={index} className="p-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm">{extractFileNameFromUrl(url)}</span>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex justify-end space-x-2">
                   <Button type="button" variant="outline" onClick={() => {
                     setIsCreateOpen(false);
                     setEditingDeadline(null);
+                    setUploadedFiles([]);
                     form.reset();
                   }}>
                     Cancel
