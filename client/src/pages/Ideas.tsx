@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLabContext } from "@/hooks/useLabContext";
 import { apiRequest } from "@/lib/queryClient";
@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,12 +33,15 @@ import {
   Clock,
   MoreVertical,
   FileText,
-  Paperclip
+  Paperclip,
+  X,
+  Sparkles
 } from "lucide-react";
 import type { Idea, InsertIdea } from "@shared/schema";
 import { FileUploader } from "@/components/FileUploader";
 import { AttachmentList } from "@/components/AttachmentList";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
+import { cn } from "@/lib/utils";
 
 const ideaFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -87,15 +91,93 @@ const statusColors = {
   REJECTED: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
 };
 
+// Helper function for fuzzy search
+function fuzzyMatch(text: string, searchTerm: string): boolean {
+  const normalizedText = text.toLowerCase();
+  const normalizedSearch = searchTerm.toLowerCase();
+  
+  // Direct substring match
+  if (normalizedText.includes(normalizedSearch)) return true;
+  
+  // Word-by-word matching
+  const searchWords = normalizedSearch.split(/\s+/).filter(Boolean);
+  return searchWords.every(word => normalizedText.includes(word));
+}
+
+// Helper function to calculate relevance score
+function calculateRelevance(idea: Idea, searchTerm: string): number {
+  if (!searchTerm) return 0;
+  
+  const normalizedSearch = searchTerm.toLowerCase();
+  let score = 0;
+  
+  // Title match (highest weight)
+  if (idea.title?.toLowerCase().includes(normalizedSearch)) {
+    score += 10;
+    // Exact match bonus
+    if (idea.title?.toLowerCase() === normalizedSearch) score += 5;
+    // Starts with bonus
+    if (idea.title?.toLowerCase().startsWith(normalizedSearch)) score += 3;
+  }
+  
+  // Description match
+  if (idea.description?.toLowerCase().includes(normalizedSearch)) score += 5;
+  
+  // Tags match
+  if (idea.tags?.some(tag => tag.toLowerCase().includes(normalizedSearch))) score += 3;
+  
+  // Category match
+  if (idea.category && categoryLabels[idea.category]?.toLowerCase().includes(normalizedSearch)) score += 2;
+  
+  // Recent items get a small boost
+  const daysSinceCreated = idea.createdAt ? (Date.now() - new Date(idea.createdAt).getTime()) / (1000 * 60 * 60 * 24) : 999;
+  if (daysSinceCreated < 7) score += 1;
+  
+  return score;
+}
+
+// Helper function to highlight search matches
+function highlightMatch(text: string, searchTerm: string): JSX.Element {
+  if (!searchTerm || !text) return <>{text}</>;
+  
+  const regex = new RegExp(`(${searchTerm.split(/\s+/).join('|')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return (
+    <>
+      {parts.map((part, i) => 
+        regex.test(part) ? (
+          <mark key={i} className="bg-yellow-200 dark:bg-yellow-800 px-0.5 rounded">
+            {part}
+          </mark>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
 export default function Ideas() {
   const { selectedLab } = useLabContext();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
+  const [showSearchFilters, setShowSearchFilters] = useState(false);
+  const [sortBy, setSortBy] = useState<"relevance" | "recent" | "priority">("relevance");
+
+  // Debounce search term for performance
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const { data: ideas = [], isLoading } = useQuery({
     queryKey: ["/api/ideas", selectedLab?.id],
@@ -184,13 +266,53 @@ export default function Ideas() {
     });
   };
 
-  const filteredIdeas = (ideas as Idea[]).filter((idea: Idea) => {
-    const matchesSearch = idea.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         idea.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === "ALL" || idea.category === categoryFilter;
-    const matchesStatus = statusFilter === "ALL" || idea.status === statusFilter;
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  // Advanced filtering and sorting
+  const filteredAndSortedIdeas = useMemo(() => {
+    // First, filter ideas
+    let filtered = ideas.filter((idea: Idea) => {
+      // Search matching
+      const matchesSearch = !debouncedSearchTerm || 
+        fuzzyMatch(idea.title || '', debouncedSearchTerm) ||
+        fuzzyMatch(idea.description || '', debouncedSearchTerm) ||
+        idea.tags?.some(tag => fuzzyMatch(tag, debouncedSearchTerm)) ||
+        (idea.category && fuzzyMatch(categoryLabels[idea.category] || '', debouncedSearchTerm));
+      
+      const matchesCategory = categoryFilter === "ALL" || idea.category === categoryFilter;
+      const matchesStatus = statusFilter === "ALL" || idea.status === statusFilter;
+      
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+
+    // Calculate relevance scores if searching
+    if (debouncedSearchTerm) {
+      filtered = filtered.map(idea => ({
+        ...idea,
+        relevanceScore: calculateRelevance(idea, debouncedSearchTerm)
+      }));
+    }
+
+    // Sort based on selected criteria
+    filtered.sort((a: any, b: any) => {
+      if (sortBy === "relevance" && debouncedSearchTerm) {
+        return (b.relevanceScore || 0) - (a.relevanceScore || 0);
+      } else if (sortBy === "recent") {
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      } else if (sortBy === "priority") {
+        const priorityOrder: Record<string, number> = { URGENT: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+        return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+      }
+      return 0;
+    });
+
+    return filtered;
+  }, [ideas, debouncedSearchTerm, categoryFilter, statusFilter, sortBy]);
+
+  // Quick filter suggestions based on current ideas
+  const quickFilters = useMemo(() => {
+    const categories = [...new Set(ideas.map((idea: Idea) => idea.category).filter(Boolean))];
+    const tags = [...new Set(ideas.flatMap((idea: Idea) => idea.tags || []))];
+    return { categories, tags: tags.slice(0, 8) }; // Limit tags for UI
+  }, [ideas]);
 
   if (!selectedLab) {
     return (
@@ -415,44 +537,132 @@ export default function Ideas() {
         </Dialog>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 items-center">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search ideas..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-            data-testid="input-search-ideas"
-          />
-        </div>
-        
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[180px]" data-testid="select-filter-category">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Categories</SelectItem>
-            {Object.entries(categoryLabels).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Google-like Search Interface */}
+      <div className="space-y-4">
+        {/* Main Search Bar */}
+        <div className="relative">
+          <div className="relative flex items-center">
+            <div className="relative flex-1 max-w-3xl">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                placeholder="Search ideas instantly..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-12 pr-24 py-6 text-lg border-2 rounded-full hover:border-teal-400 focus:border-teal-500 transition-colors"
+                data-testid="input-search-ideas"
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-16 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSearchFilters(!showSearchFilters)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+              >
+                <Filter className="h-4 w-4 mr-1" />
+                Filters
+              </Button>
+            </div>
+            
+            {/* Sort Options */}
+            {searchTerm && (
+              <div className="ml-4 flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Sort by:</span>
+                <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                  <SelectTrigger className="w-32 h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="relevance">Relevance</SelectItem>
+                    <SelectItem value="recent">Recent</SelectItem>
+                    <SelectItem value="priority">Priority</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]" data-testid="select-filter-status">
-            <Tag className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Statuses</SelectItem>
-            {Object.entries(statusLabels).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          {/* Search Results Count */}
+          {searchTerm && (
+            <div className="mt-2 text-sm text-muted-foreground ml-4">
+              <Sparkles className="inline h-3 w-3 mr-1" />
+              Found {filteredAndSortedIdeas.length} {filteredAndSortedIdeas.length === 1 ? 'idea' : 'ideas'}
+              {debouncedSearchTerm && ` matching "${debouncedSearchTerm}"`}
+            </div>
+          )}
+        </div>
+
+        {/* Quick Filters & Advanced Filters */}
+        {showSearchFilters && (
+          <Card className="p-4 space-y-3 bg-gray-50 dark:bg-gray-900">
+            <div className="flex gap-3 items-center">
+              <Label className="text-sm font-medium">Category:</Label>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant={categoryFilter === "ALL" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCategoryFilter("ALL")}
+                  className="h-7"
+                >
+                  All
+                </Button>
+                {quickFilters.categories.map((cat: any) => (
+                  <Button
+                    key={cat}
+                    variant={categoryFilter === cat ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCategoryFilter(cat)}
+                    className="h-7"
+                  >
+                    {categoryLabels[cat]}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 items-center">
+              <Label className="text-sm font-medium">Status:</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40 h-7">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Statuses</SelectItem>
+                  {Object.entries(statusLabels).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {quickFilters.tags.length > 0 && (
+              <div className="flex gap-3 items-center">
+                <Label className="text-sm font-medium">Quick tags:</Label>
+                <div className="flex gap-2 flex-wrap">
+                  {quickFilters.tags.map((tag: string) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="cursor-pointer hover:bg-teal-100 dark:hover:bg-teal-900"
+                      onClick={() => setSearchTerm(tag)}
+                    >
+                      <Tag className="h-3 w-3 mr-1" />
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
       </div>
 
       {/* Ideas Grid */}
@@ -473,7 +683,7 @@ export default function Ideas() {
             </Card>
           ))}
         </div>
-      ) : filteredIdeas.length === 0 ? (
+      ) : filteredAndSortedIdeas.length === 0 ? (
         <Card className="p-12 text-center">
           <Lightbulb className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-lg font-semibold mb-2">No Ideas Found</h3>
@@ -491,14 +701,18 @@ export default function Ideas() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredIdeas.map((idea: Idea) => (
+          {filteredAndSortedIdeas.map((idea: Idea) => (
             <Card key={idea.id} className="hover:shadow-lg transition-shadow" data-testid={`card-idea-${idea.id}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg mb-2">{idea.title}</CardTitle>
+                    <CardTitle className="text-lg mb-2">
+                      {debouncedSearchTerm ? highlightMatch(idea.title, debouncedSearchTerm) : idea.title}
+                    </CardTitle>
                     <CardDescription className="line-clamp-2">
-                      {idea.description || "No description provided"}
+                      {debouncedSearchTerm && idea.description 
+                        ? highlightMatch(idea.description, debouncedSearchTerm)
+                        : (idea.description || "No description provided")}
                     </CardDescription>
                   </div>
                   <DropdownMenu>
@@ -596,8 +810,18 @@ export default function Ideas() {
                 {idea.tags && idea.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {idea.tags.map((tag, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {tag}
+                      <Badge 
+                        key={index} 
+                        variant="outline" 
+                        className={cn(
+                          "text-xs cursor-pointer",
+                          debouncedSearchTerm && fuzzyMatch(tag, debouncedSearchTerm) 
+                            ? "bg-yellow-100 dark:bg-yellow-900 border-yellow-500" 
+                            : ""
+                        )}
+                        onClick={() => setSearchTerm(tag)}
+                      >
+                        {debouncedSearchTerm ? highlightMatch(tag, debouncedSearchTerm) : tag}
                       </Badge>
                     ))}
                   </div>
