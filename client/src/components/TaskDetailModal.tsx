@@ -70,15 +70,15 @@ export function TaskDetailModal({
               </DialogTitle>
               <div className="flex items-center gap-2">
                 <Badge 
-                  className={`${statusColors[task.status] || statusColors.TODO} text-white border-0`}
+                  className={`${statusColors[task.status || 'TODO'] || statusColors.TODO} text-white border-0`}
                 >
-                  {statusLabels[task.status] || task.status}
+                  {statusLabels[task.status || 'TODO'] || task.status}
                 </Badge>
                 <Badge 
                   variant="outline"
-                  className={`${priorityColors[task.priority] || priorityColors.MEDIUM} text-white border-0`}
+                  className={`${priorityColors[task.priority || 'MEDIUM'] || priorityColors.MEDIUM} text-white border-0`}
                 >
-                  {task.priority}
+                  {task.priority || 'MEDIUM'}
                 </Badge>
               </div>
             </div>
