@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useForm } from "react-hook-form";
@@ -26,7 +27,8 @@ import {
   Calendar,
   User,
   TrendingUp,
-  Clock
+  Clock,
+  MoreVertical
 } from "lucide-react";
 import type { Idea, InsertIdea } from "@shared/schema";
 
@@ -449,45 +451,51 @@ export default function Ideas() {
                       {idea.description || "No description provided"}
                     </CardDescription>
                   </div>
-                  <div className="flex space-x-1">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => openEditDialog(idea)}
-                      data-testid={`button-edit-idea-${idea.id}`}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-destructive hover:text-destructive"
-                          data-testid={`button-delete-idea-${idea.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Idea</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{idea.title}"? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction 
-                            onClick={() => deleteMutation.mutate(idea.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" data-testid={`menu-trigger-idea-${idea.id}`}>
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => openEditDialog(idea)}
+                        data-testid={`menu-edit-idea-${idea.id}`}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem 
+                            onSelect={(e) => e.preventDefault()}
+                            className="text-destructive focus:text-destructive"
+                            data-testid={`menu-delete-idea-${idea.id}`}
                           >
+                            <Trash2 className="h-4 w-4 mr-2" />
                             Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Idea</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{idea.title}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => deleteMutation.mutate(idea.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </CardHeader>
               <CardContent className="pt-0 space-y-3">

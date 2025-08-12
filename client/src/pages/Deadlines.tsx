@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -30,7 +31,8 @@ import {
   Target,
   ExternalLink,
   User,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  MoreVertical
 } from "lucide-react";
 import type { Deadline, InsertDeadline } from "@shared/schema";
 
@@ -594,11 +596,11 @@ export default function Deadlines() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
-                        {getUrgencyIcon(daysUntil, deadline.status)}
+                        {getUrgencyIcon(daysUntil, deadline.status || "PENDING")}
                         <CardTitle className="text-lg">{deadline.title}</CardTitle>
                         {deadline.submissionUrl && (
                           <a 
-                            href={deadline.submissionUrl || "#"} 
+                            href={deadline.submissionUrl} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800"
@@ -611,45 +613,51 @@ export default function Deadlines() {
                         {deadline.description || "No description provided"}
                       </CardDescription>
                     </div>
-                    <div className="flex space-x-1">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => openEditDialog(deadline)}
-                        data-testid={`button-edit-deadline-${deadline.id}`}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-destructive hover:text-destructive"
-                            data-testid={`button-delete-deadline-${deadline.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Deadline</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{deadline.title}"? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => deleteMutation.mutate(deadline.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" data-testid={`menu-trigger-deadline-${deadline.id}`}>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          onClick={() => openEditDialog(deadline)}
+                          data-testid={`menu-edit-deadline-${deadline.id}`}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem 
+                              onSelect={(e) => e.preventDefault()}
+                              className="text-destructive focus:text-destructive"
+                              data-testid={`menu-delete-deadline-${deadline.id}`}
                             >
+                              <Trash2 className="h-4 w-4 mr-2" />
                               Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Deadline</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete "{deadline.title}"? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => deleteMutation.mutate(deadline.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">

@@ -857,16 +857,6 @@ export default function Buckets() {
                       <Plus className="h-3 w-3 mr-1" />
                       Add Study
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground" 
-                      onClick={() => openDeleteDialog(bucket)}
-                      data-testid={`button-delete-bucket-${bucket.id}`}
-                    >
-                      <Trash2 className="h-3 w-3 mr-1" />
-                      Delete
-                    </Button>
                   </div>
 
                   {/* Created Date */}

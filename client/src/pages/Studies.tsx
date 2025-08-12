@@ -8,10 +8,11 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Filter, Search, Eye, Edit, Trash2, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Filter, Search, Eye, Edit, Trash2, Calendar as CalendarIcon, MoreVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -772,53 +773,58 @@ export default function Studies() {
                     <span className="text-xs text-muted-foreground">
                       Updated: {study.updatedAt ? new Date(study.updatedAt).toLocaleDateString() : 'Unknown'}
                     </span>
-                    <div className="flex space-x-1">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => openEditDialog(study)}
-                        data-testid={`button-edit-study-${study.id}`}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => openEditDialog(study)}
-                        data-testid={`button-view-study-${study.id}`}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-destructive hover:text-destructive"
-                            data-testid={`button-delete-study-${study.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Study</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{study.name}"? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleDeleteStudy(study)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" data-testid={`menu-trigger-study-${study.id}`}>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          onClick={() => openEditDialog(study)}
+                          data-testid={`menu-view-study-${study.id}`}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => openEditDialog(study)}
+                          data-testid={`menu-edit-study-${study.id}`}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem 
+                              onSelect={(e) => e.preventDefault()}
+                              className="text-destructive focus:text-destructive"
+                              data-testid={`menu-delete-study-${study.id}`}
                             >
+                              <Trash2 className="h-4 w-4 mr-2" />
                               Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Study</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete "{study.name}"? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDeleteStudy(study)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </CardContent>
