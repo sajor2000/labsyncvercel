@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,7 +31,8 @@ import {
   TrendingUp,
   Clock,
   MoreVertical,
-  FileText
+  FileText,
+  Paperclip
 } from "lucide-react";
 import type { Idea, InsertIdea } from "@shared/schema";
 import { FileUploader } from "@/components/FileUploader";
@@ -350,23 +353,33 @@ export default function Ideas() {
                   />
                 </div>
 
-                {/* File Attachments Section */}
-                {editingIdea && (
-                  <div className="space-y-4">
-                    <Separator />
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <FileText className="h-4 w-4" />
-                        File Attachments
-                      </div>
+                {/* File Attachments Section - Available for both create and edit */}
+                <div className="space-y-4">
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <FileText className="h-4 w-4" />
+                      File Attachments {!editingIdea && "(Available after creating idea)"}
+                    </div>
+                    {editingIdea && (
                       <FileUploader
                         entityType="IDEA"
                         entityId={editingIdea.id}
                         onComplete={() => {
-                          // Refresh attachment list after upload
+                          toast({
+                            title: "File uploaded successfully",
+                            description: "File has been attached to the idea.",
+                          });
                         }}
-                      />
-                    </div>
+                      >
+                        <Button variant="outline" size="sm">
+                          <Paperclip className="h-4 w-4 mr-2" />
+                          Attach Files
+                        </Button>
+                      </FileUploader>
+                    )}
+                  </div>
+                  {editingIdea && (
                     <AttachmentList
                       entityType="IDEA"
                       entityId={editingIdea.id}
@@ -374,8 +387,13 @@ export default function Ideas() {
                         // Handle attachment updates if needed
                       }}
                     />
-                  </div>
-                )}
+                  )}
+                  {!editingIdea && (
+                    <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
+                      💡 Files can be attached after the idea is created. Create the idea first, then edit it to add attachments.
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex justify-end space-x-2">
                   <Button type="button" variant="outline" onClick={() => {
@@ -494,6 +512,26 @@ export default function Ideas() {
                       >
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onSelect={(e) => e.preventDefault()}
+                        data-testid={`menu-attach-idea-${idea.id}`}
+                      >
+                        <FileUploader
+                          entityType="IDEA"
+                          entityId={idea.id}
+                          onComplete={() => {
+                            toast({
+                              title: "File uploaded successfully",
+                              description: "File has been attached to the idea.",
+                            });
+                          }}
+                        >
+                          <div className="flex items-center w-full">
+                            <Paperclip className="h-4 w-4 mr-2" />
+                            Attach Files
+                          </div>
+                        </FileUploader>
                       </DropdownMenuItem>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -681,6 +719,41 @@ export default function Ideas() {
                   )}
                 />
               </div>
+
+              {/* File Attachments Section for Edit Dialog */}
+              {editingIdea && (
+                <div className="space-y-4">
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <FileText className="h-4 w-4" />
+                      File Attachments
+                    </div>
+                    <FileUploader
+                      entityType="IDEA"
+                      entityId={editingIdea.id}
+                      onComplete={() => {
+                        toast({
+                          title: "File uploaded successfully",
+                          description: "File has been attached to the idea.",
+                        });
+                      }}
+                    >
+                      <Button variant="outline" size="sm">
+                        <Paperclip className="h-4 w-4 mr-2" />
+                        Attach Files
+                      </Button>
+                    </FileUploader>
+                  </div>
+                  <AttachmentList
+                    entityType="IDEA"
+                    entityId={editingIdea.id}
+                    onAttachmentUpdate={() => {
+                      // Handle attachment updates if needed
+                    }}
+                  />
+                </div>
+              )}
 
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => {
