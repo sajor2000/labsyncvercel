@@ -17,6 +17,7 @@ import StackedView from "@/pages/StackedView";
 import TeamMembersEnhanced from "@/pages/TeamMembersEnhanced";
 import Ideas from "@/pages/Ideas";
 import Deadlines from "@/pages/Deadlines";
+import FileManagement from "@/pages/FileManagement";
 import StandupRecording from "@/pages/StandupRecording";
 import MeetingPreview from "@/pages/MeetingPreview";
 import Calendar from "@/pages/Calendar";
@@ -45,6 +46,7 @@ function Router() {
           <Route path="/team-members" component={() => <Layout><TeamMembersEnhanced /></Layout>} />
           <Route path="/ideas" component={() => <Layout><Ideas /></Layout>} />
           <Route path="/deadlines" component={() => <Layout><Deadlines /></Layout>} />
+          <Route path="/files" component={() => <Layout><FileManagement /></Layout>} />
           <Route path="/labs" component={() => <Layout><Labs /></Layout>} />
           <Route path="/buckets" component={() => <Layout><Buckets /></Layout>} />
           <Route path="/standups" component={() => <Layout><StandupRecording /></Layout>} />

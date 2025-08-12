@@ -39,6 +39,7 @@ const navigationItems = [
   { name: "Task Management", href: "/tasks", icon: CheckSquare },
   { name: "Ideas Board", href: "/ideas", icon: Lightbulb },
   { name: "Deadlines", href: "/deadlines", icon: Clock },
+  { name: "File Management", href: "/files", icon: FileText },
   { name: "Team Members", href: "/team-members", icon: Users },
   { name: "Standup Recording", href: "/standups", icon: Mic },
   { name: "Meeting Preview", href: "/meeting-preview", icon: Eye },
