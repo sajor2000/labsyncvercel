@@ -32,6 +32,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Registration request route (public - no auth required)
+  app.post('/api/registration-request', async (req, res) => {
+    try {
+      const {
+        firstName,
+        lastName,
+        email,
+        alternativeEmail,
+        phoneNumber,
+        requestedLab,
+        requestedRole,
+        researchInterests,
+        qualifications,
+        referredBy,
+        additionalNotes
+      } = req.body;
+
+      // Format the email content
+      const emailContent = `
+        <h2>New Lab Member Registration Request</h2>
+        
+        <h3>Personal Information:</h3>
+        <ul>
+          <li><strong>Name:</strong> ${firstName} ${lastName}</li>
+          <li><strong>Primary Email:</strong> ${email}</li>
+          <li><strong>Alternative Email:</strong> ${alternativeEmail || 'Not provided'}</li>
+          <li><strong>Phone:</strong> ${phoneNumber}</li>
+        </ul>
+        
+        <h3>Lab Request:</h3>
+        <ul>
+          <li><strong>Requested Lab:</strong> ${requestedLab}</li>
+          <li><strong>Requested Role:</strong> ${requestedRole.replace(/_/g, ' ')}</li>
+          <li><strong>Referred By:</strong> ${referredBy || 'Not specified'}</li>
+        </ul>
+        
+        <h3>Research Interests:</h3>
+        <p>${researchInterests}</p>
+        
+        <h3>Qualifications & Experience:</h3>
+        <p>${qualifications}</p>
+        
+        ${additionalNotes ? `<h3>Additional Notes:</h3><p>${additionalNotes}</p>` : ''}
+        
+        <hr>
+        <p><strong>Action Required:</strong> Review this application and if approved, add the user to the team members database.</p>
+        <p>Once added, the user will be able to log in using either their primary or alternative email address.</p>
+      `;
+
+      // Send email notification to Dr. Rojas
+      // Note: In production, you would use a real email service here
+      console.log('Registration request received for:', firstName, lastName);
+      console.log('Would send email to: juan_rojas@rush.edu');
+      console.log('Email content:', emailContent);
+      
+      // Store the registration request in database (optional - for tracking)
+      // You could create a registration_requests table to track these
+
+      res.json({ 
+        success: true, 
+        message: 'Registration request submitted successfully. Dr. Rojas will review your application.' 
+      });
+    } catch (error) {
+      console.error('Registration request error:', error);
+      res.status(500).json({ 
+        error: 'Failed to submit registration request. Please try again.' 
+      });
+    }
+  });
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {

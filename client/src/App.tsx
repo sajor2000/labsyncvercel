@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/Dashboard";
 import Landing from "@/pages/Landing";
 import Studies from "@/pages/Studies";
+import RegistrationRequest from "@/pages/RegistrationRequest";
 
 import TaskManagement from "@/pages/TaskManagement";
 import StudyManagement from "@/pages/StudyManagement";
@@ -34,7 +35,10 @@ function Router() {
   return (
     <Switch>
       {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
+        <>
+          <Route path="/" component={Landing} />
+          <Route path="/register" component={RegistrationRequest} />
+        </>
       ) : (
         <LabProvider>
           <Route path="/" component={() => <Layout><Dashboard /></Layout>} />

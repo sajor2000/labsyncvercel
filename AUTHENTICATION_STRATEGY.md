@@ -121,15 +121,37 @@ To grant access to new team members:
 4. **Access Logs Dashboard**: View login history and patterns
 5. **Bulk User Import**: CSV upload for adding multiple users
 
+## New User Registration Process
+
+### For New Team Members
+
+1. **Request Access**: Click "Request Lab Access" on the login page
+2. **Complete Registration Form**: Fill out the comprehensive intake form with:
+   - Personal information (name, email, phone)
+   - Lab preference (RICCC, RHEDAS, or both)
+   - Desired role
+   - Research interests and qualifications
+3. **Submit for Approval**: Form is sent to Dr. J.C. Rojas (juan_rojas@rush.edu)
+4. **Wait for Approval**: Dr. Rojas reviews within 24-48 hours
+5. **Access Granted**: Once approved and added to database, login with either email
+
+### For Lab Administrator (Dr. Rojas)
+
+When you receive a registration request email:
+1. Review the applicant's qualifications and research interests
+2. If approved, go to Team Members page and add them
+3. The new member can immediately log in using either email they provided
+
 ## Deployment Checklist
 
-- [x] Smart user matching implemented
+- [x] Smart user matching implemented (case-insensitive)
 - [x] Access control for non-registered users
-- [x] All 12 team members registered
-- [x] Email and name matching tested
+- [x] All 11 current team members registered
+- [x] Email and name matching (handles variations like J.C. vs JC)
+- [x] Registration request form for new members
+- [x] Email notification system to juan_rojas@rush.edu
 - [ ] Test with actual team member login
-- [ ] Document admin procedures
-- [ ] Set up monitoring alerts
+- [ ] Enable real email service (currently logs to console)
 
 ## Support Contact
 

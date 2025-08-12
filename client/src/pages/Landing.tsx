@@ -26,14 +26,25 @@ export default function Landing() {
               <li>• Study lifecycle management</li>
             </ul>
           </div>
-          <Button 
-            className="w-full bg-teal-700 hover:bg-teal-800 text-white" 
-            onClick={() => window.location.href = '/api/login'}
-            data-testid="button-login"
-          >
-            <i className="fas fa-sign-in-alt mr-2"></i>
-            Sign In to Get Started
-          </Button>
+          <div className="space-y-3">
+            <Button 
+              className="w-full bg-teal-700 hover:bg-teal-800 text-white" 
+              onClick={() => window.location.href = '/api/login'}
+              data-testid="button-login"
+            >
+              <i className="fas fa-sign-in-alt mr-2"></i>
+              Sign In to Get Started
+            </Button>
+            <Button 
+              className="w-full" 
+              variant="outline"
+              onClick={() => window.location.href = '/register'}
+              data-testid="button-register"
+            >
+              <i className="fas fa-user-plus mr-2"></i>
+              Request Lab Access
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
