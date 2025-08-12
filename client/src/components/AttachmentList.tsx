@@ -20,7 +20,7 @@ import {
 import type { Attachment } from "@shared/schema";
 
 interface AttachmentListProps {
-  entityType: "TASK" | "PROJECT";
+  entityType: "TASK" | "PROJECT" | "IDEA" | "DEADLINE";
   entityId: string;
   onAttachmentUpdate?: () => void;
 }
@@ -37,7 +37,7 @@ export function AttachmentList({
     data: attachments = [],
     isLoading,
     error,
-  } = useQuery({
+  } = useQuery<Attachment[]>({
     queryKey: [`/api/attachments/${entityType}/${entityId}`],
     enabled: !!entityId,
   });
@@ -148,7 +148,7 @@ export function AttachmentList({
                     </span>
                     <span>•</span>
                     <span data-testid={`text-upload-date-${index}`}>
-                      {new Date(attachment.uploadedAt).toLocaleDateString()}
+                      {attachment.uploadedAt ? new Date(attachment.uploadedAt).toLocaleDateString() : 'Unknown date'}
                     </span>
                   </div>
                 </div>

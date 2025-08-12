@@ -1737,7 +1737,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(attachments.id, attachmentId));
   }
 
-  async getAttachmentCounts(entityType: "STUDY" | "TASK"): Promise<Record<string, number>> {
+  async getAttachmentCounts(entityType: "STUDY" | "TASK" | "IDEA" | "DEADLINE"): Promise<Record<string, number>> {
     const results = await db
       .select({
         entityId: attachments.entityId,

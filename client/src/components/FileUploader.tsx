@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, Upload } from "lucide-react";
 
 interface FileUploaderProps {
-  entityType: "TASK" | "PROJECT";
+  entityType: "TASK" | "PROJECT" | "IDEA" | "DEADLINE";
   entityId: string;
   maxNumberOfFiles?: number;
   maxFileSize?: number;
@@ -20,7 +20,7 @@ interface FileUploaderProps {
 }
 
 /**
- * File uploader component for tasks and studies
+ * File uploader component for tasks, studies, ideas, and deadlines
  * Supports common research file types: PDF, Word docs, Excel, PowerPoint, images
  */
 export function FileUploader({

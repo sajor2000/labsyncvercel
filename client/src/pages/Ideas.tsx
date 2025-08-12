@@ -28,9 +28,12 @@ import {
   User,
   TrendingUp,
   Clock,
-  MoreVertical
+  MoreVertical,
+  FileText
 } from "lucide-react";
 import type { Idea, InsertIdea } from "@shared/schema";
+import { FileUploader } from "@/components/FileUploader";
+import { AttachmentList } from "@/components/AttachmentList";
 
 const ideaFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -346,6 +349,33 @@ export default function Ideas() {
                     )}
                   />
                 </div>
+
+                {/* File Attachments Section */}
+                {editingIdea && (
+                  <div className="space-y-4">
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileText className="h-4 w-4" />
+                        File Attachments
+                      </div>
+                      <FileUploader
+                        entityType="IDEA"
+                        entityId={editingIdea.id}
+                        onComplete={() => {
+                          // Refresh attachment list after upload
+                        }}
+                      />
+                    </div>
+                    <AttachmentList
+                      entityType="IDEA"
+                      entityId={editingIdea.id}
+                      onAttachmentUpdate={() => {
+                        // Handle attachment updates if needed
+                      }}
+                    />
+                  </div>
+                )}
 
                 <div className="flex justify-end space-x-2">
                   <Button type="button" variant="outline" onClick={() => {

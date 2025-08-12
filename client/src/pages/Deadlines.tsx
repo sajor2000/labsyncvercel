@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useForm } from "react-hook-form";
@@ -32,9 +33,12 @@ import {
   ExternalLink,
   User,
   Calendar as CalendarIcon,
-  MoreVertical
+  MoreVertical,
+  FileText
 } from "lucide-react";
 import type { Deadline, InsertDeadline } from "@shared/schema";
+import { FileUploader } from "@/components/FileUploader";
+import { AttachmentList } from "@/components/AttachmentList";
 
 const deadlineFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -484,6 +488,33 @@ export default function Deadlines() {
                     </FormItem>
                   )}
                 />
+
+                {/* File Attachments Section */}
+                {editingDeadline && (
+                  <div className="space-y-4">
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileText className="h-4 w-4" />
+                        File Attachments
+                      </div>
+                      <FileUploader
+                        entityType="DEADLINE"
+                        entityId={editingDeadline.id}
+                        onComplete={() => {
+                          // Refresh attachment list after upload
+                        }}
+                      />
+                    </div>
+                    <AttachmentList
+                      entityType="DEADLINE"
+                      entityId={editingDeadline.id}
+                      onAttachmentUpdate={() => {
+                        // Handle attachment updates if needed
+                      }}
+                    />
+                  </div>
+                )}
 
                 <div className="flex justify-end space-x-2">
                   <Button type="button" variant="outline" onClick={() => {
