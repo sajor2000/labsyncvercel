@@ -132,10 +132,12 @@ export default function Dashboard() {
                 <Calendar className="h-4 w-4 mr-2" />
                 Schedule
               </Button>
-              <Button className="btn-monday glow-primary">
-                <Plus className="h-4 w-4 mr-2" />
-                New Project
-              </Button>
+              <Link href="/studies">
+                <Button className="btn-monday glow-primary">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Project
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
