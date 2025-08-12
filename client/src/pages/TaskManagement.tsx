@@ -48,6 +48,8 @@ import { CSS } from "@dnd-kit/utilities";
 import type { Study, Lab, Bucket, TeamMember, Task } from "@shared/schema";
 import { TimelineView } from "@/components/TimelineView";
 import { useLocation, useSearch } from "wouter";
+import { FileUploader } from "@/components/FileUploader";
+import { AttachmentList } from "@/components/AttachmentList";
 
 // Pretty labels for task statuses
 const statusLabels: Record<string, string> = {
@@ -471,8 +473,14 @@ const quickTaskSchema = z.object({
 
 type QuickTaskFormValues = z.infer<typeof quickTaskSchema>;
 
+// Helper function to extract filename from URL
+function extractFileNameFromUrl(url: string): string {
+  const parts = url.split('/');
+  return parts[parts.length - 1] || 'attachment';
+}
+
 export default function TaskManagement() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const { selectedLab: contextLab } = useLabContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -507,6 +515,9 @@ export default function TaskManagement() {
   // Phase 4: Bulk Operations
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [bulkOperationMode, setBulkOperationMode] = useState(false);
+  
+  // File upload state
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -588,14 +599,32 @@ export default function TaskManagement() {
   // Task operations mutations
   const createTaskMutation = useMutation({
     mutationFn: async (data: QuickTaskFormValues) => {
-      return apiRequest('/api/tasks', 'POST', {
+      const task = await apiRequest('/api/tasks', 'POST', {
         ...data,
         status: 'TODO',
       });
+      
+      // Upload files if any
+      if (uploadedFiles.length > 0) {
+        for (const fileUrl of uploadedFiles) {
+          await apiRequest('/api/attachments', 'POST', {
+            entityType: 'TASK',
+            entityId: task.id,
+            fileUrl,
+            fileName: extractFileNameFromUrl(fileUrl),
+            fileSize: 0,
+            mimeType: 'application/octet-stream'
+          });
+        }
+      }
+      
+      return task;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/attachments/counts', 'TASK'] });
       quickForm.reset();
+      setUploadedFiles([]);
       setShowQuickAdd(false);
       toast({
         title: "Success",
@@ -1309,6 +1338,56 @@ export default function TaskManagement() {
                     </FormItem>
                   )}
                 />
+              </div>
+              
+              {/* File Upload Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Paperclip className="h-4 w-4 text-muted-foreground" />
+                  <FormLabel className="text-base font-medium">Attachments</FormLabel>
+                </div>
+                
+                <div className="space-y-3">
+                  <FileUploader
+                    entityType="TASK"
+                    entityId=""
+                    maxFiles={10}
+                    maxFileSize={50 * 1024 * 1024}
+                    acceptedFileTypes={['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.png', '.jpg', '.jpeg']}
+                    onFilesUploaded={(files) => {
+                      setUploadedFiles(prev => [...prev, ...files]);
+                    }}
+                    disabled={false}
+                  />
+                  
+                  {uploadedFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        {uploadedFiles.length} file{uploadedFiles.length !== 1 ? 's' : ''} ready to attach
+                      </p>
+                      <AttachmentList
+                        entityType="TASK"
+                        entityId=""
+                        attachments={uploadedFiles.map((url, index) => ({
+                          id: `temp-${index}`,
+                          entityType: 'TASK' as const,
+                          entityId: '',
+                          fileName: extractFileNameFromUrl(url),
+                          fileUrl: url,
+                          fileSize: 0,
+                          mimeType: 'application/octet-stream',
+                          uploadedAt: new Date(),
+                          uploadedBy: user?.id || '',
+                        }))}
+                        onDelete={(attachmentId) => {
+                          const index = parseInt(attachmentId.replace('temp-', ''));
+                          setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+                        }}
+                        readOnly={false}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
               
               {/* Form Actions */}
