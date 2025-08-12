@@ -57,6 +57,8 @@ export default function Buckets() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isStudyCreateOpen, setIsStudyCreateOpen] = useState(false);
   const [selectedBucketForStudy, setSelectedBucketForStudy] = useState<string | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [selectedBucketForEdit, setSelectedBucketForEdit] = useState<Bucket | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -143,6 +145,44 @@ export default function Buckets() {
       toast({
         title: "Error",
         description: "Failed to create bucket",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update bucket mutation
+  const updateBucketMutation = useMutation({
+    mutationFn: async (data: BucketFormValues) => {
+      if (!selectedBucketForEdit) {
+        throw new Error("No bucket selected for editing");
+      }
+      return apiRequest(`/api/buckets/${selectedBucketForEdit.id}`, 'PUT', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/buckets', currentLab?.id] });
+      setIsEditOpen(false);
+      setSelectedBucketForEdit(null);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Bucket updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update bucket",
         variant: "destructive",
       });
     },
@@ -267,7 +307,11 @@ export default function Buckets() {
   };
 
   const onSubmit = (data: BucketFormValues) => {
-    createBucketMutation.mutate(data);
+    if (selectedBucketForEdit) {
+      updateBucketMutation.mutate(data);
+    } else {
+      createBucketMutation.mutate(data);
+    }
   };
 
   const onStudySubmit = (data: StudyFormValues) => {
@@ -278,6 +322,23 @@ export default function Buckets() {
     setSelectedBucketForStudy(bucketId);
     studyForm.setValue('bucketId', bucketId);
     setIsStudyCreateOpen(true);
+  };
+
+  const openEditBucketDialog = (bucket: Bucket) => {
+    setSelectedBucketForEdit(bucket);
+    form.setValue('name', bucket.name);
+    form.setValue('color', bucket.color || '#3b82f6');
+    setIsEditOpen(true);
+  };
+
+  const viewBucketStudies = (bucketId: string) => {
+    // Navigate to studies view with bucket filter
+    window.location.href = `/studies?bucket=${bucketId}`;
+  };
+
+  const viewBucket = (bucketId: string) => {
+    // Navigate to bucket detail view
+    window.location.href = `/studies?bucket=${bucketId}`;
   };
 
   const getLabName = (labId: string) => {
@@ -305,34 +366,186 @@ export default function Buckets() {
           <h1 className="text-2xl font-bold text-foreground">Project Buckets</h1>
           <p className="text-muted-foreground">Organize your studies into manageable project buckets</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-bucket">
-              <Plus className="h-4 w-4 mr-2" />
-              New Bucket
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create New Bucket</DialogTitle>
-              <DialogDescription>
-                Create a new project bucket to organize your studies
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <Button data-testid="button-create-bucket" onClick={() => setIsCreateOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Bucket
+        </Button>
+      </div>
+
+      {/* Create Bucket Dialog */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Bucket</DialogTitle>
+            <DialogDescription>
+              Create a new project bucket to organize your studies
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bucket Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter bucket name..." 
+                        {...field} 
+                        data-testid="input-bucket-name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Color</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="color" 
+                          {...field} 
+                          className="w-16 h-10 p-1 rounded border"
+                          data-testid="input-bucket-color"
+                        />
+                        <Input 
+                          placeholder="#3b82f6" 
+                          {...field}
+                          className="flex-1"
+                          data-testid="input-bucket-color-text"
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => {
+                    setIsCreateOpen(false);
+                    setSelectedBucketForEdit(null);
+                    form.reset();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createBucketMutation.isPending || updateBucketMutation.isPending}>
+                  {createBucketMutation.isPending || updateBucketMutation.isPending ? "Saving..." : selectedBucketForEdit ? "Update Bucket" : "Create Bucket"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Bucket Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Bucket</DialogTitle>
+            <DialogDescription>
+              Update the bucket details
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bucket Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter bucket name..." 
+                        {...field} 
+                        data-testid="input-edit-bucket-name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Color</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="color" 
+                          {...field} 
+                          className="w-16 h-10 p-1 rounded border"
+                          data-testid="input-edit-bucket-color"
+                        />
+                        <Input 
+                          placeholder="#3b82f6" 
+                          {...field}
+                          className="flex-1"
+                          data-testid="input-edit-bucket-color-text"
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditOpen(false);
+                    setSelectedBucketForEdit(null);
+                    form.reset();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updateBucketMutation.isPending}>
+                  {updateBucketMutation.isPending ? "Updating..." : "Update Bucket"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Study Creation Dialog */}
+      <Dialog open={isStudyCreateOpen} onOpenChange={setIsStudyCreateOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Study</DialogTitle>
+            <DialogDescription>
+              Add a new research study to this bucket
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...studyForm}>
+            <form onSubmit={studyForm.handleSubmit(onStudySubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
-                  control={form.control}
+                  control={studyForm.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Bucket Name</FormLabel>
+                      <FormLabel>Study Name</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Enter bucket name..." 
-                          {...field} 
-                          data-testid="input-bucket-name"
-                        />
+                        <Input placeholder="Enter study name..." {...field} data-testid="input-study-name" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -340,136 +553,56 @@ export default function Buckets() {
                 />
 
                 <FormField
-                  control={form.control}
-                  name="color"
+                  control={studyForm.control}
+                  name="oraNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Color</FormLabel>
+                      <FormLabel>ORA Number</FormLabel>
                       <FormControl>
-                        <div className="flex items-center gap-2">
-                          <Input 
-                            type="color" 
-                            {...field} 
-                            className="w-16 h-10 p-1 rounded border"
-                            data-testid="input-bucket-color"
-                          />
-                          <Input 
-                            placeholder="#3b82f6" 
-                            {...field}
-                            className="flex-1"
-                            data-testid="input-bucket-color-text"
-                          />
-                        </div>
+                        <Input placeholder="e.g., ORA-2024-001" {...field} data-testid="input-ora-number" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={studyForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <FormControl>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <SelectTrigger data-testid="select-study-status">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PLANNING">Planning</SelectItem>
+                            <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                            <SelectItem value="COMPLETED">Completed</SelectItem>
+                            <SelectItem value="ON_HOLD">On Hold</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    onClick={() => {
-                      setIsCreateOpen(false);
-                      form.reset();
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={createBucketMutation.isPending}>
-                    {createBucketMutation.isPending ? "Creating..." : "Create Bucket"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Study Creation Dialog */}
-        <Dialog open={isStudyCreateOpen} onOpenChange={setIsStudyCreateOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Study</DialogTitle>
-              <DialogDescription>
-                Add a new research study to this bucket
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...studyForm}>
-              <form onSubmit={studyForm.handleSubmit(onStudySubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={studyForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Study Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter study name..." {...field} data-testid="input-study-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={studyForm.control}
-                    name="oraNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ORA Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., ORA-2024-001" {...field} data-testid="input-ora-number" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={studyForm.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
+                <FormField
+                  control={studyForm.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      <FormControl>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-study-status">
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="PLANNING">Planning</SelectItem>
-                            <SelectItem value="IRB_SUBMISSION">IRB Submission</SelectItem>
-                            <SelectItem value="IRB_APPROVED">IRB Approved</SelectItem>
-                            <SelectItem value="DATA_COLLECTION">Data Collection</SelectItem>
-                            <SelectItem value="ANALYSIS">Analysis</SelectItem>
-                            <SelectItem value="MANUSCRIPT">Manuscript</SelectItem>
-                            <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
-                            <SelectItem value="PUBLISHED">Published</SelectItem>
-                            <SelectItem value="ON_HOLD">On Hold</SelectItem>
-                            <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={studyForm.control}
-                    name="priority"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Priority</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-study-priority">
-                              <SelectValue placeholder="Select priority" />
-                            </SelectTrigger>
-                          </FormControl>
+                          <SelectTrigger data-testid="select-study-priority">
+                            <SelectValue placeholder="Select priority" />
+                          </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="LOW">Low</SelectItem>
                             <SelectItem value="MEDIUM">Medium</SelectItem>
@@ -477,152 +610,94 @@ export default function Buckets() {
                             <SelectItem value="URGENT">Urgent</SelectItem>
                           </SelectContent>
                         </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={studyForm.control}
-                    name="studyType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Study Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-study-type">
-                              <SelectValue placeholder="Select study type..." />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="retrospective EHR data analysis">Retrospective EHR Data Analysis</SelectItem>
-                            <SelectItem value="prospective cohort study">Prospective Cohort Study</SelectItem>
-                            <SelectItem value="randomized controlled trial">Randomized Controlled Trial</SelectItem>
-                            <SelectItem value="case-control study">Case-Control Study</SelectItem>
-                            <SelectItem value="cross-sectional survey study">Cross-Sectional Survey Study</SelectItem>
-                            <SelectItem value="longitudinal cohort study">Longitudinal Cohort Study</SelectItem>
-                            <SelectItem value="quasi-RCT (pre-post design) non-inferiority trial">Quasi-RCT (Pre-Post Design) Non-Inferiority Trial</SelectItem>
-                            <SelectItem value="qualitative interview study">Qualitative Interview Study</SelectItem>
-                            <SelectItem value="systematic review">Systematic Review</SelectItem>
-                            <SelectItem value="meta-analysis">Meta-Analysis</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={studyForm.control}
-                    name="dueDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Due Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={`w-full pl-3 text-left font-normal ${!field.value && "text-muted-foreground"}`}
-                                data-testid="button-study-due-date"
-                              >
-                                {field.value ? (
-                                  new Date(field.value).toLocaleDateString()
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value ? new Date(field.value) : undefined}
-                              onSelect={(date) => field.onChange(date?.toISOString().split('T')[0])}
-                              disabled={(date) =>
-                                date < new Date("1900-01-01")
-                              }
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={studyForm.control}
-                  name="funding"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Funding Source</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., NIH, NSF, Internal..." {...field} data-testid="input-funding" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </div>
 
-                <FormField
-                  control={studyForm.control}
-                  name="externalCollaborators"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>External Collaborators</FormLabel>
-                      <FormControl>
-                        <Input placeholder="List external collaborators..." {...field} data-testid="input-external-collaborators" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <FormField
+                control={studyForm.control}
+                name="studyType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Study Type</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Clinical Trial, Observational Study..." {...field} data-testid="input-study-type" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <FormField
-                  control={studyForm.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Add any additional notes about the study..." 
-                          className="min-h-[80px]"
-                          {...field} 
-                          data-testid="textarea-study-notes"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <FormField
+                control={studyForm.control}
+                name="funding"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Funding Source</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., NIH, NSF, Internal..." {...field} data-testid="input-funding" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    onClick={() => {
-                      setIsStudyCreateOpen(false);
-                      setSelectedBucketForStudy(null);
-                      studyForm.reset();
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={createStudyMutation.isPending}>
-                    {createStudyMutation.isPending ? "Creating..." : "Create Study"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </div>
+              <FormField
+                control={studyForm.control}
+                name="externalCollaborators"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>External Collaborators</FormLabel>
+                    <FormControl>
+                      <Input placeholder="List external collaborators..." {...field} data-testid="input-external-collaborators" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={studyForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Add any additional notes about the study..." 
+                        className="min-h-[80px]"
+                        {...field} 
+                        data-testid="textarea-study-notes"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => {
+                    setIsStudyCreateOpen(false);
+                    setSelectedBucketForStudy(null);
+                    studyForm.reset();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createStudyMutation.isPending}>
+                  {createStudyMutation.isPending ? "Creating..." : "Create Study"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -694,84 +769,59 @@ export default function Buckets() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredBuckets.map((bucket) => (
-            <Card key={bucket.id} className="hover:shadow-md transition-shadow" data-testid={`bucket-card-${bucket.id}`}>
-              <CardHeader>
+            <Card key={bucket.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: bucket.color || '#3b82f6' }}
-                      />
-                      {bucket.name}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {getLabName(bucket.labId)}
-                    </p>
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div 
+                      className="w-4 h-4 rounded-full flex-shrink-0" 
+                      style={{ backgroundColor: bucket.color }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="text-base font-medium truncate">{bucket.name}</CardTitle>
+                      <p className="text-sm text-muted-foreground">{getLabName(bucket.labId)}</p>
+                    </div>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" data-testid={`button-bucket-menu-${bucket.id}`}>
-                        <Settings className="h-4 w-4" />
+                        <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Edit className="h-4 w-4 mr-2" />
+                      <DropdownMenuItem onClick={() => openEditDialog(bucket)} data-testid={`menu-edit-bucket-${bucket.id}`}>
+                        <Edit className="h-3 w-3 mr-2" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Eye className="h-4 w-4 mr-2" />
+                      <DropdownMenuItem onClick={() => navigateToStudies(bucket.id)} data-testid={`menu-view-studies-${bucket.id}`}>
+                        <FolderOpen className="h-3 w-3 mr-2" />
                         View Studies
                       </DropdownMenuItem>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem 
-                            className="text-red-600"
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Bucket</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{bucket.name}"? This action cannot be undone and will remove all associated studies.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => deleteBucketMutation.mutate(bucket.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <DropdownMenuItem onClick={() => viewBucket(bucket.id)} data-testid={`menu-view-bucket-${bucket.id}`}>
+                        <Eye className="h-3 w-3 mr-2" />
+                        View
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
               </CardHeader>
-              <CardContent>
+
+              <CardContent className="pt-0">
                 <div className="space-y-4">
-                  {/* Studies Count */}
-                  <div className="flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="flex items-center justify-center mb-1">
-                        <FlaskConical className="h-5 w-5 text-primary" />
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{getStudiesCount(bucket.id)}</p>
-                      <p className="text-sm text-muted-foreground">Studies</p>
-                    </div>
+                  {/* Study Count */}
+                  <div className="text-sm text-muted-foreground">
+                    <span className="font-medium">Studies:</span> {bucket.studyCount || 0}
                   </div>
 
-                  {/* Actions */}
+                  {/* Action Buttons */}
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1" data-testid={`button-view-bucket-${bucket.id}`}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1" 
+                      onClick={() => viewBucket(bucket.id)}
+                      data-testid={`button-view-bucket-${bucket.id}`}
+                    >
                       <Eye className="h-3 w-3 mr-1" />
                       View
                     </Button>
