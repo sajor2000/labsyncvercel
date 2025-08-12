@@ -252,8 +252,15 @@ export interface IStorage {
   getLabMember(userId: string, labId: string): Promise<LabMember | undefined>;
   updateLabMemberPermissions(userId: string, labId: string, permissions: any): Promise<void>;
   getPermissionTemplate(templateId: string): Promise<PermissionTemplate | undefined>;
+  createPermissionTemplate(template: any): Promise<PermissionTemplate>;
   getResourcePermissions(userId: string, resourceType: string, resourceId: string): Promise<ResourcePermission[]>;
   getCrossLabAccess(userId: string, targetLabId: string): Promise<CrossLabAccess[]>;
+  getLabMembers(labId: string): Promise<LabMember[]>;
+  getBucket(bucketId: string): Promise<Bucket | undefined>;
+  getStudy(studyId: string): Promise<Study | undefined>;
+  getTask(taskId: string): Promise<Task | undefined>;
+  getIdea(ideaId: string): Promise<Idea | undefined>;
+  getDeadline(deadlineId: string): Promise<Deadline | undefined>;
 
   // PHASE 3: PROJECT MANAGEMENT OPERATIONS
   createStatusHistory(history: InsertStatusHistory): Promise<StatusHistory>;
@@ -912,6 +919,101 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Failed to get cross lab access:", error);
       return [];
+    }
+  }
+
+  async createPermissionTemplate(template: any): Promise<any> {
+    try {
+      const [created] = await db
+        .insert(permissionTemplates)
+        .values(template)
+        .returning();
+      return created;
+    } catch (error) {
+      console.error("Failed to create permission template:", error);
+      throw error;
+    }
+  }
+
+  async getLabMembers(labId: string): Promise<any[]> {
+    try {
+      return await db
+        .select()
+        .from(labMembers)
+        .where(eq(labMembers.labId, labId));
+    } catch (error) {
+      console.error("Failed to get lab members:", error);
+      return [];
+    }
+  }
+
+  async getBucket(bucketId: string): Promise<any> {
+    try {
+      const [bucket] = await db
+        .select()
+        .from(buckets)
+        .where(eq(buckets.id, bucketId))
+        .limit(1);
+      return bucket;
+    } catch (error) {
+      console.error("Failed to get bucket:", error);
+      return undefined;
+    }
+  }
+
+  async getStudy(studyId: string): Promise<any> {
+    try {
+      const [study] = await db
+        .select()
+        .from(studies)
+        .where(eq(studies.id, studyId))
+        .limit(1);
+      return study;
+    } catch (error) {
+      console.error("Failed to get study:", error);
+      return undefined;
+    }
+  }
+
+  async getTask(taskId: string): Promise<any> {
+    try {
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+      return task;
+    } catch (error) {
+      console.error("Failed to get task:", error);
+      return undefined;
+    }
+  }
+
+  async getIdea(ideaId: string): Promise<any> {
+    try {
+      const [idea] = await db
+        .select()
+        .from(ideas)
+        .where(eq(ideas.id, ideaId))
+        .limit(1);
+      return idea;
+    } catch (error) {
+      console.error("Failed to get idea:", error);
+      return undefined;
+    }
+  }
+
+  async getDeadline(deadlineId: string): Promise<any> {
+    try {
+      const [deadline] = await db
+        .select()
+        .from(deadlines)
+        .where(eq(deadlines.id, deadlineId))
+        .limit(1);
+      return deadline;
+    } catch (error) {
+      console.error("Failed to get deadline:", error);
+      return undefined;
     }
   }
 

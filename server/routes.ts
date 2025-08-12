@@ -1645,6 +1645,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PHASE 3: Enhanced RBAC Permission Management Endpoints
+  app.post("/api/permissions/apply-template", isAuthenticated, async (req, res) => {
+    try {
+      const { userId: targetUserId, templateId } = req.body;
+      const adminUserId = req.user?.claims?.sub;
+      const labId = req.headers['x-current-lab'] as string;
+      
+      // Check if requesting user is lab admin
+      const labMember = await storage.getLabMember(adminUserId, labId);
+      if (!labMember?.canManagePermissions && !labMember?.isAdmin) {
+        return res.status(403).json({ message: "Unauthorized: Permission management required" });
+      }
+      
+      const template = await storage.getPermissionTemplate(templateId);
+      if (!template) {
+        return res.status(404).json({ message: "Permission template not found" });
+      }
+      
+      await storage.updateLabMemberPermissions(targetUserId, labId, template.permissions);
+      
+      await SecurityAuditLogger.logEvent(req, {
+        action: 'PERMISSION_CHANGE',
+        entityType: 'LAB_MEMBER',
+        entityId: `${targetUserId}-${labId}`,
+        authorizationMethod: 'admin',
+        wasAuthorized: true,
+        details: { 
+          templateApplied: template.name,
+          targetUser: targetUserId,
+          appliedBy: adminUserId 
+        }
+      });
+      
+      res.json({ message: "Permission template applied successfully" });
+    } catch (error) {
+      console.error("Error applying permission template:", error);
+      res.status(500).json({ message: "Failed to apply permission template" });
+    }
+  });
+
+  app.post("/api/permissions/upgrade-lab-members", isAuthenticated, async (req, res) => {
+    try {
+      const adminUserId = req.user?.claims?.sub;
+      const labId = req.headers['x-current-lab'] as string;
+      
+      // Check if requesting user is lab admin
+      const labMember = await storage.getLabMember(adminUserId, labId);
+      if (!labMember?.isAdmin) {
+        return res.status(403).json({ message: "Unauthorized: Admin access required" });
+      }
+      
+      // Apply enhanced permissions for all lab members
+      const { applyDefaultPermissions } = await import('./defaultPermissions');
+      const labMembers = await storage.getLabMembers(labId);
+      
+      let upgradedCount = 0;
+      for (const member of labMembers) {
+        if (member.isActive) {
+          await applyDefaultPermissions(member.userId, labId, member.labRole || 'RESEARCH_ASSISTANT');
+          upgradedCount++;
+        }
+      }
+      
+      await SecurityAuditLogger.logEvent(req, {
+        action: 'PERMISSION_CHANGE',
+        entityType: 'LAB',
+        entityId: labId,
+        authorizationMethod: 'admin',
+        wasAuthorized: true,
+        details: { 
+          massPermissionUpgrade: true,
+          membersUpgraded: upgradedCount,
+          upgradedBy: adminUserId 
+        }
+      });
+      
+      res.json({ 
+        message: "Lab member permissions upgraded successfully",
+        upgradedCount 
+      });
+    } catch (error) {
+      console.error("Error upgrading lab member permissions:", error);
+      res.status(500).json({ message: "Failed to upgrade lab member permissions" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
