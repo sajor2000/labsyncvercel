@@ -50,6 +50,7 @@ import { TimelineView } from "@/components/TimelineView";
 import { useLocation, useSearch } from "wouter";
 import { FileUploader } from "@/components/FileUploader";
 import { AttachmentList } from "@/components/AttachmentList";
+import { AttachmentViewer } from "@/components/AttachmentViewer";
 
 // Pretty labels for task statuses
 const statusLabels: Record<string, string> = {
@@ -310,6 +311,14 @@ function TaskCard({ task, assignee, onEdit, onDelete, onPreview, attachmentCount
             <span>{new Date(task.dueDate).toLocaleDateString()}</span>
           </div>
         )}
+
+        {/* File Attachments Compact View */}
+        <AttachmentViewer
+          entityType="TASK"
+          entityId={task.id}
+          compact={true}
+          showHeader={false}
+        />
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">

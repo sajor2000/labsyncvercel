@@ -37,6 +37,7 @@ import {
 import type { Idea, InsertIdea } from "@shared/schema";
 import { FileUploader } from "@/components/FileUploader";
 import { AttachmentList } from "@/components/AttachmentList";
+import { AttachmentViewer } from "@/components/AttachmentViewer";
 
 const ideaFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -601,6 +602,14 @@ export default function Ideas() {
                     ))}
                   </div>
                 )}
+
+                {/* File Attachments Compact View */}
+                <AttachmentViewer
+                  entityType="IDEA"
+                  entityId={idea.id}
+                  compact={true}
+                  showHeader={false}
+                />
 
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <div className="flex items-center space-x-4">

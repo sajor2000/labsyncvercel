@@ -39,6 +39,7 @@ import {
 import type { Deadline, InsertDeadline } from "@shared/schema";
 import { FileUploader } from "@/components/FileUploader";
 import { AttachmentList } from "@/components/AttachmentList";
+import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { Paperclip } from "lucide-react";
 
 const deadlineFormSchema = z.object({
@@ -820,6 +821,14 @@ export default function Deadlines() {
                       {deadline.notes}
                     </p>
                   )}
+
+                  {/* File Attachments Compact View */}
+                  <AttachmentViewer
+                    entityType="DEADLINE"
+                    entityId={deadline.id}
+                    compact={true}
+                    showHeader={false}
+                  />
                 </CardContent>
               </Card>
             );
