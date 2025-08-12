@@ -1191,13 +1191,94 @@ export class DatabaseStorage implements IStorage {
     return newMember;
   }
 
-  async updateTeamMember(id: string, updates: Partial<InsertTeamMember>): Promise<TeamMember> {
-    const [updatedMember] = await db
-      .update(teamMembers)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(teamMembers.id, id))
+  async updateTeamMember(id: string, updates: any): Promise<any> {
+    // Update the users table since team members are actually users
+    const userUpdates: any = {};
+    
+    // Map the updates to user fields
+    if (updates.firstName !== undefined) userUpdates.firstName = updates.firstName;
+    if (updates.lastName !== undefined) userUpdates.lastName = updates.lastName;
+    if (updates.middleName !== undefined) userUpdates.middleName = updates.middleName;
+    if (updates.email !== undefined) userUpdates.email = updates.email;
+    if (updates.role !== undefined) userUpdates.role = updates.role;
+    if (updates.title !== undefined) userUpdates.title = updates.title;
+    if (updates.department !== undefined) userUpdates.department = updates.department;
+    if (updates.institution !== undefined) userUpdates.institution = updates.institution;
+    if (updates.phone !== undefined) userUpdates.phone = updates.phone;
+    if (updates.avatar !== undefined) userUpdates.avatar = updates.avatar;
+    if (updates.profileImageUrl !== undefined) userUpdates.profileImageUrl = updates.profileImageUrl;
+    if (updates.bio !== undefined) userUpdates.bio = updates.bio;
+    if (updates.linkedIn !== undefined) userUpdates.linkedIn = updates.linkedIn;
+    if (updates.orcid !== undefined) userUpdates.orcid = updates.orcid;
+    if (updates.capacity !== undefined) userUpdates.capacity = updates.capacity;
+    if (updates.expertise !== undefined) userUpdates.expertise = updates.expertise;
+    if (updates.skills !== undefined) userUpdates.skills = updates.skills;
+    
+    // Update the name field based on first and last name
+    if (updates.firstName || updates.lastName) {
+      const firstName = updates.firstName || '';
+      const lastName = updates.lastName || '';
+      userUpdates.name = `${firstName} ${lastName}`.trim();
+    }
+    
+    // Generate initials if names changed
+    if (updates.firstName || updates.lastName || updates.middleName) {
+      const firstName = updates.firstName || '';
+      const middleName = updates.middleName || '';
+      const lastName = updates.lastName || '';
+      const initials = [firstName[0], middleName[0], lastName[0]].filter(Boolean).join('').toUpperCase();
+      if (initials) userUpdates.initials = initials;
+    }
+    
+    userUpdates.updatedAt = new Date();
+    
+    const [updatedUser] = await db
+      .update(users)
+      .set(userUpdates)
+      .where(eq(users.id, id))
       .returning();
-    return updatedMember;
+    
+    // Also update lab member role if provided
+    if (updates.labRole && updates.labId) {
+      await db
+        .update(labMembers)
+        .set({ 
+          labRole: updates.labRole,
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(labMembers.userId, id),
+          eq(labMembers.labId, updates.labId)
+        ));
+    }
+    
+    // Return the updated user with lab member info
+    const memberWithLab = await db
+      .select({
+        id: users.id,
+        name: sql`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        role: users.role,
+        title: users.title,
+        department: users.department,
+        phone: users.phone,
+        avatar: users.avatar,
+        profileImageUrl: users.profileImageUrl,
+        capacity: users.capacity,
+        expertise: users.expertise,
+        skills: users.skills,
+        labId: labMembers.labId,
+        labRole: labMembers.labRole,
+        isAdmin: labMembers.isAdmin
+      })
+      .from(users)
+      .leftJoin(labMembers, eq(users.id, labMembers.userId))
+      .where(eq(users.id, id))
+      .limit(1);
+    
+    return memberWithLab[0] || updatedUser;
   }
 
   async deleteTeamMember(id: string): Promise<void> {
