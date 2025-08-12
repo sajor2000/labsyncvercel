@@ -506,11 +506,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { entityType } = req.params;
       
-      if (!["STUDY", "TASK"].includes(entityType)) {
+      if (!["PROJECT", "TASK", "IDEA", "DEADLINE"].includes(entityType)) {
         return res.status(400).json({ error: "Invalid entity type" });
       }
       
-      const counts = await storage.getAttachmentCounts(entityType as "STUDY" | "TASK");
+      const counts = await storage.getAttachmentCounts(entityType as "PROJECT" | "TASK" | "IDEA" | "DEADLINE");
       res.json(counts);
     } catch (error) {
       console.error("Error fetching attachment counts:", error);

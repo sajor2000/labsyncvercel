@@ -234,7 +234,7 @@ export interface IStorage {
   getAttachmentsByEntity(entityType: string, entityId: string): Promise<Attachment[]>;
   createAttachment(attachment: InsertAttachment): Promise<Attachment>;
   deleteAttachment(attachmentId: string): Promise<void>;
-  getAttachmentCounts(entityType: "STUDY" | "TASK"): Promise<Record<string, number>>;
+  getAttachmentCounts(entityType: "PROJECT" | "TASK" | "IDEA" | "DEADLINE"): Promise<Record<string, number>>;
 
   // PHASE 2: Security Audit Logging Operations
   createSecurityAuditLog(log: InsertSecurityAuditLog): Promise<SecurityAuditLog>;

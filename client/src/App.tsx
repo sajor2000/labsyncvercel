@@ -47,6 +47,7 @@ function Router() {
           <Route path="/ideas" component={() => <Layout><Ideas /></Layout>} />
           <Route path="/deadlines" component={() => <Layout><Deadlines /></Layout>} />
           <Route path="/files" component={() => <Layout><FileManagement /></Layout>} />
+          <Route path="/file-management" component={() => <Layout><FileManagement /></Layout>} />
           <Route path="/labs" component={() => <Layout><Labs /></Layout>} />
           <Route path="/buckets" component={() => <Layout><Buckets /></Layout>} />
           <Route path="/standups" component={() => <Layout><StandupRecording /></Layout>} />

@@ -81,11 +81,7 @@ export default function FileManagement() {
   // Edit filename mutation
   const editFilenameMutation = useMutation({
     mutationFn: async ({ attachmentId, newFilename }: { attachmentId: string; newFilename: string }) => {
-      return await apiRequest(`/api/attachments/${attachmentId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ filename: newFilename }),
-        headers: { "Content-Type": "application/json" },
-      });
+      return await apiRequest(`/api/attachments/${attachmentId}`, "PATCH", { filename: newFilename });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/attachments"] });
@@ -108,9 +104,7 @@ export default function FileManagement() {
   // Delete attachment mutation
   const deleteAttachmentMutation = useMutation({
     mutationFn: async (attachmentId: string) => {
-      return await apiRequest(`/api/attachments/${attachmentId}`, {
-        method: "DELETE",
-      });
+      return await apiRequest(`/api/attachments/${attachmentId}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/attachments"] });
@@ -153,7 +147,7 @@ export default function FileManagement() {
 
     labFilteredStudies.forEach(study => {
       const studyAttachments = attachments.filter(att => 
-        (att.entityType === 'PROJECT' || att.entityType === 'STUDY') && att.entityId === study.id
+        att.entityType === 'PROJECT' && att.entityId === study.id
       );
       const studyTasks = labFilteredTasks.filter(task => task.studyId === study.id);
       
