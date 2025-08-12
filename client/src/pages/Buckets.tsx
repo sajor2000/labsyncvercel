@@ -62,6 +62,22 @@ export default function Buckets() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedBucketForDelete, setSelectedBucketForDelete] = useState<Bucket | null>(null);
 
+  // Predefined solid colors for bucket selection
+  const colorOptions = [
+    { name: 'Teal', value: '#4C9A92' },
+    { name: 'Cyan', value: '#5DD5E6' },
+    { name: 'Blue', value: '#3b82f6' },
+    { name: 'Green', value: '#10b981' },
+    { name: 'Purple', value: '#8b5cf6' },
+    { name: 'Pink', value: '#ec4899' },
+    { name: 'Orange', value: '#f97316' },
+    { name: 'Red', value: '#ef4444' },
+    { name: 'Yellow', value: '#eab308' },
+    { name: 'Indigo', value: '#6366f1' },
+    { name: 'Gray', value: '#6b7280' },
+    { name: 'Slate', value: '#64748b' }
+  ];
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -107,7 +123,7 @@ export default function Buckets() {
     resolver: zodResolver(bucketFormSchema),
     defaultValues: {
       name: "",
-      color: "#3b82f6",
+      color: "#4C9A92",
     },
   });
 
@@ -433,21 +449,27 @@ export default function Buckets() {
                 name="color"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Color</FormLabel>
+                    <FormLabel>Bucket Color</FormLabel>
                     <FormControl>
-                      <div className="flex items-center gap-2">
-                        <Input 
-                          type="color" 
-                          {...field} 
-                          className="w-16 h-10 p-1 rounded border"
-                          data-testid="input-bucket-color"
-                        />
-                        <Input 
-                          placeholder="#3b82f6" 
-                          {...field}
-                          className="flex-1"
-                          data-testid="input-bucket-color-text"
-                        />
+                      <div className="grid grid-cols-6 gap-2">
+                        {colorOptions.map((color) => (
+                          <button
+                            key={color.value}
+                            type="button"
+                            onClick={() => {
+                              field.onChange(color.value);
+                              form.setValue('color', color.value);
+                            }}
+                            className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
+                              field.value === color.value 
+                                ? 'border-white ring-2 ring-offset-2 ring-primary' 
+                                : 'border-gray-300 hover:border-gray-400'
+                            }`}
+                            style={{ backgroundColor: color.value }}
+                            title={color.name}
+                            data-testid={`color-option-${color.name.toLowerCase()}`}
+                          />
+                        ))}
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -510,21 +532,27 @@ export default function Buckets() {
                 name="color"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Color</FormLabel>
+                    <FormLabel>Bucket Color</FormLabel>
                     <FormControl>
-                      <div className="flex items-center gap-2">
-                        <Input 
-                          type="color" 
-                          {...field} 
-                          className="w-16 h-10 p-1 rounded border"
-                          data-testid="input-edit-bucket-color"
-                        />
-                        <Input 
-                          placeholder="#3b82f6" 
-                          {...field}
-                          className="flex-1"
-                          data-testid="input-edit-bucket-color-text"
-                        />
+                      <div className="grid grid-cols-6 gap-2">
+                        {colorOptions.map((color) => (
+                          <button
+                            key={color.value}
+                            type="button"
+                            onClick={() => {
+                              field.onChange(color.value);
+                              form.setValue('color', color.value);
+                            }}
+                            className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
+                              field.value === color.value 
+                                ? 'border-white ring-2 ring-offset-2 ring-primary' 
+                                : 'border-gray-300 hover:border-gray-400'
+                            }`}
+                            style={{ backgroundColor: color.value }}
+                            title={color.name}
+                            data-testid={`edit-color-option-${color.name.toLowerCase()}`}
+                          />
+                        ))}
                       </div>
                     </FormControl>
                     <FormMessage />
