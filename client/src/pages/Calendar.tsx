@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Users, Filter, Grid3X3, List } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Users, Filter, Grid3X3, List, Eye, MapPin, Target, Calendar as CalendarEventIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLabContext } from "@/hooks/useLabContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 interface CalendarEvent {
   id: string;
@@ -33,6 +35,8 @@ export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarView, setCalendarView] = useState<"month" | "week">("month");
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [eventFilters, setEventFilters] = useState({
     standups: true,
     deadlines: true,
@@ -430,19 +434,30 @@ export default function Calendar() {
                             </div>
                             <div className="space-y-1">
                               {dayEvents.slice(0, 2).map(event => (
-                                <div
-                                  key={event.id}
-                                  className={`text-xs p-1 rounded text-white truncate ${getEventTypeColor(event.type)}`}
-                                  title={event.title}
-                                  data-testid={`event-${event.id}`}
-                                >
-                                  {event.title}
-                                </div>
+                                <Dialog key={event.id}>
+                                  <DialogTrigger asChild>
+                                    <div
+                                      className={`text-xs p-1 rounded text-white truncate cursor-pointer hover:opacity-80 ${getEventTypeColor(event.type)}`}
+                                      title={event.title}
+                                      data-testid={`event-${event.id}`}
+                                      onClick={() => setSelectedEvent(event)}
+                                    >
+                                      {event.title}
+                                    </div>
+                                  </DialogTrigger>
+                                </Dialog>
                               ))}
                               {dayEvents.length > 2 && (
-                                <div className="text-xs text-muted-foreground">
-                                  +{dayEvents.length - 2} more
-                                </div>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <div 
+                                      className="text-xs text-muted-foreground cursor-pointer hover:text-primary"
+                                      onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}
+                                    >
+                                      +{dayEvents.length - 2} more
+                                    </div>
+                                  </DialogTrigger>
+                                </Dialog>
                               )}
                             </div>
                           </>
@@ -466,14 +481,18 @@ export default function Calendar() {
                       >
                         <div className="space-y-1">
                           {dayEvents.map(event => (
-                            <div
-                              key={event.id}
-                              className={`text-xs p-1 rounded text-white truncate ${getEventTypeColor(event.type)}`}
-                              title={event.title}
-                              data-testid={`event-${event.id}`}
-                            >
-                              {event.title}
-                            </div>
+                            <Dialog key={event.id}>
+                              <DialogTrigger asChild>
+                                <div
+                                  className={`text-xs p-1 rounded text-white truncate cursor-pointer hover:opacity-80 ${getEventTypeColor(event.type)}`}
+                                  title={event.title}
+                                  data-testid={`event-${event.id}`}
+                                  onClick={() => setSelectedEvent(event)}
+                                >
+                                  {event.title}
+                                </div>
+                              </DialogTrigger>
+                            </Dialog>
                           ))}
                         </div>
                       </div>
@@ -498,24 +517,32 @@ export default function Calendar() {
                   .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                   .slice(0, 5)
                   .map(event => (
-                    <div key={event.id} className="flex items-start space-x-3" data-testid={`upcoming-event-${event.id}`}>
-                      <Badge className={`${getEventTypeColor(event.type)} text-white`}>
-                        {event.type}
-                      </Badge>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{event.title}</p>
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <Clock className="mr-1 h-3 w-3" />
-                          {new Date(event.date).toLocaleDateString()}
-                        </div>
-                        {event.participants && (
-                          <div className="flex items-center text-xs text-muted-foreground">
-                            <Users className="mr-1 h-3 w-3" />
-                            {event.participants} participants
+                    <Dialog key={event.id}>
+                      <DialogTrigger asChild>
+                        <div 
+                          className="flex items-start space-x-3 cursor-pointer hover:bg-muted/50 p-2 rounded-lg" 
+                          data-testid={`upcoming-event-${event.id}`}
+                          onClick={() => setSelectedEvent(event)}
+                        >
+                          <Badge className={`${getEventTypeColor(event.type)} text-white`}>
+                            {event.type}
+                          </Badge>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{event.title}</p>
+                            <div className="flex items-center text-xs text-muted-foreground">
+                              <Clock className="mr-1 h-3 w-3" />
+                              {new Date(event.date).toLocaleDateString()}
+                            </div>
+                            {event.participants && (
+                              <div className="flex items-center text-xs text-muted-foreground">
+                                <Users className="mr-1 h-3 w-3" />
+                                {event.participants} participants
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </div>
+                        </div>
+                      </DialogTrigger>
+                    </Dialog>
                   ))}
                 {events.filter(event => new Date(event.date) >= new Date()).length === 0 && (
                   <p className="text-sm text-muted-foreground">No upcoming events</p>
@@ -564,6 +591,214 @@ export default function Calendar() {
           </Card>
         </div>
       </div>
+
+      {/* Event Details Modal */}
+      {selectedEvent && (
+        <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <div className={`w-3 h-3 rounded-full ${getEventTypeColor(selectedEvent.type)}`} />
+                <span>{selectedEvent.title}</span>
+                <Badge className={`${getEventTypeColor(selectedEvent.type)} text-white ml-2`}>
+                  {selectedEvent.type}
+                </Badge>
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {/* Basic Event Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <CalendarEventIcon className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Date:</span>
+                  <span className="text-sm">{new Date(selectedEvent.date).toLocaleDateString()}</span>
+                </div>
+                {selectedEvent.time && (
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Time:</span>
+                    <span className="text-sm">{selectedEvent.time}</span>
+                  </div>
+                )}
+                {selectedEvent.status && (
+                  <div className="flex items-center space-x-2">
+                    <Target className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Status:</span>
+                    <Badge variant="outline">{selectedEvent.status}</Badge>
+                  </div>
+                )}
+                {selectedEvent.priority && (
+                  <div className="flex items-center space-x-2">
+                    <Target className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Priority:</span>
+                    <Badge variant={selectedEvent.priority === 'HIGH' ? 'destructive' : 'secondary'}>
+                      {selectedEvent.priority}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+
+              {/* Description */}
+              {selectedEvent.description && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Description</h4>
+                  <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                    {selectedEvent.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Participants */}
+              {selectedEvent.participants && selectedEvent.participants > 0 && (
+                <div className="flex items-center space-x-2">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Participants:</span>
+                  <span className="text-sm">{selectedEvent.participants} people</span>
+                </div>
+              )}
+
+              {/* Metadata based on event type */}
+              {selectedEvent.metadata && (
+                <div className="space-y-3">
+                  <Separator />
+                  <h4 className="text-sm font-medium">Additional Details</h4>
+                  
+                  {selectedEvent.metadata.assignees && selectedEvent.metadata.assignees.length > 0 && (
+                    <div>
+                      <span className="text-sm font-medium">Assignees:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {selectedEvent.metadata.assignees.map((assignee, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {assignee}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedEvent.metadata.progress !== undefined && (
+                    <div>
+                      <span className="text-sm font-medium">Progress:</span>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <div className="flex-1 bg-muted rounded-full h-2">
+                          <div 
+                            className="bg-primary h-2 rounded-full" 
+                            style={{ width: `${selectedEvent.metadata.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {selectedEvent.metadata.progress}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedEvent.metadata.deliverables && selectedEvent.metadata.deliverables.length > 0 && (
+                    <div>
+                      <span className="text-sm font-medium">Deliverables:</span>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground mt-1 space-y-1">
+                        {selectedEvent.metadata.deliverables.map((deliverable, index) => (
+                          <li key={index}>{deliverable}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selectedEvent.metadata.irbStatus && (
+                    <div>
+                      <span className="text-sm font-medium">IRB Status:</span>
+                      <Badge variant="outline" className="ml-2">
+                        {selectedEvent.metadata.irbStatus}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Day Details Modal */}
+      {selectedDate && (
+        <Dialog open={!!selectedDate} onOpenChange={() => setSelectedDate(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <CalendarIcon className="w-5 h-5" />
+                <span>Events for {selectedDate.toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}</span>
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {getEventsForDay(selectedDate).length > 0 ? (
+                <div className="space-y-3">
+                  {getEventsForDay(selectedDate).map(event => (
+                    <div key={event.id} className="border rounded-lg p-4 hover:bg-muted/50">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-3 h-3 rounded-full ${getEventTypeColor(event.type)}`} />
+                          <div>
+                            <h4 className="font-medium">{event.title}</h4>
+                            <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
+                              <div className="flex items-center space-x-1">
+                                <Badge className={`${getEventTypeColor(event.type)} text-white text-xs`}>
+                                  {event.type}
+                                </Badge>
+                              </div>
+                              {event.time && (
+                                <div className="flex items-center space-x-1">
+                                  <Clock className="w-3 h-3" />
+                                  <span>{event.time}</span>
+                                </div>
+                              )}
+                              {event.participants && (
+                                <div className="flex items-center space-x-1">
+                                  <Users className="w-3 h-3" />
+                                  <span>{event.participants} participants</span>
+                                </div>
+                              )}
+                              {event.status && (
+                                <Badge variant="outline" className="text-xs">
+                                  {event.status}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setSelectedEvent(event)}
+                          data-testid={`view-event-${event.id}`}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      {event.description && (
+                        <p className="text-sm text-muted-foreground mt-2 pl-6">
+                          {event.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <CalendarIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No events scheduled for this day</p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
