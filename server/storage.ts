@@ -959,10 +959,37 @@ export class DatabaseStorage implements IStorage {
 
   async getLabMembers(labId: string): Promise<any[]> {
     try {
-      return await db
-        .select()
-        .from(labMembers)
-        .where(eq(labMembers.labId, labId));
+      // Get users who are members of this specific lab
+      const members = await db
+        .select({
+          id: users.id,
+          name: sql`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          role: users.role,
+          title: users.title,
+          department: users.department,
+          phone: users.phone,
+          avatar: users.avatar,
+          profileImageUrl: users.profileImageUrl,
+          capacity: users.capacity,
+          expertise: users.expertise,
+          skills: users.skills,
+          labId: labMembers.labId,
+          labRole: labMembers.labRole,
+          isAdmin: labMembers.isAdmin,
+          isActive: labMembers.isActive
+        })
+        .from(users)
+        .innerJoin(labMembers, eq(users.id, labMembers.userId))
+        .where(and(
+          eq(labMembers.labId, labId),
+          eq(labMembers.isActive, true)
+        ))
+        .orderBy(asc(users.firstName), asc(users.lastName));
+      
+      return members;
     } catch (error) {
       console.error("Failed to get lab members:", error);
       return [];
@@ -1120,8 +1147,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Team member operations
-  async getTeamMembers(): Promise<TeamMember[]> {
-    return await db.select().from(teamMembers).orderBy(asc(teamMembers.name));
+  async getTeamMembers(): Promise<any[]> {
+    // Get all users who are lab members
+    const members = await db
+      .select({
+        id: users.id,
+        name: sql`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        role: users.role,
+        title: users.title,
+        department: users.department,
+        phone: users.phone,
+        avatar: users.avatar,
+        profileImageUrl: users.profileImageUrl,
+        capacity: users.capacity,
+        expertise: users.expertise,
+        skills: users.skills,
+        labId: labMembers.labId,
+        labRole: labMembers.labRole,
+        isAdmin: labMembers.isAdmin,
+        isActive: labMembers.isActive
+      })
+      .from(users)
+      .innerJoin(labMembers, eq(users.id, labMembers.userId))
+      .where(eq(labMembers.isActive, true))
+      .orderBy(asc(users.firstName), asc(users.lastName));
+    
+    return members;
   }
 
   async getTeamMembersByLab(labId: string): Promise<TeamMember[]> {
