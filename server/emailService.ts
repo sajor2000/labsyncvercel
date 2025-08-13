@@ -34,7 +34,7 @@ export class EmailService {
         year: 'numeric' 
       }) : null;
 
-    // Microsoft Planner-style HTML email template
+    // Microsoft Planner-style HTML email template (dark theme to match screenshot)
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="en">
@@ -46,119 +46,152 @@ export class EmailService {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f3f2f1;
+            background-color: #1a1a1a;
           }
           .email-container {
             max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            background-color: #2d2d2d;
+            border: 1px solid #3d3d3d;
+            border-radius: 8px;
+            overflow: hidden;
           }
           .header {
-            background: linear-gradient(135deg, #6264A7 0%, #8B8CC7 100%);
-            padding: 24px 32px;
-            color: white;
+            background: #1a1a1a;
+            padding: 20px 24px;
+            border-bottom: 1px solid #3d3d3d;
           }
           .header-title {
             margin: 0;
-            font-size: 24px;
-            font-weight: 600;
+            font-size: 18px;
+            font-weight: 400;
+            color: #ffffff;
             display: flex;
             align-items: center;
             gap: 12px;
           }
-          .plan-name {
-            font-size: 14px;
-            margin-top: 8px;
-            opacity: 0.95;
-          }
-          .content {
-            padding: 32px;
-          }
-          .assignment-box {
-            background-color: #f8f8f8;
-            border-left: 4px solid #6264A7;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 4px;
-          }
-          .assignment-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-            color: #323130;
-            font-size: 16px;
-          }
-          .checkmark {
+          .planner-icon {
             width: 24px;
             height: 24px;
-            background-color: #40E0D0;
+            background: linear-gradient(135deg, #7B68EE 0%, #9370DB 100%);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          }
+          .planner-icon::after {
+            content: '';
+            width: 14px;
+            height: 2px;
+            background: white;
+            display: block;
+            box-shadow: 0 4px 0 white, 0 8px 0 white;
+          }
+          .content {
+            padding: 24px;
+          }
+          .assignment-notification {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            color: #d4d4d4;
+            font-size: 15px;
+          }
+          .checkmark-circle {
+            width: 20px;
+            height: 20px;
+            background-color: #5B5FC7;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
           }
-          .checkmark::after {
+          .checkmark-circle::after {
             content: '✓';
             color: white;
+            font-size: 12px;
             font-weight: bold;
-            font-size: 14px;
+          }
+          .assignment-text {
+            color: #d4d4d4;
+          }
+          .assignment-text a {
+            color: #7B68EE;
+            text-decoration: underline;
+          }
+          .task-card {
+            background-color: #1a1a1a;
+            border: 1px solid #3d3d3d;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
           }
           .task-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: #323130;
-            margin: 12px 0;
+            font-size: 16px;
+            font-weight: 400;
+            color: #ffffff;
+            margin: 0 0 12px 0;
+            text-decoration: underline;
           }
-          .task-description {
-            color: #605e5c;
-            font-size: 14px;
-            margin: 12px 0;
-            line-height: 1.5;
-          }
-          .due-date-container {
+          .task-meta {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-top: 20px;
-            padding-top: 16px;
-            border-top: 1px solid #e1e1e1;
+            gap: 8px;
+            color: #a0a0a0;
+            font-size: 14px;
           }
           .calendar-icon {
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             flex-shrink: 0;
           }
-          .due-date {
-            color: #323130;
-            font-size: 14px;
-            font-weight: 500;
+          .button-container {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
           }
           .action-button {
             display: inline-block;
-            background-color: #6264A7;
-            color: white;
-            padding: 12px 24px;
+            padding: 10px 24px;
             text-decoration: none;
             border-radius: 4px;
+            font-size: 15px;
             font-weight: 500;
-            margin-top: 24px;
-            transition: background-color 0.2s;
+            text-align: center;
+            transition: all 0.2s;
+            border: 2px solid transparent;
           }
-          .action-button:hover {
-            background-color: #5254A3;
+          .btn-primary {
+            background-color: #5B5FC7;
+            color: white;
+            border-color: #5B5FC7;
+          }
+          .btn-primary:hover {
+            background-color: #4A4EB6;
+            border-color: #4A4EB6;
+          }
+          .btn-secondary {
+            background-color: transparent;
+            color: #ffffff;
+            border: 2px solid #4a4a4a;
+          }
+          .btn-secondary:hover {
+            background-color: #3a3a3a;
+            border-color: #5a5a5a;
           }
           .footer {
-            padding: 24px 32px;
-            background-color: #f3f2f1;
+            padding: 16px 24px;
+            background-color: #1a1a1a;
+            border-top: 1px solid #3d3d3d;
             text-align: center;
             font-size: 12px;
-            color: #605e5c;
+            color: #808080;
           }
           .footer a {
-            color: #6264A7;
+            color: #7B68EE;
             text-decoration: none;
           }
         </style>
@@ -167,47 +200,43 @@ export class EmailService {
         <div class="email-container">
           <div class="header">
             <h1 class="header-title">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="32" height="32" rx="4" fill="white" fill-opacity="0.2"/>
-                <path d="M8 11h16v2H8v-2zm0 4h16v2H8v-2zm0 4h10v2H8v-2z" fill="white"/>
-              </svg>
-              LabSync Tasks
+              <div class="planner-icon"></div>
+              <span>Plan: ${labName} Tasks</span>
             </h1>
-            <div class="plan-name">Plan: ${labName} Tasks</div>
           </div>
           
           <div class="content">
-            <div class="assignment-box">
-              <div class="assignment-header">
-                <div class="checkmark"></div>
-                <span>${assignerName} assigned a task to you in ${labName} Tasks</span>
-              </div>
-              
-              <div class="task-title">${taskTitle}</div>
-              
+            <div class="assignment-notification">
+              <div class="checkmark-circle"></div>
+              <span class="assignment-text">
+                ${assignerName} assigned a task to you in <a href="${taskUrl}">${labName} Tasks</a>
+              </span>
+            </div>
+            
+            <div class="task-card">
+              <h2 class="task-title">${taskTitle}</h2>
               ${taskDescription ? `
-                <div class="task-description">${taskDescription}</div>
+                <p style="color: #a0a0a0; font-size: 14px; margin: 8px 0;">${taskDescription}</p>
               ` : ''}
-              
               ${formattedDueDate ? `
-                <div class="due-date-container">
-                  <svg class="calendar-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M14 2V4M6 2V4M3 8H17M5 3H15C16.1046 3 17 3.89543 17 5V16C17 17.1046 16.1046 18 15 18H5C3.89543 18 3 17.1046 3 16V5C3 3.89543 3.89543 3 5 3Z" stroke="#6264A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <div class="task-meta">
+                  <svg class="calendar-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 1V3M5 1V3M2 6H14M3 2H13C13.5523 2 14 2.44772 14 3V13C14 13.5523 13.5523 14 13 14H3C2.44772 14 2 13.5523 2 13V3C2 2.44772 2.44772 2 3 2Z" stroke="#a0a0a0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
-                  <span class="due-date">${formattedDueDate}</span>
+                  <span>${formattedDueDate}</span>
                 </div>
               ` : ''}
             </div>
             
-            ${taskUrl ? `
-              <a href="${taskUrl}" class="action-button">View Task in LabSync</a>
-            ` : ''}
+            <div class="button-container">
+              <a href="${taskUrl || '#'}" class="action-button btn-primary">Open in Browser</a>
+              <a href="${taskUrl || '#'}" class="action-button btn-secondary">Open in LabSync</a>
+            </div>
           </div>
           
           <div class="footer">
             <p>This notification was sent from LabSync - ${labName}</p>
-            <p>© 2025 LabSync. All rights reserved.</p>
-            <p><a href="#">Manage email preferences</a></p>
+            <p>© 2025 LabSync. All rights reserved. | <a href="#">Manage preferences</a></p>
           </div>
         </div>
       </body>

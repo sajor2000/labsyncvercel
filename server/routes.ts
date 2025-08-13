@@ -881,8 +881,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Get the lab name
             const study = await storage.getStudy(fullTask.studyId);
             const bucket = study ? await storage.getBucket(study.bucketId) : null;
-            const lab = bucket ? await storage.getLab(bucket.labId) : null;
+            const lab = bucket ? await storage.getLabById(bucket.labId) : null;
 
+            const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] 
+              ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` 
+              : '';
+            
             await EmailService.sendTaskAssignmentEmail({
               assigneeName: `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim() || assignee.email || 'Team Member',
               assigneeEmail: assignee.email || '',
@@ -891,7 +895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               taskDescription: fullTask.description || undefined,
               dueDate: fullTask.deadline ? new Date(fullTask.deadline) : undefined,
               labName: lab?.name || 'Research Lab',
-              taskUrl: `${process.env.REPLIT_DOMAINS?.split(',')[0] || ''}/task-management`
+              taskUrl: `${baseUrl}/task-management?taskId=${req.params.id}`
             });
           }
         } catch (emailError) {
@@ -1569,8 +1573,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Get the lab name
             const study = await storage.getStudy(task.studyId);
             const bucket = study ? await storage.getBucket(study.bucketId) : null;
-            const lab = bucket ? await storage.getLab(bucket.labId) : null;
+            const lab = bucket ? await storage.getLabById(bucket.labId) : null;
 
+            const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] 
+              ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` 
+              : '';
+            
             await EmailService.sendTaskAssignmentEmail({
               assigneeName: `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim() || assignee.email || 'Team Member',
               assigneeEmail: assignee.email || '',
@@ -1579,7 +1587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               taskDescription: task.description || undefined,
               dueDate: task.deadline ? new Date(task.deadline) : undefined,
               labName: lab?.name || 'Research Lab',
-              taskUrl: `${process.env.REPLIT_DOMAINS?.split(',')[0] || ''}/task-management`
+              taskUrl: `${baseUrl}/task-management?taskId=${assignment.taskId}`
             });
           }
         } catch (emailError) {
