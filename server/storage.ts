@@ -513,7 +513,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLabMembers(labId: string): Promise<any[]> {
-    // Get team members directly from team_members table which has lab_id
+    // Get team members with lab-specific roles from both team_members and lab_members tables
     const members = await db.select({
       id: teamMembers.id,
       email: teamMembers.email,
@@ -527,6 +527,7 @@ export class DatabaseStorage implements IStorage {
       middleName: sql<string>`''`,
       initials: teamMembers.initials,
       role: teamMembers.role,
+      labRole: labMembers.labRole, // Lab-specific role from labMembers table
       title: teamMembers.position,
       department: teamMembers.department,
       capacity: sql<string>`'40.00'`,
@@ -546,6 +547,10 @@ export class DatabaseStorage implements IStorage {
       updatedAt: teamMembers.updatedAt,
     })
     .from(teamMembers)
+    .leftJoin(labMembers, and(
+      eq(labMembers.userId, teamMembers.id),
+      eq(labMembers.labId, labId)
+    ))
     .where(and(
       eq(teamMembers.labId, labId), 
       eq(teamMembers.isActive, true)

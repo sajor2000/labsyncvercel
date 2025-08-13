@@ -82,6 +82,7 @@ interface EnhancedUser {
   name?: string;
   initials?: string;
   role?: string;
+  labRole?: string; // Lab-specific role from labMembers table
   title?: string;
   department?: string;
   institution?: string;
@@ -684,7 +685,7 @@ export default function TeamMembersEnhanced() {
                         {member.name || `${member.firstName} ${member.lastName}`}
                       </CardTitle>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {member.title || member.role}
+                        {member.labRole || member.title || member.role}
                       </p>
                     </div>
                   </div>
