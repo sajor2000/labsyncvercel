@@ -715,7 +715,7 @@ export default function TeamMembersEnhanced() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredMembers.map((member) => (
             <Card key={member.id} className="hover:shadow-lg transition-shadow" data-testid={`card-member-${member.id}`}>
-              <CardHeader className="pb-4">
+              <div className="p-6 pb-4">
                 <div className="flex flex-col space-y-3">
                   {/* Role Badge at the top */}
                   <div className="flex justify-center">
@@ -732,56 +732,56 @@ export default function TeamMembersEnhanced() {
                         {member.initials || (member.firstName?.charAt(0) || '') + (member.lastName?.charAt(0) || '')}
                       </div>
                       <div>
-                        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                           {member.name || `${member.firstName} ${member.lastName}`}
-                        </CardTitle>
+                        </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           {member.title || ''}
                         </p>
                       </div>
                     </div>
                     <div className="flex space-x-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditMember(member)}
-                      data-testid={`button-edit-${member.id}`}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          data-testid={`button-delete-${member.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Team Member</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{member.name}"? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction 
-                            onClick={() => deleteMemberMutation.mutate(member.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditMember(member)}
+                        data-testid={`button-edit-${member.id}`}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            data-testid={`button-delete-${member.id}`}
                           >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Team Member</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{member.name}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => deleteMemberMutation.mutate(member.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </div>
-              </CardHeader>
+              </div>
               <CardContent className="pt-0">
                 <div className="space-y-3">
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
