@@ -103,6 +103,45 @@ interface EnhancedUser {
   labs?: string[]; // Lab names for multi-lab display
 }
 
+// Helper function to format role names
+const formatRoleName = (role: string | undefined): string => {
+  if (!role) return 'Team Member';
+  
+  // Handle both database format and display format
+  const roleMap: Record<string, string> = {
+    'PRINCIPAL_INVESTIGATOR': 'Principal Investigator',
+    'CO_PRINCIPAL_INVESTIGATOR': 'Co-Principal Investigator',
+    'DATA_SCIENTIST': 'Data Scientist',
+    'DATA_ANALYST': 'Data Analyst',
+    'FELLOW': 'Fellow',
+    'MEDICAL_STUDENT': 'Medical Student',
+    'REGULATORY_COORDINATOR': 'Regulatory Coordinator',
+    'RESEARCH_ASSISTANT': 'Research Assistant',
+    'VOLUNTEER_RESEARCH_ASSISTANT': 'Volunteer Research Assistant',
+  };
+  
+  return roleMap[role] || role.replace(/_/g, ' ');
+};
+
+// Helper function to get role badge color
+const getRoleBadgeColor = (role: string | undefined): string => {
+  if (!role) return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+  
+  const colorMap: Record<string, string> = {
+    'PRINCIPAL_INVESTIGATOR': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-700',
+    'CO_PRINCIPAL_INVESTIGATOR': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700',
+    'DATA_SCIENTIST': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-700',
+    'DATA_ANALYST': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200 border border-cyan-200 dark:border-cyan-700',
+    'FELLOW': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border border-green-200 dark:border-green-700',
+    'MEDICAL_STUDENT': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-700',
+    'REGULATORY_COORDINATOR': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border border-orange-200 dark:border-orange-700',
+    'RESEARCH_ASSISTANT': 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 border border-teal-200 dark:border-teal-700',
+    'VOLUNTEER_RESEARCH_ASSISTANT': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-700',
+  };
+  
+  return colorMap[role] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600';
+};
+
 export default function TeamMembersEnhanced() {
   const { isAuthenticated, isLoading } = useAuth();
   const { selectedLab } = useLabContext();
@@ -675,21 +714,31 @@ export default function TeamMembersEnhanced() {
           {filteredMembers.map((member) => (
             <Card key={member.id} className="hover:shadow-lg transition-shadow" data-testid={`card-member-${member.id}`}>
               <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-purple-600 dark:text-purple-400 font-semibold text-lg">
-                      {member.initials || (member.firstName?.charAt(0) || '') + (member.lastName?.charAt(0) || '')}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {member.name || `${member.firstName} ${member.lastName}`}
-                      </CardTitle>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {member.labRole || member.title || member.role}
-                      </p>
-                    </div>
+                <div className="flex flex-col space-y-3">
+                  {/* Role Badge at the top */}
+                  <div className="flex justify-center">
+                    <Badge 
+                      className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wider ${getRoleBadgeColor(member.labRole || member.role)}`}
+                    >
+                      {formatRoleName(member.labRole || member.role)}
+                    </Badge>
                   </div>
-                  <div className="flex space-x-1">
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-purple-600 dark:text-purple-400 font-semibold text-lg">
+                        {member.initials || (member.firstName?.charAt(0) || '') + (member.lastName?.charAt(0) || '')}
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {member.name || `${member.firstName} ${member.lastName}`}
+                        </CardTitle>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {member.title || ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-1">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -727,6 +776,7 @@ export default function TeamMembersEnhanced() {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
+                  </div>
                   </div>
                 </div>
               </CardHeader>
