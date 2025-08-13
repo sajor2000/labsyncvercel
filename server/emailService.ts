@@ -261,7 +261,7 @@ This notification was sent from LabSync - ${labName}
 
     try {
       await resend.emails.send({
-        from: 'LabSync Tasks <notifications@labsync.com>',
+        from: 'LabSync Tasks <jcrojas@clif-icu.org>',
         to: assigneeEmail,
         subject: `Task assigned: ${taskTitle}`,
         html: htmlContent,
