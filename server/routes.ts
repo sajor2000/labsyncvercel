@@ -2285,6 +2285,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk deadline upload endpoint
+  app.post("/api/deadlines/bulk-upload", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.claims?.sub;
+      const labId = req.headers['x-current-lab'] as string;
+      const { deadlines: deadlinesData } = req.body;
+
+      if (!Array.isArray(deadlinesData) || deadlinesData.length === 0) {
+        return res.status(400).json({ message: "Deadlines array is required" });
+      }
+
+      // Validate user can create deadlines in this lab
+      const labMember = await storage.getLabMember(userId, labId);
+      if (!labMember) {
+        return res.status(403).json({ message: "Unauthorized: Not a lab member" });
+      }
+
+      const results = [];
+      const errors = [];
+
+      for (let i = 0; i < deadlinesData.length; i++) {
+        const deadlineData = deadlinesData[i];
+        
+        try {
+          // Validate required fields
+          if (!deadlineData.title || !deadlineData.dueDate || !deadlineData.type) {
+            errors.push({ row: i + 1, error: "Missing required fields: title, dueDate, or type" });
+            continue;
+          }
+
+          // Parse and validate due date
+          const dueDate = new Date(deadlineData.dueDate);
+          if (isNaN(dueDate.getTime())) {
+            errors.push({ row: i + 1, error: "Invalid due date format" });
+            continue;
+          }
+
+          // Find assignee if provided
+          let assignedToId = null;
+          if (deadlineData.assignedTo) {
+            const assignee = await storage.findTeamMemberByEmailOrName(deadlineData.assignedTo);
+            if (assignee) {
+              assignedToId = assignee.id;
+            } else {
+              errors.push({ row: i + 1, warning: `Assignee email ${deadlineData.assignedTo} not found, deadline will be unassigned` });
+            }
+          }
+
+          // Find related study if provided
+          let relatedStudyId = null;
+          if (deadlineData.relatedStudy) {
+            const studies = await storage.getStudies(labId);
+            const study = studies.find((s: any) => 
+              s.title.toLowerCase().includes(deadlineData.relatedStudy.toLowerCase())
+            );
+            if (study) {
+              relatedStudyId = study.id;
+            } else {
+              errors.push({ row: i + 1, warning: `Study "${deadlineData.relatedStudy}" not found, deadline will not be linked to a study` });
+            }
+          }
+
+          // Create deadline
+          const newDeadline = await storage.createDeadline({
+            title: deadlineData.title,
+            description: deadlineData.description || null,
+            type: deadlineData.type,
+            dueDate,
+            priority: deadlineData.priority || "MEDIUM",
+            status: deadlineData.status || "PENDING",
+            assignedTo: assignedToId,
+            labId,
+            relatedStudyId,
+            submissionUrl: deadlineData.submissionUrl || null,
+            notes: deadlineData.notes || null,
+            createdBy: userId
+          });
+
+          results.push({ row: i + 1, id: newDeadline.id, title: newDeadline.title });
+
+          // Log audit event
+          await SecurityAuditLogger.logEvent(req, {
+            action: 'CREATE',
+            entityType: 'DEADLINE',
+            entityId: newDeadline.id,
+            authorizationMethod: 'permission',
+            wasAuthorized: true,
+            details: { bulkUpload: true, row: i + 1 }
+          });
+
+        } catch (error) {
+          console.error(`Error creating deadline at row ${i + 1}:`, error);
+          errors.push({ row: i + 1, error: error instanceof Error ? error.message : "Unknown error" });
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Bulk upload completed. ${results.length} deadlines created, ${errors.length} errors/warnings.`,
+        results,
+        errors,
+        summary: {
+          total: deadlinesData.length,
+          created: results.length,
+          failed: errors.length
+        }
+      });
+
+    } catch (error) {
+      console.error("Error in bulk deadline upload:", error);
+      res.status(500).json({ message: "Failed to process bulk upload" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

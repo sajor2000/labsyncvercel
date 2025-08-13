@@ -40,7 +40,8 @@ import type { Deadline, InsertDeadline } from "@shared/schema";
 import { FileUploader } from "@/components/FileUploader";
 import { AttachmentList } from "@/components/AttachmentList";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
-import { Paperclip } from "lucide-react";
+import { BulkDeadlineUpload } from "@/components/BulkDeadlineUpload";
+import { Paperclip, Upload } from "lucide-react";
 
 const deadlineFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -110,6 +111,7 @@ export default function Deadlines() {
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [editingDeadline, setEditingDeadline] = useState<Deadline | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
@@ -283,13 +285,22 @@ export default function Deadlines() {
             Track upcoming grants, submissions, and important deadlines for {selectedLab.name}
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-deadline">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Deadline
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowBulkUpload(!showBulkUpload)}
+            data-testid="button-toggle-bulk-upload"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Bulk Upload
+          </Button>
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-deadline">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Deadline
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New Deadline</DialogTitle>
@@ -608,7 +619,12 @@ export default function Deadlines() {
             </Form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {showBulkUpload && (
+        <BulkDeadlineUpload />
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-center">
