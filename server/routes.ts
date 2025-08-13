@@ -2399,20 +2399,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Calendar subscription endpoint for Outlook integration
+  // Public calendar subscription endpoint for Outlook integration
   app.get("/api/calendar/subscribe/:labId", async (req, res) => {
     try {
       const labId = req.params.labId;
-      const token = req.query.token as string;
-      
-      if (!token) {
-        return res.status(401).json({ error: "Authentication token required" });
-      }
-
-      // Verify the token is valid (basic validation - in production, use proper JWT validation)
-      if (token.length < 32) {
-        return res.status(401).json({ error: "Invalid authentication token" });
-      }
 
       // Get lab information
       const lab = await storage.getLab(labId);
@@ -2588,7 +2578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate calendar subscription URL endpoint
+  // Generate public calendar subscription URL endpoint
   app.get("/api/calendar/subscription-url/:labId", isAuthenticated, async (req, res) => {
     try {
       const labId = req.params.labId;
@@ -2600,13 +2590,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Unauthorized: Not a lab member" });
       }
 
-      // Generate a simple token (in production, use proper JWT)
-      const token = Buffer.from(`${userId}-${labId}-${Date.now()}`).toString('base64');
-      
       // Get the current domain
       const protocol = req.get('X-Forwarded-Proto') || (req.secure ? 'https' : 'http');
       const host = req.get('host');
-      const subscriptionUrl = `${protocol}://${host}/api/calendar/subscribe/${labId}?token=${token}`;
+      const subscriptionUrl = `${protocol}://${host}/api/calendar/subscribe/${labId}`;
 
       res.json({
         subscriptionUrl,

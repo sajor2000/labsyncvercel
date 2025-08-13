@@ -132,7 +132,7 @@ export function CalendarSubscription() {
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
-                Calendar subscription URL generated successfully! This URL will automatically update with your latest events.
+                Public calendar subscription URL generated! Anyone can use this URL to subscribe to {selectedLab.name}'s calendar. It updates automatically with your latest events.
               </AlertDescription>
             </Alert>
 
@@ -251,7 +251,7 @@ export function CalendarSubscription() {
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                <strong>What gets synced:</strong> Deadlines, task due dates, standup meetings, and study milestones from {selectedLab.name} will appear in your calendar. The calendar updates automatically every hour.
+                <strong>What gets synced:</strong> Deadlines, task due dates, standup meetings, and study milestones from {selectedLab.name} will appear in your calendar. The calendar updates automatically every hour. This is a public feed that anyone can subscribe to.
               </AlertDescription>
             </Alert>
 
