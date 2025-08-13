@@ -27,6 +27,7 @@ import Calendar from "@/pages/Calendar";
 import Analytics from "@/pages/Analytics";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
+import EmailSettings from "@/pages/EmailSettings";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/Layout";
 import { LabProvider } from "@/components/LabProvider";
@@ -65,6 +66,7 @@ function Router() {
           <Route path="/analytics" component={() => <Layout><Analytics /></Layout>} />
           <Route path="/profile" component={() => <Layout><Profile /></Layout>} />
           <Route path="/settings" component={() => <Layout><Settings /></Layout>} />
+          <Route path="/email-settings" component={() => <Layout><EmailSettings /></Layout>} />
         </LabProvider>
       )}
       <Route component={NotFound} />

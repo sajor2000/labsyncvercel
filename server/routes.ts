@@ -854,6 +854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tasks/:id/assign", isAuthenticated, async (req, res) => {
     try {
       const { assigneeId } = req.body;
+      const assignerId = (req.user as any)?.claims?.sub;
 
       // Validate assigneeId if provided (should be a valid UUID or null/undefined for unassigning)
       if (assigneeId && typeof assigneeId !== 'string') {
@@ -863,6 +864,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const task = await storage.updateTask(req.params.id, { assigneeId });
+
+      // Send email notification if a user was assigned
+      if (assigneeId && task) {
+        try {
+          const { EmailService } = await import('./emailService');
+          
+          // Get user details for email
+          const [assignee, assigner, fullTask] = await Promise.all([
+            storage.getUser(assigneeId),
+            storage.getUser(assignerId),
+            storage.getTask(req.params.id)
+          ]);
+
+          if (assignee && assigner && fullTask) {
+            // Get the lab name
+            const study = await storage.getStudy(fullTask.studyId);
+            const bucket = study ? await storage.getBucket(study.bucketId) : null;
+            const lab = bucket ? await storage.getLab(bucket.labId) : null;
+
+            await EmailService.sendTaskAssignmentEmail({
+              assigneeName: `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim() || assignee.email || 'Team Member',
+              assigneeEmail: assignee.email || '',
+              assignerName: `${assigner.firstName || ''} ${assigner.lastName || ''}`.trim() || assigner.email || 'Team Member',
+              taskTitle: fullTask.title,
+              taskDescription: fullTask.description || undefined,
+              dueDate: fullTask.deadline ? new Date(fullTask.deadline) : undefined,
+              labName: lab?.name || 'Research Lab',
+              taskUrl: `${process.env.REPLIT_DOMAINS?.split(',')[0] || ''}/task-management`
+            });
+          }
+        } catch (emailError) {
+          console.error('Failed to send task assignment email:', emailError);
+          // Don't fail the request if email fails
+        }
+      }
+
       res.json(task);
     } catch (error) {
       console.error("Error assigning task:", error);
@@ -1513,7 +1550,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/task-assignments", isAuthenticated, async (req, res) => {
     try {
+      const assignerId = (req.user as any)?.claims?.sub;
       const assignment = await storage.assignUserToTask(req.body);
+
+      // Send email notification for the new assignment
+      if (assignment) {
+        try {
+          const { EmailService } = await import('./emailService');
+          
+          // Get user and task details for email
+          const [assignee, assigner, task] = await Promise.all([
+            storage.getUser(assignment.userId),
+            storage.getUser(assignerId),
+            storage.getTask(assignment.taskId)
+          ]);
+
+          if (assignee && assigner && task) {
+            // Get the lab name
+            const study = await storage.getStudy(task.studyId);
+            const bucket = study ? await storage.getBucket(study.bucketId) : null;
+            const lab = bucket ? await storage.getLab(bucket.labId) : null;
+
+            await EmailService.sendTaskAssignmentEmail({
+              assigneeName: `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim() || assignee.email || 'Team Member',
+              assigneeEmail: assignee.email || '',
+              assignerName: `${assigner.firstName || ''} ${assigner.lastName || ''}`.trim() || assigner.email || 'Team Member',
+              taskTitle: task.title,
+              taskDescription: task.description || undefined,
+              dueDate: task.deadline ? new Date(task.deadline) : undefined,
+              labName: lab?.name || 'Research Lab',
+              taskUrl: `${process.env.REPLIT_DOMAINS?.split(',')[0] || ''}/task-management`
+            });
+          }
+        } catch (emailError) {
+          console.error('Failed to send task assignment email:', emailError);
+          // Don't fail the request if email fails
+        }
+      }
+
       res.json(assignment);
     } catch (error) {
       console.error("Error creating task assignment:", error);

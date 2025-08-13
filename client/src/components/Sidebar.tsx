@@ -16,7 +16,8 @@ import {
   Users,
   Lightbulb,
   Clock,
-  Eye
+  Eye,
+  Mail
 } from "lucide-react";
 import logoUrl from "@assets/FullLogo_1754662799020.png";
 import { useEffect } from "react";
@@ -50,6 +51,7 @@ const navigationItems = [
 const userActions = [
   { name: "Profile", href: "/profile", icon: UserIcon },
   { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Email Notifications", href: "/email-settings", icon: Mail },
 ];
 
 export function Sidebar() {
