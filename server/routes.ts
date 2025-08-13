@@ -14,7 +14,7 @@ import { eq } from "drizzle-orm";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
-  
+
   // Add audit logging middleware for all routes
   app.use(auditAuthenticationMiddleware);
 
@@ -48,7 +48,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY!,
       });
-      
+
       const gptResponse = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -57,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ],
         max_tokens: 20
       });
-      
+
       results.openai.gpt4 = gptResponse.choices[0]?.message?.content || 'No response';
       console.log('GPT-4o-mini test result:', results.openai.gpt4);
 
@@ -68,7 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Test Resend API
       console.log('Testing Resend API...');
       const resendClient = new Resend(process.env.RESEND_API_KEY!);
-      
+
       // Just validate the API key without sending an email
       const domains = await resendClient.domains.list();
       results.resend = `Connected - ${domains.data?.data?.length || 0} domains configured`;
@@ -106,7 +106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Format the email content
       const emailContent = `
         <h2>New Lab Member Registration Request</h2>
-        
+
         <h3>Personal Information:</h3>
         <ul>
           <li><strong>Name:</strong> ${firstName} ${lastName}</li>
@@ -114,22 +114,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <li><strong>Alternative Email:</strong> ${alternativeEmail || 'Not provided'}</li>
           <li><strong>Phone:</strong> ${phoneNumber}</li>
         </ul>
-        
+
         <h3>Lab Request:</h3>
         <ul>
           <li><strong>Requested Lab:</strong> ${requestedLab}</li>
           <li><strong>Requested Role:</strong> ${requestedRole.replace(/_/g, ' ')}</li>
           <li><strong>Referred By:</strong> ${referredBy || 'Not specified'}</li>
         </ul>
-        
+
         <h3>Research Interests:</h3>
         <p>${researchInterests}</p>
-        
+
         <h3>Qualifications & Experience:</h3>
         <p>${qualifications}</p>
-        
+
         ${additionalNotes ? `<h3>Additional Notes:</h3><p>${additionalNotes}</p>` : ''}
-        
+
         <hr>
         <p><strong>Action Required:</strong> Review this application and if approved, add the user to the team members database.</p>
         <p>Once added, the user will be able to log in using either their primary or alternative email address.</p>
@@ -140,7 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Registration request received for:', firstName, lastName);
       console.log('Would send email to: juan_rojas@rush.edu');
       console.log('Email content:', emailContent);
-      
+
       // Store the registration request in database (optional - for tracking)
       // You could create a registration_requests table to track these
 
@@ -271,12 +271,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/labs", isAuthenticated, async (req, res) => {
     try {
       const { name, description } = req.body;
-      
+
       // Validate required fields
       if (!name || typeof name !== 'string' || name.trim() === '') {
         return res.status(400).json({ message: "Lab name is required and must be a valid string." });
       }
-      
+
       const lab = await storage.createLab(req.body);
       res.json(lab);
     } catch (error) {
@@ -288,12 +288,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/labs/:id", isAuthenticated, async (req, res) => {
     try {
       const { name } = req.body;
-      
+
       // Validate required fields
       if (!name || typeof name !== 'string' || name.trim() === '') {
         return res.status(400).json({ message: "Lab name is required and must be a valid string." });
       }
-      
+
       const lab = await storage.updateLab(req.params.id, req.body);
       res.json(lab);
     } catch (error) {
@@ -343,7 +343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req.user as any)?.claims?.sub;
       const bucketId = req.params.id;
-      
+
       // Check authorization 
       const authResult = await storage.canDeleteEntity(userId, 'bucket', bucketId);
       if (!authResult.canDelete) {
@@ -353,7 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: authResult.reason 
         });
       }
-      
+
       await storage.deleteBucket(req.params.id!);
       await SecurityAuditLogger.logSuccessfulDelete(req, 'BUCKET', req.params.id as string, authResult.method as string);
       res.json({ 
@@ -393,16 +393,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/studies", isAuthenticated, async (req, res) => {
     try {
       const { title, bucketId } = req.body;
-      
+
       // Validate required fields
       if (!title || typeof title !== 'string' || title.trim() === '') {
         return res.status(400).json({ message: "Study title is required and must be a valid string." });
       }
-      
+
       if (!bucketId || typeof bucketId !== 'string') {
         return res.status(400).json({ message: "Bucket ID is required and must be a valid string." });
       }
-      
+
       const study = await storage.createStudy(req.body);
       res.json(study);
     } catch (error) {
@@ -426,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = (req.user as any)?.claims?.sub;
       const studyId = req.params.id;
       const cascade = req.query.cascade === 'true';
-      
+
       // Check authorization
       const authResult = await storage.canDeleteEntity(userId, 'study', studyId);
       if (!authResult.canDelete) {
@@ -436,7 +436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: authResult.reason 
         });
       }
-      
+
       await storage.deleteStudy(req.params.id!, cascade);
       await SecurityAuditLogger.logSuccessfulDelete(req, 'STUDY', req.params.id as string, authResult.method as string);
       res.json({ 
@@ -447,7 +447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await SecurityAuditLogger.logDeleteAttempt(req, 'STUDY', req.params.id!, false, undefined, (error as Error).message);
       console.error("Error deleting study:", error);
       const errorMessage = (error as Error).message || "Failed to delete study";
-      
+
       if (errorMessage.includes("Cannot delete study. It contains") && errorMessage.includes("task")) {
         const tasks = await storage.getTasks(req.params.id);
         res.status(409).json({ 
@@ -511,11 +511,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req.user as any)?.claims?.sub;
       const { avatarUrl } = req.body;
-      
+
       const { ObjectStorageService } = await import("./objectStorage");
       const objectStorageService = new ObjectStorageService();
       const normalizedPath = objectStorageService.normalizeObjectEntityPath(avatarUrl);
-      
+
       const updatedUser = await storage.updateUserAvatar(userId, normalizedPath);
       res.json(updatedUser);
     } catch (error) {
@@ -634,15 +634,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const attachmentId = req.params.id;
       const userId = (req.user as any)?.claims?.sub;
-      
+
       console.log(`Download request for attachment: ${attachmentId}`);
-      
+
       // Get attachment details directly from database
       const attachment = await db.select()
         .from(attachments)
         .where(eq(attachments.id, attachmentId))
         .then(results => results[0]);
-      
+
       if (!attachment || attachment.isDeleted) {
         console.log(`Attachment not found or deleted: ${attachmentId}`);
         return res.status(404).json({ message: "Attachment not found" });
@@ -655,13 +655,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { ObjectStorageService } = await import("./objectStorage");
         const objectStorageService = new ObjectStorageService();
         const objectFile = await objectStorageService.getObjectEntityFile(attachment.url);
-        
+
         // Set appropriate headers for inline viewing (not forced download)
         res.set({
           'Content-Type': attachment.mimeType || 'application/octet-stream',
           'Cache-Control': 'public, max-age=3600'
         });
-        
+
         objectStorageService.downloadObject(objectFile, res);
       } else {
         // Handle external URLs or legacy attachments
@@ -681,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if user can delete this attachment (ownership or admin)
       const attachments = await storage.getAllAttachments(userId);
-      
+
       // For security, only allow deletion by uploader or admin - this should be expanded with proper validation
       await storage.deleteAttachment(attachmentId);
       res.json({ message: "Attachment deleted successfully" });
@@ -695,11 +695,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/attachments/counts/:entityType", isAuthenticated, async (req, res) => {
     try {
       const { entityType } = req.params;
-      
+
       if (!["PROJECT", "TASK", "IDEA", "DEADLINE"].includes(entityType)) {
         return res.status(400).json({ error: "Invalid entity type" });
       }
-      
+
       const counts = await storage.getAttachmentCounts(entityType as "PROJECT" | "TASK" | "IDEA" | "DEADLINE");
       res.json(counts);
     } catch (error) {
@@ -734,16 +734,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tasks", isAuthenticated, async (req, res) => {
     try {
       const { title, studyId, status } = req.body;
-      
+
       // Validate required fields
       if (!title || typeof title !== 'string' || title.trim() === '') {
         return res.status(400).json({ message: "Task title is required and must be a valid string." });
       }
-      
+
       if (!studyId || typeof studyId !== 'string') {
         return res.status(400).json({ message: "Study ID is required and must be a valid string." });
       }
-      
+
       // Validate status if provided
       if (status) {
         const validStatuses = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'BLOCKED'];
@@ -753,7 +753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
-      
+
       const taskData = {
         ...req.body,
         createdBy: (req.user as any)?.claims?.sub
@@ -780,7 +780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req.user as any)?.claims?.sub;
       const taskId = req.params.id;
-      
+
       // Check authorization
       const authResult = await storage.canDeleteEntity(userId, 'task', taskId);
       if (!authResult.canDelete) {
@@ -790,7 +790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: authResult.reason 
         });
       }
-      
+
       await storage.deleteTask(req.params.id!);
       await SecurityAuditLogger.logSuccessfulDelete(req, 'TASK', req.params.id as string, authResult.method as string);
       res.json({ 
@@ -808,7 +808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tasks/:id/move", isAuthenticated, async (req, res) => {
     try {
       const { newStatus, newPosition, newStudyId } = req.body;
-      
+
       // Validate status if provided
       if (newStatus) {
         const validStatuses = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'BLOCKED'];
@@ -818,7 +818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
-      
+
       const task = await storage.updateTask(req.params.id, {
         status: newStatus,
         position: newPosition,
@@ -834,7 +834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tasks/:id/status", isAuthenticated, async (req, res) => {
     try {
       const { status } = req.body;
-      
+
       // Validate status value
       const validStatuses = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'BLOCKED'];
       if (status && !validStatuses.includes(status)) {
@@ -842,7 +842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Invalid status. Must be one of: " + validStatuses.join(', ') 
         });
       }
-      
+
       const task = await storage.updateTask(req.params.id, { status });
       res.json(task);
     } catch (error) {
@@ -854,14 +854,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tasks/:id/assign", isAuthenticated, async (req, res) => {
     try {
       const { assigneeId } = req.body;
-      
+
       // Validate assigneeId if provided (should be a valid UUID or null/undefined for unassigning)
       if (assigneeId && typeof assigneeId !== 'string') {
         return res.status(400).json({ 
           message: "Invalid assigneeId. Must be a valid user ID string." 
         });
       }
-      
+
       const task = await storage.updateTask(req.params.id, { assigneeId });
       res.json(task);
     } catch (error) {
@@ -940,7 +940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!labId) {
         return res.status(400).json({ message: "Lab ID is required" });
       }
-      
+
       // Map frontend form data to database schema
       const memberData: any = {
         name: req.body.name || `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim(),
@@ -1038,7 +1038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req.user as any)?.claims?.sub;
       const ideaId = req.params.id;
-      
+
       // Check authorization
       const authResult = await storage.canDeleteEntity(userId, 'idea', ideaId);
       if (!authResult.canDelete) {
@@ -1048,7 +1048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: authResult.reason 
         });
       }
-      
+
       await storage.deleteIdea(req.params.id!);
       await SecurityAuditLogger.logSuccessfulDelete(req, 'IDEA', req.params.id as string, authResult.method as string);
       res.json({ 
@@ -1098,7 +1098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req.user as any)?.claims?.sub;
       const deadlineId = req.params.id;
-      
+
       // Check authorization
       const authResult = await storage.canDeleteEntity(userId, 'deadline', deadlineId);
       if (!authResult.canDelete) {
@@ -1108,7 +1108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: authResult.reason 
         });
       }
-      
+
       await storage.deleteDeadline(req.params.id!);
       await SecurityAuditLogger.logSuccessfulDelete(req, 'DEADLINE', req.params.id as string, authResult.method as string);
       res.json({ 
@@ -1125,8 +1125,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Standups routes
   app.get("/api/standups", isAuthenticated, async (req, res) => {
     try {
-      const labId = req.query.labId as string;
-      const standups = await storage.getStandups(labId);
+      const userLab = req.headers['x-current-lab'] as string;
+      if (!userLab) {
+        return res.status(400).json({ message: "Lab context required" });
+      }
+
+      const standups = await storage.getStandupMeetings(userLab);
       res.json(standups);
     } catch (error) {
       console.error("Error fetching standups:", error);
@@ -1136,8 +1140,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/standups", isAuthenticated, async (req, res) => {
     try {
-      const standup = await storage.createStandup(req.body);
-      res.json(standup);
+      const userLab = req.headers['x-current-lab'] as string;
+      const userId = (req.user as any)?.claims?.sub;
+
+      if (!userLab) {
+        return res.status(400).json({ message: "Lab context required" });
+      }
+
+      const standupData = {
+        ...req.body,
+        labId: userLab,
+        createdBy: userId
+      };
+
+      const standup = await storage.createStandupMeeting(standupData);
+      res.status(201).json(standup);
     } catch (error) {
       console.error("Error creating standup:", error);
       res.status(500).json({ message: "Failed to create standup" });
@@ -1158,8 +1175,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req.user as any)?.claims?.sub;
       const standupId = req.params.id;
-      
-      // Check authorization
+
+      // ADD: Authorization check
       const authResult = await storage.canDeleteEntity(userId, 'standup', standupId);
       if (!authResult.canDelete) {
         await SecurityAuditLogger.logDeleteAttempt(req, 'STANDUP', standupId, false, undefined, authResult.reason);
@@ -1168,15 +1185,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: authResult.reason 
         });
       }
-      
-      await storage.deleteStandup(req.params.id!);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'STANDUP', req.params.id as string, authResult.method as string);
+
+      await storage.deleteStandup(standupId);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'STANDUP', standupId, authResult.method);
       res.json({ 
         message: "Standup deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'STANDUP', req.params.id!, false, undefined, (error as Error).message);
+      await SecurityAuditLogger.logDeleteAttempt(req, 'STANDUP', req.params.id, false, undefined, error.message);
       console.error("Error deleting standup:", error);
       res.status(500).json({ message: "Failed to delete standup" });
     }
@@ -1224,7 +1241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { meetingId } = req.params;
       const { meetingRecorderService } = await import('./meetingRecorder');
-      
+
       const result = await meetingRecorderService.getMeetingDetails(meetingId);
       res.json(result);
     } catch (error) {
@@ -1300,7 +1317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { meetingId } = req.params;
       const { recipients, labName } = req.body;
-      
+
       if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
         return res.status(400).json({ message: "Recipients array is required" });
       }
@@ -1335,7 +1352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { days = 14 } = req.body;
       const { meetingRecorderService } = await import('./meetingRecorder');
-      
+
       const deletedCount = await meetingRecorderService.cleanupOldMeetings(days);
       res.json({ deletedCount, message: `Cleaned up ${deletedCount} old meetings` });
     } catch (error) {
@@ -1374,7 +1391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get attendee details for email
       let attendeeEmails: string[] = [];
       let attendeeNames: string[] = [];
-      
+
       if (attendees.length > 0) {
         const teamMembers = await storage.getTeamMembersByIds(attendees);
         attendeeEmails = teamMembers.map(member => member.email).filter((email): email is string => Boolean(email));
@@ -1404,7 +1421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { meetingId } = req.params;
       const { meetingRecorderService } = await import('./meetingRecorder');
-      
+
       // Get meeting data
       const meeting = await storage.getStandupMeeting(meetingId);
       if (!meeting) {
@@ -1413,14 +1430,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get action items
       const actionItems = await storage.getActionItemsByMeetingId(meetingId);
-      
+
       // Generate email HTML
       const html = await meetingRecorderService.generateEmailHtml({
         meeting,
         actionItems,
         title: "Lab Meeting Preview"
       });
-      
+
       res.json({ html });
     } catch (error) {
       console.error("Error generating meeting email:", error);
@@ -1436,7 +1453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const audioFile = req.file;
-      
+
       // Import OpenAI
       const OpenAI = (await import('openai')).default;
       const openai = new OpenAI({
@@ -1447,12 +1464,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fs = await import('fs');
       const path = await import('path');
       const { randomUUID } = await import('crypto');
-      
+
       const tempDir = path.join(process.cwd(), 'temp');
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
       }
-      
+
       const tempFilePath = path.join(tempDir, `${randomUUID()}.webm`);
       fs.writeFileSync(tempFilePath, audioFile.buffer);
 
@@ -1476,7 +1493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         throw transcriptionError;
       }
-      
+
     } catch (error) {
       console.error("Error transcribing audio:", error);
       res.status(500).json({ message: "Failed to transcribe audio" });
@@ -1519,18 +1536,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // =============================================================================
 
   // Workflow Triggers
-  app.get('/api/workflow-triggers', isAuthenticated, async (req, res) => {
+  app.get("/api/workflow-triggers", isAuthenticated, async (req, res) => {
     try {
-      const labId = req.query.labId as string | undefined;
-      const triggers = await storage.getWorkflowTriggers(labId);
+      const userLab = req.headers['x-current-lab'] as string;
+      if (!userLab) {
+        return res.status(400).json({ message: "Lab context required" });
+      }
+
+      const triggers = await storage.getWorkflowTriggers(userLab);
       res.json(triggers);
     } catch (error) {
-      console.error('Error fetching workflow triggers:', error);
-      res.status(500).json({ message: 'Failed to fetch workflow triggers' });
+      console.error("Error fetching workflow triggers:", error);
+      res.status(500).json({ message: "Failed to fetch workflow triggers" });
     }
   });
 
-  app.get('/api/workflow-triggers/:id', isAuthenticated, async (req, res) => {
+  app.get("/api/workflow-triggers/:id", isAuthenticated, async (req, res) => {
     try {
       const trigger = await storage.getWorkflowTrigger(req.params.id);
       if (!trigger) {
@@ -1538,41 +1559,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(trigger);
     } catch (error) {
-      console.error('Error fetching workflow trigger:', error);
-      res.status(500).json({ message: 'Failed to fetch workflow trigger' });
+      console.error("Error fetching workflow trigger:", error);
+      res.status(500).json({ message: "Failed to fetch workflow trigger" });
     }
   });
 
-  app.post('/api/workflow-triggers', isAuthenticated, async (req: any, res) => {
+  app.post("/api/workflow-triggers", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      const trigger = await storage.createWorkflowTrigger({
+      const userLab = req.headers['x-current-lab'] as string;
+      const userId = (req.user as any)?.claims?.sub;
+
+      if (!userLab) {
+        return res.status(400).json({ message: "Lab context required" });
+      }
+
+      const triggerData = {
         ...req.body,
+        labId: userLab,
         createdById: userId,
-      });
-      res.json(trigger);
+      };
+
+      const trigger = await storage.createWorkflowTrigger(triggerData);
+      res.status(201).json(trigger);
     } catch (error) {
-      console.error('Error creating workflow trigger:', error);
-      res.status(500).json({ message: 'Failed to create workflow trigger' });
+      console.error("Error creating workflow trigger:", error);
+      res.status(500).json({ message: "Failed to create workflow trigger" });
     }
   });
 
-  app.put('/api/workflow-triggers/:id', isAuthenticated, async (req, res) => {
+  app.put("/api/workflow-triggers/:id", isAuthenticated, async (req, res) => {
     try {
       const trigger = await storage.updateWorkflowTrigger(req.params.id, req.body);
       res.json(trigger);
     } catch (error) {
-      console.error('Error updating workflow trigger:', error);
-      res.status(500).json({ message: 'Failed to update workflow trigger' });
+      console.error("Error updating workflow trigger:", error);
+      res.status(500).json({ message: "Failed to update workflow trigger" });
     }
   });
 
-  app.delete('/api/workflow-triggers/:id', isAuthenticated, async (req, res) => {
+  app.delete("/api/workflow-triggers/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as any)?.claims?.sub;
       const triggerId = req.params.id;
-      
-      // Check authorization
+
+      // ADD: Authorization check
       const authResult = await storage.canDeleteEntity(userId, 'workflow_trigger', triggerId);
       if (!authResult.canDelete) {
         await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TRIGGER', triggerId, false, undefined, authResult.reason);
@@ -1581,34 +1611,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: authResult.reason 
         });
       }
-      
-      await storage.deleteWorkflowTrigger(req.params.id!);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'WORKFLOW_TRIGGER', req.params.id as string, authResult.method as string);
+
+      await storage.deleteWorkflowTrigger(triggerId);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'WORKFLOW_TRIGGER', triggerId, authResult.method);
       res.json({ 
-        message: 'Workflow trigger deleted successfully',
+        message: "Workflow trigger deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TRIGGER', req.params.id!, false, undefined, (error as Error).message);
-      console.error('Error deleting workflow trigger:', error);
-      res.status(500).json({ message: 'Failed to delete workflow trigger' });
+      await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TRIGGER', req.params.id, false, undefined, error.message);
+      console.error("Error deleting workflow trigger:", error);
+      res.status(500).json({ message: "Failed to delete workflow trigger" });
     }
   });
 
   // Automation Rules
-  app.get('/api/automation-rules', isAuthenticated, async (req, res) => {
+  app.get("/api/automation-rules", isAuthenticated, async (req, res) => {
     try {
-      const labId = req.query.labId as string | undefined;
-      const triggerId = req.query.triggerId as string | undefined;
-      const rules = await storage.getAutomationRules(labId, triggerId);
+      const userLab = req.headers['x-current-lab'] as string;
+      if (!userLab) {
+        return res.status(400).json({ message: "Lab context required" });
+      }
+
+      const rules = await storage.getAutomationRules(userLab);
       res.json(rules);
     } catch (error) {
-      console.error('Error fetching automation rules:', error);
-      res.status(500).json({ message: 'Failed to fetch automation rules' });
+      console.error("Error fetching automation rules:", error);
+      res.status(500).json({ message: "Failed to fetch automation rules" });
     }
   });
 
-  app.get('/api/automation-rules/:id', isAuthenticated, async (req, res) => {
+  app.get("/api/automation-rules/:id", isAuthenticated, async (req, res) => {
     try {
       const rule = await storage.getAutomationRule(req.params.id);
       if (!rule) {
@@ -1616,41 +1649,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(rule);
     } catch (error) {
-      console.error('Error fetching automation rule:', error);
-      res.status(500).json({ message: 'Failed to fetch automation rule' });
+      console.error("Error fetching automation rule:", error);
+      res.status(500).json({ message: "Failed to fetch automation rule" });
     }
   });
 
-  app.post('/api/automation-rules', isAuthenticated, async (req: any, res) => {
+  app.post("/api/automation-rules", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      const rule = await storage.createAutomationRule({
+      const userLab = req.headers['x-current-lab'] as string;
+      const userId = (req.user as any)?.claims?.sub;
+
+      if (!userLab) {
+        return res.status(400).json({ message: "Lab context required" });
+      }
+
+      const ruleData = {
         ...req.body,
+        labId: userLab,
         createdById: userId,
-      });
-      res.json(rule);
+      };
+
+      const rule = await storage.createAutomationRule(ruleData);
+      res.status(201).json(rule);
     } catch (error) {
-      console.error('Error creating automation rule:', error);
-      res.status(500).json({ message: 'Failed to create automation rule' });
+      console.error("Error creating automation rule:", error);
+      res.status(500).json({ message: "Failed to create automation rule" });
     }
   });
 
-  app.put('/api/automation-rules/:id', isAuthenticated, async (req, res) => {
+  app.put("/api/automation-rules/:id", isAuthenticated, async (req, res) => {
     try {
       const rule = await storage.updateAutomationRule(req.params.id, req.body);
       res.json(rule);
     } catch (error) {
-      console.error('Error updating automation rule:', error);
-      res.status(500).json({ message: 'Failed to update automation rule' });
+      console.error("Error updating automation rule:", error);
+      res.status(500).json({ message: "Failed to update automation rule" });
     }
   });
 
-  app.delete('/api/automation-rules/:id', isAuthenticated, async (req, res) => {
+  app.delete("/api/automation-rules/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as any)?.claims?.sub;
       const ruleId = req.params.id;
-      
-      // Check authorization
+
+      // ADD: Authorization check
       const authResult = await storage.canDeleteEntity(userId, 'automation_rule', ruleId);
       if (!authResult.canDelete) {
         await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATION_RULE', ruleId, false, undefined, authResult.reason);
@@ -1659,17 +1701,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: authResult.reason 
         });
       }
-      
+
       await storage.deleteAutomationRule(ruleId);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'AUTOMATION_RULE', ruleId as string, authResult.method as string);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'AUTOMATION_RULE', ruleId, authResult.method);
       res.json({ 
-        message: 'Automation rule deleted successfully',
+        message: "Automation rule deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATION_RULE', req.params.id!, false, undefined, (error as Error).message);
-      console.error('Error deleting automation rule:', error);
-      res.status(500).json({ message: 'Failed to delete automation rule' });
+      await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATION_RULE', req.params.id, false, undefined, error.message);
+      console.error("Error deleting automation rule:", error);
+      res.status(500).json({ message: "Failed to delete automation rule" });
     }
   });
 
@@ -1724,18 +1766,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Automated Schedules
-  app.get('/api/automated-schedules', isAuthenticated, async (req, res) => {
+  app.get("/api/automated-schedules", isAuthenticated, async (req, res) => {
     try {
-      const labId = req.query.labId as string | undefined;
-      const schedules = await storage.getAutomatedSchedules(labId);
+      const userLab = req.headers['x-current-lab'] as string;
+      if (!userLab) {
+        return res.status(400).json({ message: "Lab context required" });
+      }
+
+      const schedules = await storage.getAutomatedSchedules(userLab);
       res.json(schedules);
     } catch (error) {
-      console.error('Error fetching automated schedules:', error);
-      res.status(500).json({ message: 'Failed to fetch automated schedules' });
+      console.error("Error fetching automated schedules:", error);
+      res.status(500).json({ message: "Failed to fetch automated schedules" });
     }
   });
 
-  app.get('/api/automated-schedules/:id', isAuthenticated, async (req, res) => {
+  app.get("/api/automated-schedules/:id", isAuthenticated, async (req, res) => {
     try {
       const schedule = await storage.getAutomatedSchedule(req.params.id);
       if (!schedule) {
@@ -1743,41 +1789,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(schedule);
     } catch (error) {
-      console.error('Error fetching automated schedule:', error);
-      res.status(500).json({ message: 'Failed to fetch automated schedule' });
+      console.error("Error fetching automated schedule:", error);
+      res.status(500).json({ message: "Failed to fetch automated schedule" });
     }
   });
 
-  app.post('/api/automated-schedules', isAuthenticated, async (req: any, res) => {
+  app.post("/api/automated-schedules", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      const schedule = await storage.createAutomatedSchedule({
+      const userLab = req.headers['x-current-lab'] as string;
+      const userId = (req.user as any)?.claims?.sub;
+
+      if (!userLab) {
+        return res.status(400).json({ message: "Lab context required" });
+      }
+
+      const scheduleData = {
         ...req.body,
+        labId: userLab,
         createdById: userId,
-      });
-      res.json(schedule);
+      };
+
+      const schedule = await storage.createAutomatedSchedule(scheduleData);
+      res.status(201).json(schedule);
     } catch (error) {
-      console.error('Error creating automated schedule:', error);
-      res.status(500).json({ message: 'Failed to create automated schedule' });
+      console.error("Error creating automated schedule:", error);
+      res.status(500).json({ message: "Failed to create automated schedule" });
     }
   });
 
-  app.put('/api/automated-schedules/:id', isAuthenticated, async (req, res) => {
+  app.put("/api/automated-schedules/:id", isAuthenticated, async (req, res) => {
     try {
       const schedule = await storage.updateAutomatedSchedule(req.params.id, req.body);
       res.json(schedule);
     } catch (error) {
-      console.error('Error updating automated schedule:', error);
-      res.status(500).json({ message: 'Failed to update automated schedule' });
+      console.error("Error updating automated schedule:", error);
+      res.status(500).json({ message: "Failed to update automated schedule" });
     }
   });
 
-  app.delete('/api/automated-schedules/:id', isAuthenticated, async (req, res) => {
+  app.delete("/api/automated-schedules/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as any)?.claims?.sub;
       const scheduleId = req.params.id;
-      
-      // Check authorization
+
+      // ADD: Authorization check
       const authResult = await storage.canDeleteEntity(userId, 'automated_schedule', scheduleId);
       if (!authResult.canDelete) {
         await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATED_SCHEDULE', scheduleId, false, undefined, authResult.reason);
@@ -1786,34 +1841,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: authResult.reason 
         });
       }
-      
+
       await storage.deleteAutomatedSchedule(scheduleId);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'AUTOMATED_SCHEDULE', scheduleId as string, authResult.method as string);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'AUTOMATED_SCHEDULE', scheduleId, authResult.method);
       res.json({ 
-        message: 'Automated schedule deleted successfully',
+        message: "Automated schedule deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATED_SCHEDULE', req.params.id!, false, undefined, (error as Error).message);
-      console.error('Error deleting automated schedule:', error);
-      res.status(500).json({ message: 'Failed to delete automated schedule' });
+      await SecurityAuditLogger.logDeleteAttempt(req, 'AUTOMATED_SCHEDULE', req.params.id, false, undefined, error.message);
+      console.error("Error deleting automated schedule:", error);
+      res.status(500).json({ message: "Failed to delete automated schedule" });
     }
   });
 
   // Workflow Templates
-  app.get('/api/workflow-templates', isAuthenticated, async (req, res) => {
+  app.get("/api/workflow-templates", isAuthenticated, async (req, res) => {
     try {
-      const labId = req.query.labId as string | undefined;
-      const isPublic = req.query.isPublic === 'true';
-      const templates = await storage.getWorkflowTemplates(labId, isPublic);
+      const userLab = req.headers['x-current-lab'] as string;
+      if (!userLab) {
+        return res.status(400).json({ message: "Lab context required" });
+      }
+
+      const templates = await storage.getWorkflowTemplates(userLab);
       res.json(templates);
     } catch (error) {
-      console.error('Error fetching workflow templates:', error);
-      res.status(500).json({ message: 'Failed to fetch workflow templates' });
+      console.error("Error fetching workflow templates:", error);
+      res.status(500).json({ message: "Failed to fetch workflow templates" });
     }
   });
 
-  app.get('/api/workflow-templates/:id', isAuthenticated, async (req, res) => {
+  app.get("/api/workflow-templates/:id", isAuthenticated, async (req, res) => {
     try {
       const template = await storage.getWorkflowTemplate(req.params.id);
       if (!template) {
@@ -1821,41 +1879,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(template);
     } catch (error) {
-      console.error('Error fetching workflow template:', error);
-      res.status(500).json({ message: 'Failed to fetch workflow template' });
+      console.error("Error fetching workflow template:", error);
+      res.status(500).json({ message: "Failed to fetch workflow template" });
     }
   });
 
-  app.post('/api/workflow-templates', isAuthenticated, async (req: any, res) => {
+  app.post("/api/workflow-templates", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      const template = await storage.createWorkflowTemplate({
+      const userLab = req.headers['x-current-lab'] as string;
+      const userId = (req.user as any)?.claims?.sub;
+
+      if (!userLab) {
+        return res.status(400).json({ message: "Lab context required" });
+      }
+
+      const templateData = {
         ...req.body,
+        labId: userLab,
         createdById: userId,
-      });
-      res.json(template);
+      };
+
+      const template = await storage.createWorkflowTemplate(templateData);
+      res.status(201).json(template);
     } catch (error) {
-      console.error('Error creating workflow template:', error);
-      res.status(500).json({ message: 'Failed to create workflow template' });
+      console.error("Error creating workflow template:", error);
+      res.status(500).json({ message: "Failed to create workflow template" });
     }
   });
 
-  app.put('/api/workflow-templates/:id', isAuthenticated, async (req, res) => {
+  app.put("/api/workflow-templates/:id", isAuthenticated, async (req, res) => {
     try {
       const template = await storage.updateWorkflowTemplate(req.params.id, req.body);
       res.json(template);
     } catch (error) {
-      console.error('Error updating workflow template:', error);
-      res.status(500).json({ message: 'Failed to update workflow template' });
+      console.error("Error updating workflow template:", error);
+      res.status(500).json({ message: "Failed to update workflow template" });
     }
   });
 
-  app.delete('/api/workflow-templates/:id', isAuthenticated, async (req, res) => {
+  app.delete("/api/workflow-templates/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as any)?.claims?.sub;
       const templateId = req.params.id;
-      
-      // Check authorization
+
+      // ADD: Authorization check
       const authResult = await storage.canDeleteEntity(userId, 'workflow_template', templateId);
       if (!authResult.canDelete) {
         await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TEMPLATE', templateId, false, undefined, authResult.reason);
@@ -1864,17 +1931,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: authResult.reason 
         });
       }
-      
+
       await storage.deleteWorkflowTemplate(templateId);
-      await SecurityAuditLogger.logSuccessfulDelete(req, 'WORKFLOW_TEMPLATE', templateId as string, authResult.method as string);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'WORKFLOW_TEMPLATE', templateId, authResult.method);
       res.json({ 
-        message: 'Workflow template deleted successfully',
+        message: "Workflow template deleted successfully",
         deletedBy: authResult.method 
       });
     } catch (error) {
-      await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TEMPLATE', req.params.id!, false, undefined, (error as Error).message);
-      console.error('Error deleting workflow template:', error);
-      res.status(500).json({ message: 'Failed to delete workflow template' });
+      await SecurityAuditLogger.logDeleteAttempt(req, 'WORKFLOW_TEMPLATE', req.params.id, false, undefined, error.message);
+      console.error("Error deleting workflow template:", error);
+      res.status(500).json({ message: "Failed to delete workflow template" });
     }
   });
 
@@ -1999,7 +2066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req.user as any)?.claims?.sub;
       const userLab = req.headers['x-current-lab'] as string;
-      
+
       // Only allow lab admins to view audit logs
       if (userLab) {
         const labMember = await storage.getLabMember(userId, userLab);
@@ -2008,7 +2075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ message: "Unauthorized: Admin access required" });
         }
       }
-      
+
       const filters = {
         labId: userLab,
         userId: req.query.userId as string,
@@ -2018,7 +2085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
         limit: req.query.limit ? parseInt(req.query.limit as string) : 100
       };
-      
+
       const auditLogs = await storage.getSecurityAuditLogs(filters);
       res.json(auditLogs);
     } catch (error) {
@@ -2031,7 +2098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req.user as any)?.claims?.sub;
       const userLab = req.headers['x-current-lab'] as string;
-      
+
       // Only allow lab admins to view failed attempts
       if (userLab) {
         const labMember = await storage.getLabMember(userId, userLab);
@@ -2040,7 +2107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ message: "Unauthorized: Admin access required" });
         }
       }
-      
+
       const hours = req.query.hours ? parseInt(req.query.hours as string) : 24;
       const failedAttempts = await storage.getFailedAccessAttempts(userLab, hours);
       res.json(failedAttempts);
@@ -2056,20 +2123,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userId: targetUserId, templateId } = req.body;
       const adminUserId = (req.user as any)?.claims?.sub;
       const labId = req.headers['x-current-lab'] as string;
-      
+
       // Check if requesting user is lab admin
       const labMember = await storage.getLabMember(adminUserId, labId);
       if (!labMember?.canManagePermissions && !labMember?.isAdmin) {
         return res.status(403).json({ message: "Unauthorized: Permission management required" });
       }
-      
+
       const template = await storage.getPermissionTemplate(templateId);
       if (!template) {
         return res.status(404).json({ message: "Permission template not found" });
       }
-      
+
       await storage.updateLabMemberPermissions(targetUserId, labId, template.permissions);
-      
+
       await SecurityAuditLogger.logEvent(req, {
         action: 'PERMISSION_CHANGE',
         entityType: 'LAB_MEMBER',
@@ -2082,7 +2149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           appliedBy: adminUserId 
         }
       });
-      
+
       res.json({ message: "Permission template applied successfully" });
     } catch (error) {
       console.error("Error applying permission template:", error);
@@ -2094,17 +2161,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const adminUserId = (req.user as any)?.claims?.sub;
       const labId = req.headers['x-current-lab'] as string;
-      
+
       // Check if requesting user is lab admin
       const labMember = await storage.getLabMember(adminUserId, labId);
       if (!labMember?.isAdmin) {
         return res.status(403).json({ message: "Unauthorized: Admin access required" });
       }
-      
+
       // Apply enhanced permissions for all lab members
       const { applyDefaultPermissions } = await import('./defaultPermissions');
       const labMembers = await storage.getLabMembers(labId);
-      
+
       let upgradedCount = 0;
       for (const member of labMembers) {
         if (member.isActive) {
@@ -2112,7 +2179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           upgradedCount++;
         }
       }
-      
+
       await SecurityAuditLogger.logEvent(req, {
         action: 'PERMISSION_CHANGE',
         entityType: 'LAB',
@@ -2125,7 +2192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           upgradedBy: adminUserId 
         }
       });
-      
+
       res.json({ 
         message: "Lab member permissions upgraded successfully",
         upgradedCount 

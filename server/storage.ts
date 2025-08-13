@@ -123,84 +123,84 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserAvatar(id: string, avatarUrl: string): Promise<User>;
   findTeamMemberByEmailOrName(email: string, firstName?: string, lastName?: string): Promise<User | undefined>;
-  
+
   // Lab operations
   getLabs(): Promise<Lab[]>;
   createLab(lab: InsertLab): Promise<Lab>;
   updateLab(id: string, updates: Partial<InsertLab>): Promise<Lab>;
   getLabMembers(labId: string): Promise<User[]>;
-  
+
   // Study operations
   getStudies(labId?: string): Promise<Study[]>;
   getStudy(id: string): Promise<Study | undefined>;
   createStudy(study: InsertStudy): Promise<Study>;
   updateStudy(id: string, study: Partial<Study>): Promise<Study>;
   deleteStudy(id: string): Promise<void>;
-  
+
   // Task operations
   getTasks(studyId?: string, assigneeId?: string): Promise<Task[]>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, task: Partial<Task>): Promise<Task>;
-  
+
   // Standup operations
   getStandupMeetings(labId: string): Promise<StandupMeeting[]>;
   createStandupMeeting(meeting: InsertStandupMeeting): Promise<StandupMeeting>;
   updateStandupMeeting(id: string, meeting: Partial<StandupMeeting>): Promise<StandupMeeting>;
-  
+
   // Action item operations
   getActionItems(assigneeId?: string, meetingId?: string): Promise<ActionItem[]>;
   createActionItem(item: InsertActionItem): Promise<ActionItem>;
-  
+
   // Team member operations
   getTeamMembers(): Promise<TeamMember[]>;
   getTeamMembersByLab(labId: string): Promise<TeamMember[]>;
   createTeamMember(member: InsertTeamMember): Promise<TeamMember>;
   updateTeamMember(id: string, updates: Partial<InsertTeamMember>): Promise<TeamMember>;
   deleteTeamMember(id: string): Promise<void>;
-  
+
   // Enhanced CRUD operations
   softDeleteStudy(id: string): Promise<Study>;
   softDeleteTask(id: string): Promise<Task>;
   softDeleteBucket(id: string): Promise<Bucket>;
-  
+
   // Restore operations
   restoreStudy(id: string): Promise<Study>;
   restoreTask(id: string): Promise<Task>;
   restoreBucket(id: string): Promise<Bucket>;
-  
+
   // Get deleted items
   getDeletedStudies(labId?: string): Promise<Study[]>;
   getDeletedTasks(labId?: string): Promise<Task[]>;
   getDeletedBuckets(labId?: string): Promise<Bucket[]>;
   updateItemPosition(type: 'bucket' | 'study' | 'task', id: string, position: string): Promise<void>;
-  
+
   // Project member operations
   getProjectMembers(projectId: string): Promise<ProjectMember[]>;
   addProjectMember(member: InsertProjectMember): Promise<ProjectMember>;
   removeProjectMember(projectId: string, userId: string): Promise<void>;
-  
+
   // Task assignment operations
   getTaskAssignments(taskId: string): Promise<TaskAssignment[]>;
   assignUserToTask(assignment: InsertTaskAssignment): Promise<TaskAssignment>;
   removeTaskAssignment(taskId: string, userId: string): Promise<void>;
-  
+
   // Team member assignment operations
   getTeamMemberAssignments(): Promise<TeamMemberAssignment[]>;
   createTeamMemberAssignment(assignment: InsertTeamMemberAssignment): Promise<TeamMemberAssignment>;
   deleteTeamMemberAssignment(id: string): Promise<void>;
   updateActionItem(id: string, item: Partial<ActionItem>): Promise<ActionItem>;
-  
+
   // Bucket operations
   getBuckets(labId?: string): Promise<Bucket[]>;
   createBucket(bucket: InsertBucket): Promise<Bucket>;
   deleteBucket(id: string): Promise<void>;
-  
+
   // Ideas operations
   getIdeas(labId?: string): Promise<Idea[]>;
   createIdea(idea: InsertIdea): Promise<Idea>;
   updateIdea(id: string, updates: Partial<InsertIdea>): Promise<Idea>;
   deleteIdea(id: string): Promise<void>;
-  
+
   // Deadlines operations
   getDeadlines(labId?: string): Promise<Deadline[]>;
   createDeadline(deadline: InsertDeadline): Promise<Deadline>;
@@ -222,7 +222,7 @@ export interface IStorage {
 
   // Dashboard and analytics
   getDashboardStats(labId?: string): Promise<any>;
-  getActivityFeed(labId?: string): Promise<any>;
+  getActivityFeed(labId?: string): Promise<any[]>;
 
   // Deleted items operations
   getDeletedBuckets(labId?: string): Promise<Bucket[]>;
@@ -317,7 +317,7 @@ export interface IStorage {
   // User Preferences
   getUserPreferences(userId: string): Promise<UserPreferences | undefined>;
   upsertUserPreferences(preferences: InsertUserPreferences): Promise<UserPreferences>;
-  
+
   // Phase 5: Automation Operations
   // Workflow Triggers
   getWorkflowTriggers(labId?: string): Promise<WorkflowTrigger[]>;
@@ -325,24 +325,24 @@ export interface IStorage {
   createWorkflowTrigger(trigger: InsertWorkflowTrigger): Promise<WorkflowTrigger>;
   updateWorkflowTrigger(id: string, trigger: Partial<InsertWorkflowTrigger>): Promise<WorkflowTrigger>;
   deleteWorkflowTrigger(id: string): Promise<void>;
-  
+
   // Automation Rules
   getAutomationRules(labId?: string, triggerId?: string): Promise<AutomationRule[]>;
   getAutomationRule(id: string): Promise<AutomationRule | undefined>;
   createAutomationRule(rule: InsertAutomationRule): Promise<AutomationRule>;
   updateAutomationRule(id: string, rule: Partial<InsertAutomationRule>): Promise<AutomationRule>;
   deleteAutomationRule(id: string): Promise<void>;
-  
+
   // Workflow Executions
   getWorkflowExecutions(ruleId?: string, status?: string): Promise<WorkflowExecution[]>;
   getWorkflowExecution(id: string): Promise<WorkflowExecution | undefined>;
   createWorkflowExecution(execution: InsertWorkflowExecution): Promise<WorkflowExecution>;
   updateWorkflowExecution(id: string, execution: Partial<InsertWorkflowExecution>): Promise<WorkflowExecution>;
-  
+
   // Task Generation Logs
   getTaskGenerationLogs(executionId?: string): Promise<TaskGenerationLog[]>;
   createTaskGenerationLog(log: InsertTaskGenerationLog): Promise<TaskGenerationLog>;
-  
+
   // Automated Schedules
   getAutomatedSchedules(labId?: string): Promise<AutomatedSchedule[]>;
   getAutomatedSchedule(id: string): Promise<AutomatedSchedule | undefined>;
@@ -350,20 +350,20 @@ export interface IStorage {
   updateAutomatedSchedule(id: string, schedule: Partial<InsertAutomatedSchedule>): Promise<AutomatedSchedule>;
   deleteAutomatedSchedule(id: string): Promise<void>;
   getSchedulesDue(): Promise<AutomatedSchedule[]>;
-  
+
   // Workflow Templates
   getWorkflowTemplates(labId?: string, isPublic?: boolean): Promise<WorkflowTemplate[]>;
   getWorkflowTemplate(id: string): Promise<WorkflowTemplate | undefined>;
   createWorkflowTemplate(template: InsertWorkflowTemplate): Promise<WorkflowTemplate>;
   updateWorkflowTemplate(id: string, template: Partial<InsertWorkflowTemplate>): Promise<WorkflowTemplate>;
   deleteWorkflowTemplate(id: string): Promise<void>;
-  
+
   // Automation Engine Methods
   executeAutomationRule(ruleId: string, triggeredBy?: string): Promise<WorkflowExecution>;
   generateTaskFromTemplate(templateId: string, executionId: string, projectId?: string): Promise<TaskGenerationLog>;
   processRecurringTasks(): Promise<void>;
   checkTriggerConditions(triggerType: string, entityData: any): Promise<WorkflowTrigger[]>;
-  
+
   // File attachment methods
   createAttachment(attachment: InsertAttachment): Promise<Attachment>;
   getAttachmentsByEntity(entityType: string, entityId: string): Promise<Attachment[]>;
@@ -394,7 +394,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return user;
   }
-  
+
   async findTeamMemberByEmailOrName(email: string, firstName?: string, lastName?: string): Promise<User | undefined> {
     // First try exact email match (case-insensitive)
     if (email) {
@@ -406,16 +406,16 @@ export class DatabaseStorage implements IStorage {
           eq(users.isActive, true)
         ))
         .limit(1);
-      
+
       if (userByEmail) return userByEmail;
     }
-    
+
     // If no email match and we have name info, try name matching (case-insensitive)
     if (firstName && lastName) {
       // Clean and normalize names - remove extra spaces and make case-insensitive
       const cleanFirst = firstName.trim();
       const cleanLast = lastName.trim();
-      
+
       // Try exact name match first (case-insensitive)
       const [userByName] = await db
         .select()
@@ -426,13 +426,13 @@ export class DatabaseStorage implements IStorage {
           eq(users.isActive, true)
         ))
         .limit(1);
-      
+
       if (userByName) return userByName;
-      
+
       // Also try matching with periods removed (for names like "J.C." vs "JC")
       const firstNoPeriods = cleanFirst.replace(/\./g, '');
       const lastNoPeriods = cleanLast.replace(/\./g, '');
-      
+
       const [userByNameNoPeriods] = await db
         .select()
         .from(users)
@@ -442,10 +442,10 @@ export class DatabaseStorage implements IStorage {
           eq(users.isActive, true)
         ))
         .limit(1);
-      
+
       if (userByNameNoPeriods) return userByNameNoPeriods;
     }
-    
+
     // No match found
     return undefined;
   }
@@ -465,7 +465,7 @@ export class DatabaseStorage implements IStorage {
   // Lab operations
   async getLabs(): Promise<Lab[]> {
     const allLabs = await db.select().from(labs).orderBy(asc(labs.name));
-    
+
     // If no labs exist, create sample labs
     if (allLabs.length === 0) {
       const sampleLabs = [
@@ -482,14 +482,14 @@ export class DatabaseStorage implements IStorage {
           color: "#10b981",
         }
       ];
-      
+
       for (const labData of sampleLabs) {
         await this.createLab(labData);
       }
-      
+
       return await db.select().from(labs).orderBy(asc(labs.name));
     }
-    
+
     return allLabs;
   }
 
@@ -513,7 +513,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLabMembers(labId: string): Promise<any[]> {
-    // Get team members with lab-specific roles from both team_members and lab_members tables
+    // Get team members directly from team_members table which has lab_id
     const members = await db.select({
       id: teamMembers.id,
       email: teamMembers.email,
@@ -527,7 +527,6 @@ export class DatabaseStorage implements IStorage {
       middleName: sql<string>`''`,
       initials: teamMembers.initials,
       role: teamMembers.role,
-      labRole: labMembers.labRole, // Lab-specific role from labMembers table
       title: teamMembers.position,
       department: teamMembers.department,
       capacity: sql<string>`'40.00'`,
@@ -547,10 +546,6 @@ export class DatabaseStorage implements IStorage {
       updatedAt: teamMembers.updatedAt,
     })
     .from(teamMembers)
-    .leftJoin(labMembers, and(
-      eq(labMembers.userId, teamMembers.id),
-      eq(labMembers.labId, labId)
-    ))
     .where(and(
       eq(teamMembers.labId, labId), 
       eq(teamMembers.isActive, true)
@@ -636,10 +631,10 @@ export class DatabaseStorage implements IStorage {
   // Study operations
   async getStudies(labId?: string): Promise<Study[]> {
     let query = db.select().from(studies);
-    
+
     const conditions = [eq(studies.isActive, true)];
     if (labId) conditions.push(eq(studies.labId, labId));
-    
+
     return await query.where(and(...conditions)).orderBy(asc(studies.position), desc(studies.updatedAt));
   }
 
@@ -667,27 +662,27 @@ export class DatabaseStorage implements IStorage {
     const associatedTasks = await db.select({ id: tasks.id })
       .from(tasks)
       .where(eq(tasks.studyId, id));
-    
+
     if (associatedTasks.length > 0 && !cascade) {
       throw new Error(`Cannot delete study. It contains ${associatedTasks.length} task(s). Please delete the tasks first.`);
     }
-    
+
     // If cascade is true, delete associated tasks first
     if (cascade && associatedTasks.length > 0) {
       await db.delete(tasks).where(eq(tasks.studyId, id));
     }
-    
+
     await db.delete(studies).where(eq(studies.id, id));
   }
 
   // Task operations
   async getTasks(studyId?: string, assigneeId?: string): Promise<Task[]> {
     let query = db.select().from(tasks);
-    
+
     const conditions = [eq(tasks.isActive, true)];
     if (studyId) conditions.push(eq(tasks.studyId, studyId));
     if (assigneeId) conditions.push(eq(tasks.assigneeId, assigneeId));
-    
+
     return await query.where(and(...conditions)).orderBy(desc(tasks.createdAt));
   }
 
@@ -710,54 +705,136 @@ export class DatabaseStorage implements IStorage {
   }
 
   // SECURITY: Ownership validation methods
-  async validateOwnership(userId: string, entityType: string, entityId: string): Promise<boolean> {
+  async validateOwnership(userId: string, entityType: string, entityId: string): Promise<{ canDelete: boolean; reason: string }> {
     try {
-      switch (entityType) {
-        case 'task':
-          const [task] = await db.select({ createdBy: tasks.createdBy })
-            .from(tasks).where(eq(tasks.id, entityId));
-          return task?.createdBy === userId;
-          
-        case 'study': 
-          const [study] = await db.select({ createdBy: studies.createdBy })
-            .from(studies).where(eq(studies.id, entityId));
-          return study?.createdBy === userId;
-          
+      let entity;
+      let ownerField = 'createdBy';
+
+      switch (entityType.toLowerCase()) {
         case 'bucket':
-          const [bucket] = await db.select({ createdBy: buckets.createdBy })
-            .from(buckets).where(eq(buckets.id, entityId));
-          return bucket?.createdBy === userId;
-          
+          entity = await this.getBucket(entityId);
+          break;
+        case 'study':
+          entity = await this.getStudy(entityId);
+          break;
+        case 'task':
+          entity = await this.getTask(entityId);
+          break;
         case 'idea':
-          const [idea] = await db.select({ proposedBy: ideas.proposedBy })
-            .from(ideas).where(eq(ideas.id, entityId));
-          if (idea?.proposedBy) {
-            const [teamMember] = await db.select()
-              .from(teamMembers).where(eq(teamMembers.id, idea.proposedBy));
-            return teamMember?.email === userId; // Compare with user email since team members store email
-          }
-          return false;
-          
+          entity = await this.getIdea(entityId);
+          ownerField = 'proposedBy';
+          break;
         case 'deadline':
-          const [deadline] = await db.select({ createdBy: deadlines.createdBy })
-            .from(deadlines).where(eq(deadlines.id, entityId));
-          if (deadline?.createdBy) {
-            const [teamMember] = await db.select()
-              .from(teamMembers).where(eq(teamMembers.id, deadline.createdBy));
-            return teamMember?.email === userId; // Compare with user email since team members store email
-          }
-          return false;
-          
+          entity = await this.getDeadline(entityId);
+          break;
+        case 'standup':
+          entity = await this.getStandupMeeting(entityId);
+          break;
+        case 'workflow_trigger':
+          entity = await this.getWorkflowTrigger(entityId);
+          ownerField = 'createdById';
+          break;
+        case 'automation_rule':
+          entity = await this.getAutomationRule(entityId);
+          ownerField = 'createdById';
+          break;
+        case 'automated_schedule':
+          entity = await this.getAutomatedSchedule(entityId);
+          ownerField = 'createdById';
+          break;
+        case 'workflow_template':
+          entity = await this.getWorkflowTemplate(entityId);
+          ownerField = 'createdById';
+          break;
         default:
-          return false;
+          return { canDelete: false, reason: `Unsupported entity type: ${entityType}` };
       }
-    } catch {
-      return false;
+
+      if (!entity) {
+        return { canDelete: false, reason: 'Entity not found' };
+      }
+
+      if (entity[ownerField] === userId) {
+        return { canDelete: true, reason: 'User owns this entity' };
+      }
+
+      return { canDelete: false, reason: 'User does not own this entity' };
+    } catch (error) {
+      console.error('Ownership validation error:', error);
+      return { canDelete: false, reason: 'Ownership validation failed' };
     }
   }
 
-  async validateAdminOverride(userId: string, labId: string, permission: string): Promise<boolean> {
+  async validateAdminOverride(userId: string, entityType: string, entityId: string): Promise<{ canDelete: boolean; reason: string }> {
     try {
+      let labId: string | null = null;
+
+      // Determine the labId for the entity
+      switch (entityType.toLowerCase()) {
+        case 'task':
+          const [task] = await db.select({ labId: studies.labId })
+            .from(tasks)
+            .innerJoin(studies, eq(tasks.studyId, studies.id))
+            .where(eq(tasks.id, entityId));
+          labId = task?.labId || null;
+          break;
+
+        case 'study':
+          const [study] = await db.select({ labId: studies.labId })
+            .from(studies).where(eq(studies.id, entityId));
+          labId = study?.labId || null;
+          break;
+
+        case 'bucket':
+          const [bucket] = await db.select({ labId: buckets.labId })
+            .from(buckets).where(eq(buckets.id, entityId));
+          labId = bucket?.labId || null;
+          break;
+
+        case 'idea':
+          const [idea] = await db.select({ labId: ideas.labId })
+            .from(ideas).where(eq(ideas.id, entityId));
+          labId = idea?.labId || null;
+          break;
+
+        case 'deadline':
+          const [deadline] = await db.select({ labId: deadlines.labId })
+            .from(deadlines).where(eq(deadlines.id, entityId));
+          labId = deadline?.labId || null;
+          break;
+
+        case 'standup':
+          const [standup] = await db.select({ labId: standupMeetings.labId })
+            .from(standupMeetings).where(eq(standupMeetings.id, entityId));
+          labId = standup?.labId || null;
+          break;
+
+        case 'workflow_trigger':
+        case 'automation_rule':
+        case 'automated_schedule':
+        case 'workflow_template':
+          // These entities are lab-scoped but might not have a direct labId field in current schema
+          // We need to fetch the lab association appropriately or assume a default if missing
+          // For now, we'll try to fetch it from the entity itself if available.
+          const entity = await db.select({ labId: sql`"labId"` }).from(
+            (() => {
+              switch (entityType.toLowerCase()) {
+                case 'workflow_trigger': return workflowTriggers;
+                case 'automation_rule': return automationRules;
+                case 'automated_schedule': return automatedSchedules;
+                case 'workflow_template': return workflowTemplates;
+                default: throw new Error('Unsupported automation entity type');
+              }
+            })()
+          ).where(eq(sql`"id"`, entityId)).limit(1);
+          labId = entity[0]?.labId || null;
+          break;
+      }
+
+      if (!labId) {
+        return { canDelete: false, reason: 'Cannot determine lab context for admin override' };
+      }
+
       const [member] = await db
         .select({
           isAdmin: labMembers.isAdmin,
@@ -771,169 +848,58 @@ export class DatabaseStorage implements IStorage {
           eq(labMembers.labId, labId),
           eq(labMembers.isActive, true)
         ));
-      
-      if (!member) return false;
-      
-      switch (permission) {
-        case 'canEditAllProjects':
-          return (member.isAdmin ?? false) || (member.canEditAllProjects ?? false);
-        case 'canManageMembers':
-          return (member.isAdmin ?? false) || (member.canManageMembers ?? false);
-        case 'canApproveIdeas':
-          return (member.isAdmin ?? false) || (member.canApproveIdeas ?? false);
-        case 'isAdmin':
-          return member.isAdmin ?? false;
-        default:
-          return member.isAdmin ?? false;
-      }
-    } catch {
-      return false;
-    }
-  }
 
-  async canDeleteEntity(userId: string, entityType: string, entityId: string): Promise<{
-    canDelete: boolean;
-    reason?: string;
-    method?: 'ownership' | 'admin';
-  }> {
-    // Check ownership first
-    const isOwner = await this.validateOwnership(userId, entityType, entityId);
-    if (isOwner) {
-      return { canDelete: true, method: 'ownership' };
-    }
-    
-    // Get entity's lab for admin check
-    let labId: string | null = null;
-    try {
+      if (!member) return { canDelete: false, reason: 'User not found in lab' };
+
       switch (entityType) {
-        case 'task':
-          const [task] = await db.select({ labId: studies.labId })
-            .from(tasks)
-            .innerJoin(studies, eq(tasks.studyId, studies.id))
-            .where(eq(tasks.id, entityId));
-          labId = task?.labId;
-          break;
-          
-        case 'study':
-          const [study] = await db.select({ labId: studies.labId })
-            .from(studies).where(eq(studies.id, entityId));
-          labId = study?.labId;
-          break;
-          
-        case 'bucket':
-          const [bucket] = await db.select({ labId: buckets.labId })
-            .from(buckets).where(eq(buckets.id, entityId));
-          labId = bucket?.labId;
-          break;
-          
         case 'idea':
-          const [idea] = await db.select({ labId: ideas.labId })
-            .from(ideas).where(eq(ideas.id, entityId));
-          labId = idea?.labId;
-          break;
-          
-        case 'deadline':
-          const [deadline] = await db.select({ labId: deadlines.labId })
-            .from(deadlines).where(eq(deadlines.id, entityId));
-          labId = deadline?.labId;
-          break;
-          
-        case 'standup':
-          const [standup] = await db.select({ labId: standupMeetings.labId })
-            .from(standupMeetings).where(eq(standupMeetings.id, entityId));
-          labId = standup?.labId;
-          break;
-          
+          return { canDelete: member.isAdmin || member.canApproveIdeas, reason: 'Admin or idea approver permission' };
+        case 'task':
+        case 'study':
+        case 'bucket':
         case 'workflow_trigger':
         case 'automation_rule':
         case 'automated_schedule':
         case 'workflow_template':
-          // These entities are lab-scoped but don't have direct labId fields in current schema
-          // For now, we'll allow admin override with a default check
-          // TODO: Add proper lab association when these entities are fully implemented
-          labId = 'default'; // Temporary for development
-          break;
+          return { canDelete: member.isAdmin || member.canEditAllProjects, reason: 'Admin or project editor permission' };
+        case 'deadline':
+        case 'standup':
+          return { canDelete: member.isAdmin || member.canEditAllProjects, reason: 'Admin or project editor permission' };
+        default:
+          return { canDelete: member.isAdmin, reason: 'Admin permission' };
       }
     } catch (error) {
-      return { canDelete: false, reason: 'Entity not found' };
-    }
-    
-    if (!labId) {
-      return { canDelete: false, reason: 'Cannot determine lab context' };
-    }
-    
-    // Check admin permissions
-    const permission = entityType === 'idea' ? 'canApproveIdeas' : 'canEditAllProjects';
-    const hasAdminPermission = await this.validateAdminOverride(userId, labId, permission);
-    
-    if (hasAdminPermission) {
-      return { canDelete: true, method: 'admin' };
-    }
-    
-    return { 
-      canDelete: false, 
-      reason: `Unauthorized: Not the ${entityType} owner and no admin permissions` 
-    };
-  }
-
-  // PHASE 2: Security Audit Logging Implementation
-  async createSecurityAuditLog(log: any): Promise<any> {
-    try {
-      const [auditLog] = await db.insert(securityAuditLogs).values(log).returning();
-      return auditLog;
-    } catch (error) {
-      console.error("Failed to create audit log:", error);
-      // Don't throw error to avoid breaking main functionality
-      return null;
+      console.error('Admin override validation error:', error);
+      return { canDelete: false, reason: 'Admin override validation failed' };
     }
   }
 
-  async getSecurityAuditLogs(filters: any = {}): Promise<any[]> {
+  async canDeleteEntity(userId: string, entityType: string, entityId: string): Promise<{ canDelete: boolean; reason: string; method: string }> {
     try {
-      let query = db.select().from(securityAuditLogs);
-      
-      const conditions = [];
-      if (filters.userId) conditions.push(eq(securityAuditLogs.userId, filters.userId));
-      if (filters.labId) conditions.push(eq(securityAuditLogs.labId, filters.labId));
-      if (filters.entityType) conditions.push(eq(securityAuditLogs.entityType, filters.entityType));
-      if (filters.action) conditions.push(eq(securityAuditLogs.action, filters.action));
-      if (filters.startDate) conditions.push(gte(securityAuditLogs.timestamp, filters.startDate));
-      if (filters.endDate) conditions.push(lte(securityAuditLogs.timestamp, filters.endDate));
-      
-      if (conditions.length > 0) {
-        query = query.where(and(...conditions)) as any;
+      // Check ownership first
+      const ownershipResult = await this.validateOwnership(userId, entityType, entityId);
+      if (ownershipResult.canDelete) {
+        return { canDelete: true, reason: 'User owns this entity', method: 'ownership' };
       }
-      
-      return await query
-        .orderBy(desc(securityAuditLogs.timestamp))
-        .limit(filters.limit || 100);
-    } catch (error) {
-      console.error("Failed to fetch audit logs:", error);
-      return [];
-    }
-  }
 
-  async getFailedAccessAttempts(labId?: string, hours: number = 24): Promise<any[]> {
-    try {
-      const since = new Date(Date.now() - hours * 60 * 60 * 1000);
-      const conditions = [
-        eq(securityAuditLogs.wasAuthorized, false),
-        gte(securityAuditLogs.timestamp, since)
-      ];
-      
-      if (labId) {
-        conditions.push(eq(securityAuditLogs.labId, labId));
+      // Check admin override
+      const adminResult = await this.validateAdminOverride(userId, entityType, entityId);
+      if (adminResult.canDelete) {
+        return { canDelete: true, reason: 'Admin override permissions', method: 'admin' };
       }
-      
-      return await db
-        .select()
-        .from(securityAuditLogs)
-        .where(and(...conditions))
-        .orderBy(desc(securityAuditLogs.timestamp))
-        .limit(50);
+
+      return { 
+        canDelete: false, 
+        reason: 'Unauthorized: Not the entity owner and no admin permissions',
+        method: 'none' 
+      };
     } catch (error) {
-      console.error("Failed to fetch failed access attempts:", error);
-      return [];
+      console.error('Authorization error:', error);
+      return { 
+        canDelete: false, 
+        reason: 'Authorization check failed',
+        method: 'error' 
+      };
     }
   }
 
@@ -1116,15 +1082,15 @@ export class DatabaseStorage implements IStorage {
   // Action item operations
   async getActionItems(assigneeId?: string, meetingId?: string): Promise<ActionItem[]> {
     let query = db.select().from(standupActionItems);
-    
+
     const conditions = [];
     if (assigneeId) conditions.push(eq(standupActionItems.assigneeId, assigneeId));
     if (meetingId) conditions.push(eq(standupActionItems.meetingId, meetingId));
-    
+
     if (conditions.length > 0) {
       return await query.where(and(...conditions)).orderBy(desc(standupActionItems.createdAt));
     }
-    
+
     return await query.orderBy(desc(standupActionItems.createdAt));
   }
 
@@ -1145,10 +1111,10 @@ export class DatabaseStorage implements IStorage {
   // Bucket operations
   async getBuckets(labId?: string): Promise<Bucket[]> {
     let query = db.select().from(buckets);
-    
+
     const conditions = [eq(buckets.isActive, true)];
     if (labId) conditions.push(eq(buckets.labId, labId));
-    
+
     return await query.where(and(...conditions)).orderBy(asc(buckets.position), asc(buckets.name));
   }
 
@@ -1162,11 +1128,11 @@ export class DatabaseStorage implements IStorage {
     const associatedStudies = await db.select({ id: studies.id })
       .from(studies)
       .where(eq(studies.bucketId, id));
-    
+
     if (associatedStudies.length > 0) {
       throw new Error(`Cannot delete bucket. It contains ${associatedStudies.length} study(ies). Please move or delete the studies first.`);
     }
-    
+
     await db.delete(buckets).where(eq(buckets.id, id));
   }
 
@@ -1198,7 +1164,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(labMembers, eq(users.id, labMembers.userId))
       .where(eq(labMembers.isActive, true))
       .orderBy(asc(users.firstName), asc(users.lastName));
-    
+
     return members;
   }
 
@@ -1218,7 +1184,7 @@ export class DatabaseStorage implements IStorage {
   async updateTeamMember(id: string, updates: any): Promise<any> {
     // Update the users table since team members are actually users
     const userUpdates: any = {};
-    
+
     // Map the updates to user fields
     if (updates.firstName !== undefined) userUpdates.firstName = updates.firstName;
     if (updates.lastName !== undefined) userUpdates.lastName = updates.lastName;
@@ -1237,14 +1203,14 @@ export class DatabaseStorage implements IStorage {
     if (updates.capacity !== undefined) userUpdates.capacity = updates.capacity;
     if (updates.expertise !== undefined) userUpdates.expertise = updates.expertise;
     if (updates.skills !== undefined) userUpdates.skills = updates.skills;
-    
+
     // Update the name field based on first and last name
     if (updates.firstName || updates.lastName) {
       const firstName = updates.firstName || '';
       const lastName = updates.lastName || '';
       userUpdates.name = `${firstName} ${lastName}`.trim();
     }
-    
+
     // Generate initials if names changed
     if (updates.firstName || updates.lastName || updates.middleName) {
       const firstName = updates.firstName || '';
@@ -1253,15 +1219,15 @@ export class DatabaseStorage implements IStorage {
       const initials = [firstName[0], middleName[0], lastName[0]].filter(Boolean).join('').toUpperCase();
       if (initials) userUpdates.initials = initials;
     }
-    
+
     userUpdates.updatedAt = new Date();
-    
+
     const [updatedUser] = await db
       .update(users)
       .set(userUpdates)
       .where(eq(users.id, id))
       .returning();
-    
+
     // Also update lab member role if provided
     if (updates.labRole && updates.labId) {
       await db
@@ -1275,7 +1241,7 @@ export class DatabaseStorage implements IStorage {
           eq(labMembers.labId, updates.labId)
         ));
     }
-    
+
     // Return the updated user with lab member info
     const memberWithLab = await db
       .select({
@@ -1301,7 +1267,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(labMembers, eq(users.id, labMembers.userId))
       .where(eq(users.id, id))
       .limit(1);
-    
+
     return memberWithLab[0] || updatedUser;
   }
 
@@ -1423,7 +1389,7 @@ export class DatabaseStorage implements IStorage {
 
   async getTeamMembersByIds(ids: string[]): Promise<TeamMember[]> {
     if (ids.length === 0) return [];
-    
+
     return await db
       .select()
       .from(teamMembers)
@@ -1494,7 +1460,7 @@ export class DatabaseStorage implements IStorage {
     const studies = await this.getStudies();
     const tasks = await this.getTasks();
     const actionItems = await this.getActionItems();
-    
+
     return {
       user,
       labs,
@@ -1515,7 +1481,7 @@ export class DatabaseStorage implements IStorage {
     const studies = await this.getStudies(labId);
     const tasks = await this.getTasks();
     const standups = await this.getStandups(labId);
-    
+
     return {
       labs: labs.length,
       studies: studies.length,
@@ -1532,7 +1498,7 @@ export class DatabaseStorage implements IStorage {
     const studies = await this.getStudies(labId);
     const tasks = await this.getTasks();
     const standups = await this.getStandups(labId);
-    
+
     const activities = [
       ...studies.slice(0, 5).map(s => ({
         type: 'study',
@@ -1556,7 +1522,7 @@ export class DatabaseStorage implements IStorage {
         id: s.id
       }))
     ];
-    
+
     return activities
       .sort((a, b) => {
         const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
@@ -1625,10 +1591,10 @@ export class DatabaseStorage implements IStorage {
   // Get deleted items
   async getDeletedStudies(labId?: string): Promise<Study[]> {
     let query = db.select().from(studies);
-    
+
     const conditions = [eq(studies.isActive, false)];
     if (labId) conditions.push(eq(studies.labId, labId));
-    
+
     return await query.where(and(...conditions)).orderBy(desc(studies.updatedAt));
   }
 
@@ -1663,7 +1629,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(tasks.updatedAt));
       return results;
     }
-    
+
     return await db
       .select()
       .from(tasks)
@@ -1673,10 +1639,10 @@ export class DatabaseStorage implements IStorage {
 
   async getDeletedBuckets(labId?: string): Promise<Bucket[]> {
     let query = db.select().from(buckets);
-    
+
     const conditions = [eq(buckets.isActive, false)];
     if (labId) conditions.push(eq(buckets.labId, labId));
-    
+
     return await query.where(and(...conditions)).orderBy(desc(buckets.updatedAt));
   }
 
@@ -1739,7 +1705,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // PHASE 1: CRITICAL SECURITY IMPLEMENTATIONS
-  
+
   async validateUserLabAccess(userId: string, labId: string): Promise<boolean> {
     try {
       const [membership] = await db
@@ -1747,13 +1713,13 @@ export class DatabaseStorage implements IStorage {
         .from(labMembers)
         .where(and(eq(labMembers.userId, userId), eq(labMembers.labId, labId), eq(labMembers.isActive, true)))
         .limit(1);
-      
+
       return !!membership;
     } catch {
       return false;
     }
   }
-  
+
   async validateProjectMembership(userId: string, projectId: string): Promise<boolean> {
     try {
       const [membership] = await db
@@ -1766,20 +1732,20 @@ export class DatabaseStorage implements IStorage {
           )
         )
         .limit(1);
-      
+
       return !!membership;
     } catch {
       return false;
     }
   }
-  
+
   async getBucketMembers(bucketId: string): Promise<BucketMember[]> {
     return await db
       .select()
       .from(bucketMembers)
       .where(eq(bucketMembers.bucketId, bucketId));
   }
-  
+
   async addBucketMember(member: InsertBucketMember): Promise<BucketMember> {
     const [newMember] = await db
       .insert(bucketMembers)
@@ -1787,7 +1753,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return newMember;
   }
-  
+
   async removeBucketMember(bucketId: string, userId: string): Promise<void> {
     await db
       .delete(bucketMembers)
@@ -1798,7 +1764,7 @@ export class DatabaseStorage implements IStorage {
         )
       );
   }
-  
+
   // CRITICAL: Validated task assignment - ensures only project members can be assigned
   async assignTaskWithValidation(assignment: InsertTaskAssignment): Promise<TaskAssignment> {
     // Step 1: Validate that user is a member of the project
@@ -1806,36 +1772,36 @@ export class DatabaseStorage implements IStorage {
       assignment.userId,
       assignment.projectId
     );
-    
+
     if (!isProjectMember) {
       throw new Error("Cannot assign task: User is not a member of this project");
     }
-    
+
     // Step 2: Validate cross-lab access (get project's lab and check user's lab)
     const [project] = await db
       .select({ labId: studies.labId })
       .from(studies)
       .where(eq(studies.id, assignment.projectId))
       .limit(1);
-    
+
     if (!project) {
       throw new Error("Project not found");
     }
-    
+
     const hasLabAccess = await this.validateUserLabAccess(assignment.userId, project.labId);
     if (!hasLabAccess) {
       throw new Error("Cannot assign task: Cross-lab access denied");
     }
-    
+
     // Step 3: Create the assignment
     const [newAssignment] = await db
       .insert(taskAssignments)
       .values(assignment)
       .returning();
-    
+
     return newAssignment;
   }
-  
+
   async getComments(entityType: string, entityId: string): Promise<Comment[]> {
     return await db
       .select()
@@ -1849,7 +1815,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(asc(comments.createdAt));
   }
-  
+
   async createComment(comment: InsertComment): Promise<Comment> {
     const [newComment] = await db
       .insert(comments)
@@ -1857,7 +1823,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return newComment;
   }
-  
+
   async getNotifications(userId: string): Promise<Notification[]> {
     return await db
       .select()
@@ -1865,7 +1831,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt));
   }
-  
+
   async createNotification(notification: InsertNotification): Promise<Notification> {
     const [newNotification] = await db
       .insert(notifications)
@@ -1873,16 +1839,16 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return newNotification;
   }
-  
+
   async markNotificationRead(notificationId: string): Promise<void> {
     await db
       .update(notifications)
       .set({ read: true, readAt: new Date() })
       .where(eq(notifications.id, notificationId));
   }
-  
+
   // PHASE 2: ATTACHMENT OPERATIONS
-  
+
   async getAllAttachments(userId?: string): Promise<Attachment[]> {
     return await db
       .select()
@@ -1904,7 +1870,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(attachments.uploadedAt));
   }
-  
+
   async createAttachment(attachment: InsertAttachment): Promise<Attachment> {
     const [newAttachment] = await db
       .insert(attachments)
@@ -1912,7 +1878,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return newAttachment;
   }
-  
+
   async updateAttachmentFilename(attachmentId: string, newFilename: string): Promise<void> {
     await db
       .update(attachments)
@@ -1973,16 +1939,16 @@ export class DatabaseStorage implements IStorage {
 
   async getTimeEntries(taskId?: string, userId?: string, projectId?: string): Promise<TimeEntry[]> {
     let query = db.select().from(timeEntries);
-    
+
     const conditions = [];
     if (taskId) conditions.push(eq(timeEntries.taskId, taskId));
     if (userId) conditions.push(eq(timeEntries.userId, userId));
     if (projectId) conditions.push(eq(timeEntries.projectId, projectId));
-    
+
     if (conditions.length > 0) {
       return await query.where(and(...conditions)).orderBy(desc(timeEntries.date));
     }
-    
+
     return await query.orderBy(desc(timeEntries.date));
   }
 
@@ -2003,7 +1969,7 @@ export class DatabaseStorage implements IStorage {
     const conditions = [eq(timeEntries.projectId, projectId)];
     if (startDate) conditions.push(sql`${timeEntries.date} >= ${startDate}`);
     if (endDate) conditions.push(sql`${timeEntries.date} <= ${endDate}`);
-    
+
     return await db.select().from(timeEntries).where(and(...conditions)).orderBy(desc(timeEntries.date));
   }
 
@@ -2011,12 +1977,12 @@ export class DatabaseStorage implements IStorage {
     const conditions = [eq(timeEntries.userId, userId)];
     if (startDate) conditions.push(sql`${timeEntries.date} >= ${startDate}`);
     if (endDate) conditions.push(sql`${timeEntries.date} <= ${endDate}`);
-    
+
     return await db.select().from(timeEntries).where(and(...conditions)).orderBy(desc(timeEntries.date));
   }
 
   // PHASE 4: ENHANCED ORGANIZATION OPERATIONS
-  
+
   // Tags
   async getTags(labId?: string): Promise<Tag[]> {
     if (labId) {
@@ -2062,6 +2028,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Project Tags
+  async getProjectTags(projectId: string): Promise<ProjectTag[]>;
   async getProjectTags(projectId: string): Promise<ProjectTag[]> {
     return await db.select().from(projectTags).where(eq(projectTags.projectId, projectId));
   }
@@ -2078,11 +2045,11 @@ export class DatabaseStorage implements IStorage {
   // Custom Fields
   async getCustomFields(labId: string, entityType?: string): Promise<CustomField[]> {
     const conditions = [eq(customFields.labId, labId), eq(customFields.isActive, true)];
-    
+
     if (entityType) {
       conditions.push(eq(customFields.entityType, entityType));
     }
-    
+
     return await db.select().from(customFields).where(and(...conditions)).orderBy(asc(customFields.position), asc(customFields.fieldLabel));
   }
 
@@ -2267,11 +2234,11 @@ export class DatabaseStorage implements IStorage {
   // Automation Rules Implementation
   async getAutomationRules(labId?: string, triggerId?: string): Promise<AutomationRule[]> {
     let query = db.select().from(automationRules);
-    
+
     const conditions = [eq(automationRules.isActive, true)];
     if (labId) conditions.push(eq(automationRules.labId, labId));
     if (triggerId) conditions.push(eq(automationRules.triggerId, triggerId));
-    
+
     return await query.where(and(...conditions)).orderBy(asc(automationRules.priority), desc(automationRules.createdAt));
   }
 
@@ -2303,13 +2270,13 @@ export class DatabaseStorage implements IStorage {
     const conditions = [];
     if (ruleId) conditions.push(eq(workflowExecutions.ruleId, ruleId));
     if (status) conditions.push(eq(workflowExecutions.status, status as any));
-    
+
     if (conditions.length > 0) {
       return await db.select().from(workflowExecutions)
         .where(and(...conditions))
         .orderBy(desc(workflowExecutions.startedAt));
     }
-    
+
     return await db.select().from(workflowExecutions).orderBy(desc(workflowExecutions.startedAt));
   }
 
@@ -2397,13 +2364,13 @@ export class DatabaseStorage implements IStorage {
     const conditions = [];
     if (labId) conditions.push(eq(workflowTemplates.labId, labId));
     if (isPublic !== undefined) conditions.push(eq(workflowTemplates.isPublic, isPublic));
-    
+
     if (conditions.length > 0) {
       return await db.select().from(workflowTemplates)
         .where(and(...conditions))
         .orderBy(desc(workflowTemplates.usageCount), desc(workflowTemplates.createdAt));
     }
-    
+
     return await db.select().from(workflowTemplates).orderBy(desc(workflowTemplates.usageCount), desc(workflowTemplates.createdAt));
   }
 
@@ -2452,7 +2419,7 @@ export class DatabaseStorage implements IStorage {
     try {
       // Execute the automation action based on type
       await this.performAutomationAction(rule, execution.id);
-      
+
       // Mark as successful
       return await this.updateWorkflowExecution(execution.id, {
         status: "SUCCESS",
@@ -2481,7 +2448,7 @@ export class DatabaseStorage implements IStorage {
 
   private async performAutomationAction(rule: AutomationRule, executionId: string): Promise<void> {
     const config = rule.actionConfig as any;
-    
+
     switch (rule.actionType) {
       case "CREATE_TASK":
         if (config.templateId) {
@@ -2496,7 +2463,7 @@ export class DatabaseStorage implements IStorage {
             status: "TODO",
             isActive: true,
           });
-          
+
           // Log the task generation
           await this.createTaskGenerationLog({
             executionId,
@@ -2508,7 +2475,7 @@ export class DatabaseStorage implements IStorage {
           });
         }
         break;
-        
+
       case "SEND_NOTIFICATION":
         if (config.userId && config.message) {
           await this.createNotification({
@@ -2521,7 +2488,7 @@ export class DatabaseStorage implements IStorage {
           });
         }
         break;
-        
+
       case "UPDATE_STATUS":
         if (config.entityType === "task" && config.entityId) {
           await this.updateTask(config.entityId, { status: config.status });
@@ -2529,7 +2496,7 @@ export class DatabaseStorage implements IStorage {
           await this.updateStudy(config.entityId, { status: config.status });
         }
         break;
-        
+
       // Add more action types as needed
       default:
         console.warn(`Unknown automation action type: ${rule.actionType}`);
@@ -2686,7 +2653,7 @@ export class DatabaseStorage implements IStorage {
     if (!trigger.conditions) return true; // No conditions means always match
 
     const conditions = trigger.conditions as any;
-    
+
     // Simple condition evaluation - can be extended for complex logic
     for (const [field, expectedValue] of Object.entries(conditions)) {
       if (entityData[field] !== expectedValue) {
@@ -2700,10 +2667,10 @@ export class DatabaseStorage implements IStorage {
   // Global search implementation
   async globalSearch(query: string, limit: number, userId: string): Promise<any[]> {
     const results: any[] = [];
-    
+
     try {
       console.log(`🔍 Starting search for: "${query}" with limit: ${limit}`);
-      
+
       // Search across studies
       const studyResults = await db
         .select()
@@ -2822,18 +2789,18 @@ export class DatabaseStorage implements IStorage {
         .sort((a, b) => {
           const aTitle = a.title.toLowerCase().includes(query.toLowerCase());
           const bTitle = b.title.toLowerCase().includes(query.toLowerCase());
-          
+
           if (aTitle && !bTitle) return -1;
           if (!aTitle && bTitle) return 1;
           return 0;
         })
         .slice(0, limit);
-        
+
       console.log(`✅ Search completed. Total results: ${sortedResults.length}`);
       sortedResults.forEach((result, index) => {
         console.log(`  Result ${index + 1}: ${result.type} - ${result.title}`);
       });
-      
+
       return sortedResults;
     } catch (error) {
       console.error('Error performing global search:', error);
