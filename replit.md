@@ -89,6 +89,13 @@ Navigation Cleanup: Removed redundant "Task Board" page since Task Management al
 - **Standup Processing**: ✅ Automatically extracts tasks, timelines, and blockers from transcripts
 
 ### Recent Changes (August 13, 2025)
+- **Google Slides Integration Added**: Embedded presentation functionality for meetings
+  - **Direct Embedding**: Google Slides presentations embed directly in Standup Recording page
+  - **Smart URL Parsing**: Automatically converts sharing URLs to embed format
+  - **Fullscreen Mode**: Toggle between inline and fullscreen presentation views
+  - **Session Persistence**: Slides URLs saved per meeting for easy reuse
+  - **Synchronized Recording**: Continue recording audio while presenting slides
+  - **Meeting Integration**: Slides URL saved with meeting data when processing transcripts
 - **Team Member Role Management Fixed**: Resolved lab-specific role persistence issue
   - **Fixed getLabMembers function**: Now properly joins users and labMembers tables instead of querying deprecated teamMembers table
   - **Database Integration**: labRole field correctly fetched from labMembers table for each lab

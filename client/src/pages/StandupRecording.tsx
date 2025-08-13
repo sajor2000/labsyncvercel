@@ -3,6 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLabContext } from "@/hooks/useLabContext";
 import { 
@@ -25,7 +28,11 @@ import {
   Activity,
   Target,
   UserCheck,
-  Settings
+  Settings,
+  Presentation,
+  Link,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -74,6 +81,12 @@ export default function StandupRecording() {
   const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
   const [showAttendeeSelection, setShowAttendeeSelection] = useState(false);
   
+  // Google Slides integration state
+  const [slidesUrl, setSlidesUrl] = useState("");
+  const [showSlides, setShowSlides] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [savedSlidesUrls, setSavedSlidesUrls] = useState<Record<string, string>>({});
+  
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { selectedLab } = useLabContext();
@@ -111,6 +124,60 @@ export default function StandupRecording() {
     queryKey: ['/api/standups/meeting-email', selectedMeetingId],
     enabled: !!selectedMeetingId && showEmailPreview,
   });
+
+  // Helper function to extract Google Slides embed URL
+  const getGoogleSlidesEmbedUrl = (inputUrl: string) => {
+    if (!inputUrl) return null;
+    
+    // Check if it's already an embed URL
+    if (inputUrl.includes('/embed')) {
+      return inputUrl;
+    }
+    
+    // Extract presentation ID from various Google Slides URL formats
+    const patterns = [
+      /\/presentation\/d\/([a-zA-Z0-9-_]+)/,
+      /\/d\/([a-zA-Z0-9-_]+)/,
+      /id=([a-zA-Z0-9-_]+)/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = inputUrl.match(pattern);
+      if (match && match[1]) {
+        // Return embed URL with presentation ID
+        return `https://docs.google.com/presentation/d/${match[1]}/embed?start=false&loop=false&delayms=3000`;
+      }
+    }
+    
+    // If no pattern matches, try to use the URL as-is
+    return inputUrl;
+  };
+
+  // Save slides URL for a meeting
+  const saveSlidesUrlForMeeting = (meetingId: string, url: string) => {
+    const embedUrl = getGoogleSlidesEmbedUrl(url);
+    if (embedUrl) {
+      setSavedSlidesUrls(prev => ({
+        ...prev,
+        [meetingId]: embedUrl
+      }));
+      localStorage.setItem(`slides_${meetingId}`, embedUrl);
+    }
+  };
+
+  // Load saved slides URL for a meeting
+  useEffect(() => {
+    if (selectedMeetingId) {
+      const savedUrl = localStorage.getItem(`slides_${selectedMeetingId}`);
+      if (savedUrl) {
+        setSlidesUrl(savedUrl);
+        setSavedSlidesUrls(prev => ({
+          ...prev,
+          [selectedMeetingId]: savedUrl
+        }));
+      }
+    }
+  }, [selectedMeetingId]);
 
   // Auto-select core RICCC team members when lab switches to RICCC
   useEffect(() => {
@@ -457,6 +524,155 @@ export default function StandupRecording() {
             </CardContent>
           </Card>
 
+          {/* Google Slides Integration */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Presentation className="h-5 w-5 text-purple-600" />
+                Meeting Presentation
+              </CardTitle>
+              <CardDescription>
+                Embed Google Slides to guide your meeting discussion
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!showSlides ? (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="slides-url" className="text-sm font-medium">
+                      Google Slides URL
+                    </Label>
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        id="slides-url"
+                        type="url"
+                        placeholder="https://docs.google.com/presentation/d/..."
+                        value={slidesUrl}
+                        onChange={(e) => setSlidesUrl(e.target.value)}
+                        className="flex-1"
+                        data-testid="input-slides-url"
+                      />
+                      <Button
+                        onClick={() => {
+                          const embedUrl = getGoogleSlidesEmbedUrl(slidesUrl);
+                          if (embedUrl) {
+                            setSlidesUrl(embedUrl);
+                            setShowSlides(true);
+                            if (selectedMeetingId) {
+                              saveSlidesUrlForMeeting(selectedMeetingId, embedUrl);
+                            }
+                            toast({
+                              title: "Presentation Loaded",
+                              description: "Google Slides presentation is now embedded",
+                            });
+                          } else {
+                            toast({
+                              title: "Invalid URL",
+                              description: "Please enter a valid Google Slides URL",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        disabled={!slidesUrl}
+                        className="bg-purple-600 hover:bg-purple-700"
+                        data-testid="button-load-slides"
+                      >
+                        <Link className="h-4 w-4 mr-2" />
+                        Load Slides
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Share your Google Slides with "Anyone with the link" for embedding
+                    </p>
+                  </div>
+                  
+                  {savedSlidesUrls[selectedMeetingId || ''] && (
+                    <div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg border border-purple-200">
+                      <p className="text-sm text-purple-800 dark:text-purple-400">
+                        <CheckCircle className="h-4 w-4 inline mr-1" />
+                        Previous slides saved for this meeting
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-2"
+                        onClick={() => {
+                          setSlidesUrl(savedSlidesUrls[selectedMeetingId || '']);
+                          setShowSlides(true);
+                        }}
+                        data-testid="button-load-saved-slides"
+                      >
+                        Load Previous Slides
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                        <Presentation className="h-3 w-3 mr-1" />
+                        Slides Active
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsFullscreen(!isFullscreen)}
+                        data-testid="button-toggle-fullscreen"
+                      >
+                        {isFullscreen ? (
+                          <Minimize2 className="h-4 w-4" />
+                        ) : (
+                          <Maximize2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setShowSlides(false);
+                        setSlidesUrl('');
+                      }}
+                      data-testid="button-close-slides"
+                    >
+                      Close Slides
+                    </Button>
+                  </div>
+                  
+                  <div className={`border rounded-lg overflow-hidden bg-white ${
+                    isFullscreen ? 'fixed inset-4 z-50' : 'relative'
+                  }`}>
+                    <iframe
+                      src={slidesUrl}
+                      frameBorder="0"
+                      className={isFullscreen ? 'w-full h-full' : 'w-full h-96'}
+                      allowFullScreen
+                      data-testid="iframe-google-slides"
+                    />
+                    {isFullscreen && (
+                      <Button
+                        className="absolute top-4 right-4 z-10"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setIsFullscreen(false)}
+                        data-testid="button-exit-fullscreen"
+                      >
+                        <Minimize2 className="h-4 w-4 mr-2" />
+                        Exit Fullscreen
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground">
+                    Use arrow keys in the slides to navigate. Recording continues while presenting.
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Recording Controls */}
           <Card>
             <CardHeader>
@@ -582,7 +798,8 @@ export default function StandupRecording() {
                             transcript,
                             attendees: selectedAttendees,
                             labId: selectedLab?.id,
-                            meetingType: 'standup'
+                            meetingType: 'standup',
+                            slidesUrl: showSlides ? slidesUrl : undefined
                           }),
                         })
                         .then(response => response.json())
