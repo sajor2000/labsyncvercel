@@ -88,6 +88,15 @@ Navigation Cleanup: Removed redundant "Task Board" page since Task Management al
 - **Meeting Recorder**: ✅ AI-powered task extraction working with smart parsing
 - **Standup Processing**: ✅ Automatically extracts tasks, timelines, and blockers from transcripts
 
+### Recent Changes (August 13, 2025)
+- **Team Member Role Management Fixed**: Resolved lab-specific role persistence issue
+  - **Fixed getLabMembers function**: Now properly joins users and labMembers tables instead of querying deprecated teamMembers table
+  - **Database Integration**: labRole field correctly fetched from labMembers table for each lab
+  - **Backend Update Flow**: updateTeamMember function properly updates both users and labMembers tables
+  - **Role Persistence Verified**: Database confirms all role updates persist with proper timestamps
+  - **Admin Privileges**: Co-PIs automatically receive admin flags when assigned CO_PRINCIPAL_INVESTIGATOR role
+  - **Visual Confirmation**: Color-coded role badges display correctly based on labRole field
+
 ### Recent Changes (August 12, 2025)
 - **CRITICAL SECURITY VULNERABILITIES RESOLVED**: All 5 vulnerable DELETE endpoints now secured
   - **Previous Grade**: A+ with Critical Issues - 5 endpoints lacked authorization controls
