@@ -275,6 +275,8 @@ export default function TeamMembersEnhanced() {
         initials: `${data.firstName?.charAt(0) || ''}${data.lastName?.charAt(0) || ''}`,
         expertise: data.expertise ? data.expertise.split(',').map(s => s.trim()).filter(Boolean) : [],
         skills: data.skills ? data.skills.split(',').map(s => s.trim()).filter(Boolean) : [],
+        labId: selectedLab?.id, // Include the lab ID for role updates
+        labRole: data.role, // Include labRole for proper role updates
         updatedAt: new Date().toISOString(),
       };
       
@@ -352,7 +354,7 @@ export default function TeamMembersEnhanced() {
       lastName: member.lastName || "",
       middleName: member.middleName || "",
       email: member.email || "",
-      role: member.role || "",
+      role: member.labRole || member.role || "", // Use labRole first, then fallback to role
       title: member.title || "",
       department: member.department || "",
       phone: member.phone || "",
