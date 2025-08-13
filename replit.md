@@ -89,6 +89,12 @@ Navigation Cleanup: Removed redundant "Task Board" page since Task Management al
 - **Standup Processing**: ✅ Automatically extracts tasks, timelines, and blockers from transcripts
 
 ### Recent Changes (August 13, 2025)
+- **Persistent Recording Across Navigation**: Recording continues while navigating between pages
+  - **Global Recording Context**: Recording state managed globally via RecordingProvider
+  - **Recording Indicator**: Floating indicator shows recording status on all pages
+  - **Navigation Freedom**: Team members can access other features while recording meetings
+  - **Quick Return**: "Back to Recording" button for easy return to standup page
+  - **Real-time Timer**: Recording duration visible from any page in the application
 - **Google Slides Integration Added**: Embedded presentation functionality for meetings
   - **Direct Embedding**: Google Slides presentations embed directly in Standup Recording page
   - **Smart URL Parsing**: Automatically converts sharing URLs to embed format

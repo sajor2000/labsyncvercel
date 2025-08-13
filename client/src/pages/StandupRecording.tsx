@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLabContext } from "@/hooks/useLabContext";
+import { useRecording } from "@/contexts/RecordingContext";
 import { 
   Mic, 
   Square, 
@@ -71,24 +72,33 @@ const MEETING_SCHEDULES = {
 };
 
 export default function StandupRecording() {
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [transcript, setTranscript] = useState("");
+  // Get recording state from global context
+  const {
+    isRecording,
+    recordingTime,
+    audioBlob,
+    transcript,
+    selectedAttendees,
+    slidesUrl,
+    showSlides,
+    startRecording: startRecordingFromContext,
+    stopRecording: stopRecordingFromContext,
+    setTranscript,
+    setAudioBlob,
+    setSelectedAttendees,
+    setSlidesUrl,
+    setShowSlides,
+    clearRecording
+  } = useRecording();
+  
+  // Local state for this page only
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
-  const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
   const [showAttendeeSelection, setShowAttendeeSelection] = useState(false);
-  
-  // Google Slides integration state
-  const [slidesUrl, setSlidesUrl] = useState("");
-  const [showSlides, setShowSlides] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [savedSlidesUrls, setSavedSlidesUrls] = useState<Record<string, string>>({});
   
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { selectedLab } = useLabContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -243,72 +253,19 @@ export default function StandupRecording() {
     },
   });
 
-  useEffect(() => {
-    if (isRecording && timerRef.current === null) {
-      timerRef.current = setInterval(() => {
-        setRecordingTime((prevTime) => prevTime + 1);
-      }, 1000);
-    } else if (!isRecording && timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [isRecording]);
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      mediaRecorderRef.current = mediaRecorder;
-
-      const chunks: BlobPart[] = [];
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        setAudioBlob(blob);
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start(1000);
-      setIsRecording(true);
-      setRecordingTime(0);
-      
-      toast({
-        title: "Recording Started",
-        description: `Recording ${meetingSchedule.name}...`,
-      });
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      toast({
-        title: "Recording Error",
-        description: "Failed to access microphone. Please check permissions.",
-        variant: "destructive",
-      });
-    }
+  // Wrapper functions to handle recording with page-specific toast messages
+  const startRecording = () => {
+    startRecordingFromContext();
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
+    stopRecordingFromContext();
   };
 
   const transcribeAudio = async () => {

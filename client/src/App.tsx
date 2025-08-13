@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { useAuth } from "@/hooks/useAuth";
+import { RecordingProvider } from "@/contexts/RecordingContext";
 import Dashboard from "@/pages/Dashboard";
 import Landing from "@/pages/Landing";
 import Studies from "@/pages/Studies";
@@ -75,10 +76,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <RecordingProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </RecordingProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

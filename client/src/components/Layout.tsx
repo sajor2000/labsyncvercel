@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
 import { CommandPalette } from "./CommandPalette";
+import { RecordingIndicator } from "./RecordingIndicator";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -44,6 +45,9 @@ export function Layout({ children }: LayoutProps) {
         open={commandPaletteOpen} 
         onOpenChange={setCommandPaletteOpen}
       />
+      
+      {/* Recording Indicator - Shows when recording is active */}
+      <RecordingIndicator />
     </div>
   );
 }
