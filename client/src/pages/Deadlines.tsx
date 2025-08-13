@@ -41,7 +41,8 @@ import { FileUploader } from "@/components/FileUploader";
 import { AttachmentList } from "@/components/AttachmentList";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { BulkDeadlineUpload } from "@/components/BulkDeadlineUpload";
-import { Paperclip, Upload } from "lucide-react";
+import { CalendarSubscription } from "@/components/CalendarSubscription";
+import { Paperclip, Upload, Calendar as CalendarIcon2 } from "lucide-react";
 
 const deadlineFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -112,6 +113,7 @@ export default function Deadlines() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [showCalendarSync, setShowCalendarSync] = useState(false);
   const [editingDeadline, setEditingDeadline] = useState<Deadline | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
@@ -286,6 +288,14 @@ export default function Deadlines() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowCalendarSync(!showCalendarSync)}
+            data-testid="button-toggle-calendar-sync"
+          >
+            <CalendarIcon2 className="h-4 w-4 mr-2" />
+            Calendar Sync
+          </Button>
           <Button
             variant="outline"
             onClick={() => setShowBulkUpload(!showBulkUpload)}
@@ -621,6 +631,10 @@ export default function Deadlines() {
         </Dialog>
         </div>
       </div>
+
+      {showCalendarSync && (
+        <CalendarSubscription />
+      )}
 
       {showBulkUpload && (
         <BulkDeadlineUpload />

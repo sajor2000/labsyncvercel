@@ -2399,6 +2399,231 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Calendar subscription endpoint for Outlook integration
+  app.get("/api/calendar/subscribe/:labId", async (req, res) => {
+    try {
+      const labId = req.params.labId;
+      const token = req.query.token as string;
+      
+      if (!token) {
+        return res.status(401).json({ error: "Authentication token required" });
+      }
+
+      // Verify the token is valid (basic validation - in production, use proper JWT validation)
+      if (token.length < 32) {
+        return res.status(401).json({ error: "Invalid authentication token" });
+      }
+
+      // Get lab information
+      const lab = await storage.getLab(labId);
+      if (!lab) {
+        return res.status(404).json({ error: "Lab not found" });
+      }
+
+      // Get all calendar events for the lab
+      const [deadlines, tasks, standups, milestones] = await Promise.all([
+        storage.getDeadlines(labId),
+        storage.getTasks(labId),
+        storage.getStandups(labId),
+        db.select().from(studyMilestones)
+          .innerJoin(studies, eq(studyMilestones.studyId, studies.id))
+          .where(eq(studies.labId, labId))
+      ]);
+
+      // Generate iCal content
+      const now = new Date();
+      const calendarName = `${lab.name} - Research Calendar`;
+      
+      let icalContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//LabSync//Research Calendar//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        `X-WR-CALNAME:${calendarName}`,
+        `X-WR-CALDESC:Research deadlines, tasks, and events for ${lab.name}`,
+        'X-WR-TIMEZONE:UTC',
+        'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
+        'X-PUBLISHED-TTL:PT1H'
+      ];
+
+      // Helper function to format date for iCal
+      const formatICalDate = (date: Date) => {
+        return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      };
+
+      const escapeText = (text: string) => {
+        return text.replace(/\\/g, '\\\\')
+                  .replace(/;/g, '\\;')
+                  .replace(/,/g, '\\,')
+                  .replace(/\n/g, '\\n');
+      };
+
+      // Add deadlines as events
+      deadlines.forEach((deadline: any) => {
+        const eventId = `deadline-${deadline.id}@labsync.local`;
+        const dueDate = new Date(deadline.dueDate);
+        const summary = `📅 ${deadline.title}`;
+        const description = [
+          `Type: ${deadline.type.replace(/_/g, ' ')}`,
+          deadline.description ? `Description: ${deadline.description}` : '',
+          deadline.priority ? `Priority: ${deadline.priority}` : '',
+          deadline.status ? `Status: ${deadline.status}` : '',
+          deadline.assignedTo ? `Assigned to: ${deadline.assignedTo}` : '',
+          deadline.submissionUrl ? `Submission URL: ${deadline.submissionUrl}` : '',
+          deadline.notes ? `Notes: ${deadline.notes}` : ''
+        ].filter(Boolean).join('\\n');
+
+        icalContent.push(
+          'BEGIN:VEVENT',
+          `UID:${eventId}`,
+          `DTSTAMP:${formatICalDate(now)}`,
+          `DTSTART;VALUE=DATE:${dueDate.toISOString().split('T')[0].replace(/-/g, '')}`,
+          `SUMMARY:${escapeText(summary)}`,
+          `DESCRIPTION:${escapeText(description)}`,
+          'CATEGORIES:Deadline',
+          `STATUS:${deadline.status === 'COMPLETED' ? 'CONFIRMED' : 'TENTATIVE'}`,
+          deadline.priority === 'HIGH' || deadline.priority === 'URGENT' ? 'PRIORITY:1' : 'PRIORITY:5',
+          'END:VEVENT'
+        );
+      });
+
+      // Add tasks with due dates as events
+      tasks.forEach((task: any) => {
+        if (task.dueDate) {
+          const eventId = `task-${task.id}@labsync.local`;
+          const dueDate = new Date(task.dueDate);
+          const summary = `✅ ${task.title}`;
+          const description = [
+            `Task from: ${task.bucketName || 'Unknown Bucket'}`,
+            task.description ? `Description: ${task.description}` : '',
+            task.priority ? `Priority: ${task.priority}` : '',
+            task.status ? `Status: ${task.status}` : '',
+            task.assignees && task.assignees.length > 0 ? `Assigned to: ${task.assignees.join(', ')}` : ''
+          ].filter(Boolean).join('\\n');
+
+          icalContent.push(
+            'BEGIN:VEVENT',
+            `UID:${eventId}`,
+            `DTSTAMP:${formatICalDate(now)}`,
+            `DTSTART;VALUE=DATE:${dueDate.toISOString().split('T')[0].replace(/-/g, '')}`,
+            `SUMMARY:${escapeText(summary)}`,
+            `DESCRIPTION:${escapeText(description)}`,
+            'CATEGORIES:Task',
+            `STATUS:${task.status === 'COMPLETED' ? 'CONFIRMED' : 'TENTATIVE'}`,
+            task.priority === 'HIGH' ? 'PRIORITY:1' : 'PRIORITY:5',
+            'END:VEVENT'
+          );
+        }
+      });
+
+      // Add standups as events
+      standups.forEach((standup: any) => {
+        const eventId = `standup-${standup.id}@labsync.local`;
+        const meetingDate = new Date(standup.meetingDate);
+        const summary = `🎤 Standup Meeting`;
+        const description = [
+          standup.attendees && standup.attendees.length > 0 ? `Attendees: ${standup.attendees.join(', ')}` : '',
+          standup.summary ? `Summary: ${standup.summary}` : '',
+          standup.actionItems && standup.actionItems.length > 0 ? `Action Items: ${standup.actionItems.length}` : ''
+        ].filter(Boolean).join('\\n');
+
+        icalContent.push(
+          'BEGIN:VEVENT',
+          `UID:${eventId}`,
+          `DTSTAMP:${formatICalDate(now)}`,
+          `DTSTART:${formatICalDate(meetingDate)}`,
+          `DTEND:${formatICalDate(new Date(meetingDate.getTime() + 60 * 60 * 1000))}`, // 1 hour duration
+          `SUMMARY:${escapeText(summary)}`,
+          `DESCRIPTION:${escapeText(description)}`,
+          'CATEGORIES:Meeting',
+          'STATUS:CONFIRMED',
+          'END:VEVENT'
+        );
+      });
+
+      // Add study milestones as events
+      milestones.forEach((milestone: any) => {
+        if (milestone.studyMilestones.targetDate) {
+          const eventId = `milestone-${milestone.studyMilestones.id}@labsync.local`;
+          const targetDate = new Date(milestone.studyMilestones.targetDate);
+          const summary = `🎯 ${milestone.studyMilestones.name}`;
+          const description = [
+            `Study: ${milestone.studies.name}`,
+            milestone.studyMilestones.description ? `Description: ${milestone.studyMilestones.description}` : '',
+            milestone.studyMilestones.status ? `Status: ${milestone.studyMilestones.status}` : '',
+            milestone.studyMilestones.progress ? `Progress: ${milestone.studyMilestones.progress}%` : '',
+            milestone.studyMilestones.assignedTo ? `Assigned to: ${milestone.studyMilestones.assignedTo}` : ''
+          ].filter(Boolean).join('\\n');
+
+          icalContent.push(
+            'BEGIN:VEVENT',
+            `UID:${eventId}`,
+            `DTSTAMP:${formatICalDate(now)}`,
+            `DTSTART;VALUE=DATE:${targetDate.toISOString().split('T')[0].replace(/-/g, '')}`,
+            `SUMMARY:${escapeText(summary)}`,
+            `DESCRIPTION:${escapeText(description)}`,
+            'CATEGORIES:Milestone',
+            `STATUS:${milestone.studyMilestones.status === 'COMPLETED' ? 'CONFIRMED' : 'TENTATIVE'}`,
+            milestone.studyMilestones.priority === 'HIGH' ? 'PRIORITY:1' : 'PRIORITY:5',
+            'END:VEVENT'
+          );
+        }
+      });
+
+      icalContent.push('END:VCALENDAR');
+
+      // Set appropriate headers for iCal
+      res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${lab.name.replace(/[^a-zA-Z0-9]/g, '_')}_calendar.ics"`);
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
+      res.send(icalContent.join('\r\n'));
+
+    } catch (error) {
+      console.error("Error generating calendar subscription:", error);
+      res.status(500).json({ error: "Failed to generate calendar subscription" });
+    }
+  });
+
+  // Generate calendar subscription URL endpoint
+  app.get("/api/calendar/subscription-url/:labId", isAuthenticated, async (req, res) => {
+    try {
+      const labId = req.params.labId;
+      const userId = (req.user as any)?.claims?.sub;
+
+      // Verify user has access to this lab
+      const labMember = await storage.getLabMember(userId, labId);
+      if (!labMember) {
+        return res.status(403).json({ error: "Unauthorized: Not a lab member" });
+      }
+
+      // Generate a simple token (in production, use proper JWT)
+      const token = Buffer.from(`${userId}-${labId}-${Date.now()}`).toString('base64');
+      
+      // Get the current domain
+      const protocol = req.get('X-Forwarded-Proto') || (req.secure ? 'https' : 'http');
+      const host = req.get('host');
+      const subscriptionUrl = `${protocol}://${host}/api/calendar/subscribe/${labId}?token=${token}`;
+
+      res.json({
+        subscriptionUrl,
+        instructions: {
+          outlook: "Copy this URL and add it as a 'Calendar from Internet' in Outlook",
+          google: "Use 'Add other calendars' > 'From URL' in Google Calendar",
+          apple: "Use 'Add Calendar' > 'Add Calendar Subscription' in Calendar app",
+          general: "This URL provides an iCal feed that updates automatically"
+        }
+      });
+
+    } catch (error) {
+      console.error("Error generating subscription URL:", error);
+      res.status(500).json({ error: "Failed to generate subscription URL" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
