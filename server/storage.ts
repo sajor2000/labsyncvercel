@@ -513,60 +513,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLabMembers(labId: string): Promise<any[]> {
-    // Get team members directly from team_members table which has lab_id
+    // Get lab members by joining users and labMembers tables to get lab-specific roles
     const members = await db.select({
-      id: teamMembers.id,
-      email: teamMembers.email,
-      firstName: sql<string>`SPLIT_PART(${teamMembers.name}, ' ', 1)`,
-      lastName: sql<string>`CASE 
-        WHEN array_length(string_to_array(${teamMembers.name}, ' '), 1) > 1 
-        THEN substring(${teamMembers.name} from position(' ' in ${teamMembers.name}) + 1) 
-        ELSE '' 
-      END`,
-      name: teamMembers.name,
-      middleName: sql<string>`''`,
-      initials: teamMembers.initials,
-      role: teamMembers.role,
-      title: teamMembers.position,
-      department: teamMembers.department,
-      capacity: sql<string>`'40.00'`,
-      profileImageUrl: teamMembers.avatarUrl,
-      avatar: teamMembers.avatarUrl,
-      expertise: sql<string[]>`ARRAY[]::text[]`,
-      skills: sql<string[]>`ARRAY[]::text[]`,
-      institution: sql<string>`'Rush University Medical Center'`,
-      isExternal: sql<boolean>`false`,
-      bio: sql<string>`''`,
-      phone: teamMembers.phoneNumber,
-      linkedIn: sql<string>`''`,
-      orcid: sql<string>`''`,
-      lastActive: sql<Date | null>`NULL`,
-      isActive: teamMembers.isActive,
-      createdAt: teamMembers.createdAt,
-      updatedAt: teamMembers.updatedAt,
+      id: users.id,
+      email: users.email,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      name: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+      middleName: users.middleName,
+      initials: users.initials,
+      role: users.role,
+      labRole: labMembers.labRole, // Lab-specific role from labMembers table
+      title: users.title,
+      department: users.department,
+      capacity: users.capacity,
+      profileImageUrl: users.profileImageUrl,
+      avatar: users.avatar,
+      expertise: users.expertise,
+      skills: users.skills,
+      institution: users.institution,
+      isExternal: users.isExternal,
+      bio: users.bio,
+      phone: users.phone,
+      linkedIn: users.linkedIn,
+      orcid: users.orcid,
+      lastActive: users.lastActive,
+      isActive: users.isActive,
+      isAdmin: labMembers.isAdmin,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
     })
-    .from(teamMembers)
+    .from(users)
+    .innerJoin(labMembers, eq(users.id, labMembers.userId))
     .where(and(
-      eq(teamMembers.labId, labId), 
-      eq(teamMembers.isActive, true)
+      eq(labMembers.labId, labId), 
+      eq(labMembers.isActive, true)
     ))
-    .orderBy(teamMembers.name);
+    .orderBy(asc(users.firstName), asc(users.lastName));
 
-    // Convert roles from database format to User type format
-    const roleMapping: Record<string, string> = {
-      'Principal Investigator': 'PRINCIPAL_INVESTIGATOR',
-      'Co-Principal Investigator': 'CO_PRINCIPAL_INVESTIGATOR',
-      'Data Scientist': 'DATA_SCIENTIST',
-      'Data Analyst': 'DATA_ANALYST',
-      'Fellow': 'FELLOW',
-      'Medical Student': 'MEDICAL_STUDENT',
-      'Regulatory Coordinator': 'REGULATORY_COORDINATOR',
-    };
-
-    return members.map(member => ({
-      ...member,
-      role: (roleMapping[member.role] || member.role) as any
-    }));
+    return members;
   }
 
   async getLabMemberAssignments(labId?: string): Promise<any[]> {
@@ -1261,10 +1246,15 @@ export class DatabaseStorage implements IStorage {
         skills: users.skills,
         labId: labMembers.labId,
         labRole: labMembers.labRole,
-        isAdmin: labMembers.isAdmin
+        isAdmin: labMembers.isAdmin,
+        isActive: users.isActive,
+        isExternal: users.isExternal
       })
       .from(users)
-      .leftJoin(labMembers, eq(users.id, labMembers.userId))
+      .leftJoin(labMembers, and(
+        eq(users.id, labMembers.userId),
+        updates.labId ? eq(labMembers.labId, updates.labId) : undefined
+      ))
       .where(eq(users.id, id))
       .limit(1);
 
