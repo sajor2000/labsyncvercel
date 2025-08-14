@@ -1,8 +1,12 @@
+import { google } from 'googleapis';
 import { CalendarEvent } from "@shared/schema";
+
+// Google Calendar configuration
+const GOOGLE_CALENDAR_ID = 'riccclabs@gmail.com';
+const CALENDAR_TIMEZONE = 'America/Chicago';
 
 // Google Calendar color IDs mapping to our event types
 const GOOGLE_CALENDAR_COLORS = {
-  // Primary research colors mapped to our calendar event enum values
   'PTO': '7', // Peacock blue for PTO
   'CLINICAL_SERVICE': '2', // Sage green for clinical service
   'HOLIDAY': '11', // Red for holidays
@@ -12,366 +16,188 @@ const GOOGLE_CALENDAR_COLORS = {
   'OTHER': '4' // Flamingo pink for misc events
 } as const;
 
-// Category prefixes for single master calendar organization
-const CATEGORY_PREFIXES = {
-  'PTO': '[PTO]',
-  'CLINICAL_SERVICE': '[Clinical]',
-  'HOLIDAY': '[Holiday]',
-  'CONFERENCE': '[Conference]',
-  'TRAINING': '[Training]',
-  'MEETING': '[Meeting]',
-  'OTHER': '[Lab Event]'
-} as const;
-
 /**
  * Google Calendar Integration Service
  * 
- * Handles single master calendar approach where all lab events are categorized
- * using prefixes, colors, and rich descriptions rather than separate calendars.
- * 
- * Key Features:
- * - Single calendar with categorized events
- * - Color-coded by event type
- * - Rich descriptions with lab context
- * - Two-way sync support
- * - Bulk export capabilities
+ * Handles integration with riccclabs@gmail.com Google Calendar
+ * - Fetches events from Google Calendar
+ * - Converts formats between Google and LabSync
+ * - Syncs LabSync events to Google Calendar
  */
 export class GoogleCalendarService {
+  private calendar: any;
   
-  /**
-   * Format a lab calendar event for Google Calendar export
-   * Creates a single master calendar entry with proper categorization
-   */
-  formatEventForGoogleCalendar(event: CalendarEvent): {
-    summary: string;
-    description: string;
-    colorId: string;
-    start: { dateTime?: string; date?: string; timeZone: string };
-    end: { dateTime?: string; date?: string; timeZone: string };
-    location?: string;
-    recurrence?: string[];
-    extendedProperties?: {
-      shared?: Record<string, string>;
-      private?: Record<string, string>;
-    };
-  } {
-    const categoryPrefix = this.getCategoryPrefix(event.eventType);
-    const colorId = this.getColorId(event.eventType);
-    
-    // Create comprehensive title with category prefix
-    const summary = `${categoryPrefix} ${event.title}`;
-    
-    // Create rich description with all lab context
-    const description = this.buildRichDescription(event);
-    
-    // Handle all-day vs timed events
-    const start = event.allDay ? {
-      date: event.startDate.toISOString().split('T')[0],
-      timeZone: 'America/Chicago' // Central Time for medical research
-    } : {
-      dateTime: event.startDate.toISOString(),
-      timeZone: 'America/Chicago'
-    };
-    
-    const end = event.allDay ? {
-      date: event.endDate.toISOString().split('T')[0],
-      timeZone: 'America/Chicago'
-    } : {
-      dateTime: event.endDate.toISOString(),
-      timeZone: 'America/Chicago'
-    };
-    
-    const googleEvent: any = {
-      summary,
-      description,
-      colorId,
-      start,
-      end,
-      extendedProperties: {
-        shared: {
-          labSyncEventId: event.id,
-          eventType: event.eventType,
-          labId: event.labId,
-          category: categoryPrefix
-        },
-        private: {
-          originalTitle: event.title,
-          duration: event.duration?.toString() || '1',
-          allDay: (event.allDay ?? false).toString()
-        }
-      }
-    };
-    
-    // Add location if present
-    if (event.location) {
-      googleEvent.location = event.location;
-    }
-    
-    // Add recurrence if present
-    if (event.isRecurring && event.recurrenceRule) {
-      googleEvent.recurrence = [event.recurrenceRule];
-    }
-    
-    return googleEvent;
-  }
-  
-  /**
-   * Build rich description with all lab context for Google Calendar
-   */
-  private buildRichDescription(event: CalendarEvent): string {
-    const parts: string[] = [];
-    
-    // Original description
-    if (event.description) {
-      parts.push(event.description);
-      parts.push(''); // Empty line separator
-    }
-    
-    // Event details
-    parts.push('📋 Event Details:');
-    parts.push(`Type: ${event.eventType}`);
-    
-    if (event.duration && event.duration > 1 && !(event.allDay ?? false)) {
-      parts.push(`Duration: ${event.duration} hours`);
-    }
-    
-    if (event.allDay ?? false) {
-      parts.push('Duration: All Day');
-    }
-    
-    // PTO specific details
-    if (event.eventType === 'PTO' && event.pto) {
-      parts.push(`PTO Type: ${event.pto}`);
-    }
-    
-    // Clinical service details
-    if (event.eventType === 'CLINICAL_SERVICE' && event.piClinicalService) {
-      parts.push(`Clinical Service: ${event.piClinicalService}`);
-    }
-    
-    // Lab context
-    parts.push('');
-    parts.push('🔬 Lab Information:');
-    parts.push(`Lab ID: ${event.labId}`);
-    parts.push(`Created: ${event.createdAt ? event.createdAt.toLocaleDateString() : 'Unknown'}`);
-    
-    // Metadata if present
-    if (event.metadata) {
-      parts.push('');
-      parts.push('📊 Additional Information:');
-      Object.entries(event.metadata as Record<string, any>).forEach(([key, value]) => {
-        parts.push(`${key}: ${value}`);
-      });
-    }
-    
-    // Footer
-    parts.push('');
-    parts.push('Generated by LabSync - Medical Research Lab Management');
-    
-    return parts.join('\n');
-  }
-  
-  /**
-   * Get category prefix for event type
-   */
-  private getCategoryPrefix(eventType: string): string {
-    return CATEGORY_PREFIXES[eventType as keyof typeof CATEGORY_PREFIXES] || CATEGORY_PREFIXES.OTHER;
-  }
-  
-  /**
-   * Get Google Calendar color ID for event type
-   */
-  private getColorId(eventType: string): string {
-    return GOOGLE_CALENDAR_COLORS[eventType as keyof typeof GOOGLE_CALENDAR_COLORS] || GOOGLE_CALENDAR_COLORS.OTHER;
+  constructor() {
+    this.initializeGoogleAuth();
   }
 
   /**
-   * Generate comprehensive subscription instructions for different platforms
+   * Initialize Google Calendar API authentication
    */
-  generateSubscriptionInstructions(subscriptionUrl: string, labName: string) {
+  private initializeGoogleAuth() {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_CALENDAR_API_KEY) {
+      console.warn('Google Calendar credentials not configured');
+      return;
+    }
+
+    const auth = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      `${process.env.REPL_URL || 'https://rush-lab-sync.replit.app'}/auth/google/callback`
+    );
+
+    this.calendar = google.calendar({ version: 'v3', auth });
+  }
+
+  /**
+   * Fetch events from riccclabs@gmail.com Google Calendar
+   */
+  async fetchGoogleCalendarEvents(startDate?: Date, endDate?: Date): Promise<any[]> {
+    if (!this.calendar) {
+      console.warn('Google Calendar not initialized');
+      return [];
+    }
+
+    try {
+      const timeMin = startDate ? startDate.toISOString() : new Date().toISOString();
+      const timeMax = endDate ? endDate.toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      const response = await this.calendar.events.list({
+        calendarId: GOOGLE_CALENDAR_ID,
+        timeMin,
+        timeMax,
+        singleEvents: true,
+        orderBy: 'startTime',
+        maxResults: 250,
+      });
+
+      return response.data.items || [];
+    } catch (error) {
+      console.error('Error fetching Google Calendar events:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Convert Google Calendar event to LabSync calendar event format
+   */
+  convertGoogleEventToLabSync(googleEvent: any): any | null {
+    if (!googleEvent.summary) return null;
+
+    const startDate = googleEvent.start?.dateTime || googleEvent.start?.date;
+    const endDate = googleEvent.end?.dateTime || googleEvent.end?.date;
+    
+    if (!startDate || !endDate) return null;
+
+    const eventType = this.parseEventType(googleEvent.summary, googleEvent.description || '');
+    
     return {
-      instructions: [
-        {
-          platform: 'Google Calendar',
-          steps: [
-            '1. Open Google Calendar in your web browser',
-            '2. Click the "+" next to "Other calendars" on the left',
-            '3. Select "From URL"',
-            '4. Paste the subscription URL',
-            '5. Click "Add Calendar"',
-            '6. Events will appear with category prefixes like [PTO], [Clinical]'
-          ],
-          tips: [
-            'Events are automatically color-coded by type',
-            'Category prefixes help organize events in a single calendar',
-            'Sync updates occur automatically every hour'
-          ]
-        },
-        {
-          platform: 'Outlook',
-          steps: [
-            '1. Open Outlook calendar (web or desktop)',
-            '2. Click "Add calendar" → "Subscribe from web"',
-            '3. Paste the subscription URL',
-            '4. Enter a calendar name (e.g., "Lab Calendar")',
-            '5. Click "Import"'
-          ],
-          tips: [
-            'Works with both Outlook.com and Office 365',
-            'Desktop Outlook may take longer to sync initially'
-          ]
-        },
-        {
-          platform: 'Apple Calendar',
-          steps: [
-            '1. Open Calendar app on Mac',
-            '2. Go to File → New Calendar Subscription',
-            '3. Paste the subscription URL',
-            '4. Set refresh frequency (recommend: Every hour)',
-            '5. Click "OK"'
-          ],
-          tips: [
-            'Also syncs to iOS devices signed into the same Apple ID',
-            'Can adjust color and alert preferences after setup'
-          ]
-        },
-        {
-          platform: 'Phone/Mobile',
-          steps: [
-            '1. Open your default calendar app',
-            '2. Look for "Add calendar" or "Subscribe to calendar"',
-            '3. Paste the subscription URL when prompted',
-            '4. Follow app-specific setup prompts',
-            '5. Enable notifications if desired'
-          ],
-          tips: [
-            'Works with most mobile calendar apps',
-            'Android: Google Calendar, Samsung Calendar',
-            'iOS: Built-in Calendar app, Google Calendar'
-          ]
-        }
-      ],
-      subscriptionUrl,
-      labName
+      id: `google-${googleEvent.id}`,
+      title: googleEvent.summary,
+      description: googleEvent.description || '',
+      eventType,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      allDay: !googleEvent.start?.dateTime,
+      location: googleEvent.location || '',
+      participants: googleEvent.attendees?.length || 0,
+      status: googleEvent.status === 'confirmed' ? 'confirmed' : 'tentative',
+      googleCalendarId: googleEvent.id,
+      googleCalendarUrl: googleEvent.htmlLink,
+      createdAt: new Date(googleEvent.created),
+      updatedAt: new Date(googleEvent.updated),
     };
   }
-  
+
   /**
-   * Generate iCal format for calendar subscription
-   * This allows users to subscribe to the lab calendar in any calendar app
+   * Parse event type from Google Calendar event title/description
    */
-  generateICalFeed(events: CalendarEvent[], labName: string): string {
-    const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  private parseEventType(title: string, description: string): string {
+    const content = `${title} ${description}`.toLowerCase();
     
-    const icalLines: string[] = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//LabSync//Medical Research Lab Management//EN',
-      'CALSCALE:GREGORIAN',
-      'METHOD:PUBLISH',
-      `X-WR-CALNAME:${labName} - LabSync Calendar`,
-      'X-WR-CALDESC:Comprehensive research management calendar with events, deadlines, and milestones',
-      'X-WR-TIMEZONE:America/Chicago',
-      'REFRESH-INTERVAL;VALUE=DURATION:PT1H', // Refresh every hour
-    ];
+    if (content.includes('pto') || content.includes('vacation') || content.includes('time off')) return 'PTO';
+    if (content.includes('clinical') || content.includes('clinic')) return 'CLINICAL_SERVICE';
+    if (content.includes('meeting') || content.includes('standup')) return 'MEETING';
+    if (content.includes('conference') || content.includes('presentation')) return 'CONFERENCE';
+    if (content.includes('training') || content.includes('education')) return 'TRAINING';
+    if (content.includes('holiday')) return 'HOLIDAY';
     
-    events.forEach(event => {
-      const categoryPrefix = this.getCategoryPrefix(event.eventType);
-      const dtstart = event.allDay 
-        ? `DTSTART;VALUE=DATE:${event.startDate.toISOString().split('T')[0].replace(/-/g, '')}`
-        : `DTSTART:${event.startDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`;
-      
-      const dtend = event.allDay
-        ? `DTEND;VALUE=DATE:${event.endDate.toISOString().split('T')[0].replace(/-/g, '')}`
-        : `DTEND:${event.endDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`;
-      
-      icalLines.push(
-        'BEGIN:VEVENT',
-        `UID:${event.id}@labsync.app`,
-        `DTSTAMP:${now}`,
-        dtstart,
-        dtend,
-        `SUMMARY:${categoryPrefix} ${event.title}`,
-        `DESCRIPTION:${this.buildRichDescription(event).replace(/\n/g, '\\n')}`,
-        `CATEGORIES:${event.eventType.toUpperCase()}`,
-        `STATUS:${event.isVisible ? 'CONFIRMED' : 'TENTATIVE'}`,
-        `TRANSP:${event.allDay ? 'TRANSPARENT' : 'OPAQUE'}`
-      );
-      
-      if (event.location) {
-        icalLines.push(`LOCATION:${event.location}`);
-      }
-      
-      if (event.isRecurring && event.recurrenceRule) {
-        icalLines.push(`RRULE:${event.recurrenceRule}`);
-      }
-      
-      icalLines.push('END:VEVENT');
-    });
-    
-    icalLines.push('END:VCALENDAR');
-    
-    return icalLines.join('\r\n');
+    return 'OTHER';
   }
-  
+
   /**
-   * Generate calendar subscription instructions
+   * Sync LabSync event to Google Calendar
    */
-  generateSubscriptionInstructions(subscriptionUrl: string, labName: string): {
-    title: string;
-    instructions: {
-      platform: string;
-      steps: string[];
-    }[];
-  } {
-    return {
-      title: `Subscribe to ${labName} Calendar`,
-      instructions: [
-        {
-          platform: 'Google Calendar',
-          steps: [
-            'Open Google Calendar in your web browser',
-            'Click the "+" next to "Other calendars" on the left sidebar',
-            'Select "From URL"',
-            `Paste this URL: ${subscriptionUrl}`,
-            'Click "Add Calendar"',
-            `The ${labName} calendar will appear with all categorized events`
-          ]
+  async syncEventToGoogle(labSyncEvent: CalendarEvent): Promise<string | null> {
+    if (!this.calendar) {
+      console.warn('Google Calendar not initialized');
+      return null;
+    }
+
+    try {
+      const googleEvent = {
+        summary: `[LabSync] ${labSyncEvent.title}`,
+        description: this.buildGoogleEventDescription(labSyncEvent),
+        start: labSyncEvent.allDay ? {
+          date: labSyncEvent.startDate.toISOString().split('T')[0],
+          timeZone: CALENDAR_TIMEZONE
+        } : {
+          dateTime: labSyncEvent.startDate.toISOString(),
+          timeZone: CALENDAR_TIMEZONE
         },
-        {
-          platform: 'Outlook',
-          steps: [
-            'Open Outlook calendar',
-            'Click "Add calendar" > "Subscribe from web"',
-            `Paste this URL: ${subscriptionUrl}`,
-            `Enter calendar name: ${labName} - LabSync`,
-            'Click "Import"',
-            'Events will sync automatically with category prefixes'
-          ]
+        end: labSyncEvent.allDay ? {
+          date: labSyncEvent.endDate.toISOString().split('T')[0],
+          timeZone: CALENDAR_TIMEZONE
+        } : {
+          dateTime: labSyncEvent.endDate.toISOString(),
+          timeZone: CALENDAR_TIMEZONE
         },
-        {
-          platform: 'Apple Calendar',
-          steps: [
-            'Open Calendar app',
-            'Go to File > New Calendar Subscription',
-            `Paste this URL: ${subscriptionUrl}`,
-            `Set name: ${labName} - LabSync`,
-            'Choose refresh frequency (recommended: Every hour)',
-            'Click "OK"'
-          ]
-        },
-        {
-          platform: 'Phone/Mobile',
-          steps: [
-            'Open your calendar app',
-            'Look for "Add calendar" or "Subscribe" option',
-            `Paste this URL: ${subscriptionUrl}`,
-            'All lab events will appear with [Category] prefixes',
-            'Color coding may vary by app'
-          ]
-        }
-      ]
-    };
+        location: labSyncEvent.location,
+        colorId: this.getGoogleColorId(labSyncEvent.eventType),
+      };
+
+      const response = await this.calendar.events.insert({
+        calendarId: GOOGLE_CALENDAR_ID,
+        resource: googleEvent,
+      });
+
+      return response.data.id;
+    } catch (error) {
+      console.error('Error syncing event to Google Calendar:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Build rich description for Google Calendar event
+   */
+  private buildGoogleEventDescription(event: CalendarEvent): string {
+    let description = event.description || '';
+    
+    description += '\n\n--- LabSync Details ---';
+    description += `\nEvent Type: ${event.eventType}`;
+    
+    if (event.notes) {
+      description += `\nNotes: ${event.notes}`;
+    }
+    
+    if (event.metadata && typeof event.metadata === 'object') {
+      const metadata = event.metadata as any;
+      if (metadata.assignees && Array.isArray(metadata.assignees)) {
+        description += `\nAssigned to: ${metadata.assignees.join(', ')}`;
+      }
+    }
+
+    description += `\n\nManaged by LabSync - https://rush-lab-sync.replit.app`;
+    
+    return description;
+  }
+
+  /**
+   * Get Google Calendar color ID for event type
+   */
+  private getGoogleColorId(eventType: string): string {
+    return GOOGLE_CALENDAR_COLORS[eventType as keyof typeof GOOGLE_CALENDAR_COLORS] || GOOGLE_CALENDAR_COLORS.OTHER;
   }
 }
 

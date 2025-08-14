@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { CalendarSubscription } from "@/components/CalendarSubscription";
+import { GoogleCalendarEmbed } from "@/components/GoogleCalendarEmbed";
 
 interface CalendarEvent {
   id: string;
@@ -459,6 +460,15 @@ export default function Calendar() {
         <h1 className="text-2xl font-bold">Calendar</h1>
         <p className="text-muted-foreground">Comprehensive research management hub with events, deadlines, tasks, and milestones</p>
       </div>
+
+      {/* Google Calendar Integration */}
+      {selectedLab && (
+        <GoogleCalendarEmbed 
+          height={500} 
+          showHeader={true} 
+          enableSync={true}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Calendar */}

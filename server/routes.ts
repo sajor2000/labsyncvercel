@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { workflowService } from "./workflowService";
 import multer from 'multer';
+import googleCalendarRoutes from './routes/google-calendar';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -273,6 +274,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google Calendar integration routes
+  app.use('/api/google-calendar', googleCalendarRoutes);
+  
   // Existing routes would go here...
   // (Other existing API routes for labs, studies, tasks, etc.)
 

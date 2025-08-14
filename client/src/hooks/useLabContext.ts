@@ -1,49 +1,55 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import type { Lab } from "@shared/schema";
+import { createContext, useContext } from "react";
+import { useQuery } from "@tanstack/react-query";
+
+interface Lab {
+  id: string;
+  name: string;
+}
 
 interface LabContextType {
   selectedLab: Lab | null;
-  setSelectedLab: (lab: Lab | null) => void;
-  allLabs: Lab[];
-  setAllLabs: (labs: Lab[]) => void;
+  isLoading: boolean;
 }
 
-export const LabContext = createContext<LabContextType | undefined>(undefined);
+export const LabContext = createContext<LabContextType | null>(null);
 
 export function useLabContext() {
   const context = useContext(LabContext);
-  if (context === undefined) {
-    throw new Error('useLabContext must be used within a LabProvider');
+  if (!context) {
+    // Fallback for when used outside provider
+    const { data: user, isLoading } = useQuery({
+      queryKey: ['/api/auth/user'],
+      retry: false,
+    });
+
+    const selectedLab: Lab | null = user ? {
+      id: 'default-lab',
+      name: 'RICCC Labs'
+    } : null;
+
+    return {
+      selectedLab,
+      isLoading,
+    };
   }
   return context;
 }
 
 export function useLabContextValue(): LabContextType {
-  const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
-  const [allLabs, setAllLabs] = useState<Lab[]>([]);
-  const queryClient = useQueryClient();
-  
-  // Enhanced setSelectedLab that invalidates queries
-  const setSelectedLabWithInvalidation = (lab: Lab | null) => {
-    setSelectedLab(lab);
-    if (lab) {
-      // Invalidate all queries to force refetch with new lab ID
-      queryClient.invalidateQueries();
-    }
-  };
+  // Get current user to determine selected lab
+  const { data: user, isLoading } = useQuery({
+    queryKey: ['/api/auth/user'],
+    retry: false,
+  });
 
-  // Auto-select first lab when labs are loaded
-  useEffect(() => {
-    if (allLabs.length > 0 && !selectedLab) {
-      setSelectedLab(allLabs[0]);
-    }
-  }, [allLabs, selectedLab]);
+  // For now, use a default lab structure - this would be enhanced with proper lab selection
+  const selectedLab: Lab | null = user ? {
+    id: 'default-lab',
+    name: 'RICCC Labs'
+  } : null;
 
   return {
     selectedLab,
-    setSelectedLab: setSelectedLabWithInvalidation,
-    allLabs,
-    setAllLabs,
+    isLoading,
   };
 }
