@@ -2405,7 +2405,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const labId = req.params.labId;
 
       // Get lab information
-      const lab = await storage.getLab(labId);
+      const labs = await storage.getLabs();
+      const lab = labs.find(l => l.id === labId);
       if (!lab) {
         return res.status(404).json({ error: "Lab not found" });
       }
@@ -2574,6 +2575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Error generating calendar subscription:", error);
+      console.error("Full error details:", error instanceof Error ? error.stack : error);
       res.status(500).json({ error: "Failed to generate calendar subscription" });
     }
   });
@@ -2590,10 +2592,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Unauthorized: Not a lab member" });
       }
 
-      // Get the current domain
-      const protocol = req.get('X-Forwarded-Proto') || (req.secure ? 'https' : 'http');
-      const host = req.get('host');
-      const subscriptionUrl = `${protocol}://${host}/api/calendar/subscribe/${labId}`;
+      // Use production domain for calendar subscriptions
+      const subscriptionUrl = `https://rush-lab-sync.replit.app/api/calendar/subscribe/${labId}`;
 
       res.json({
         subscriptionUrl,

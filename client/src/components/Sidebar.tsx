@@ -17,7 +17,8 @@ import {
   Lightbulb,
   Clock,
   Eye,
-  Mail
+  Mail,
+  CalendarDays
 } from "lucide-react";
 import logoUrl from "@assets/FullLogo_1754662799020.png";
 import { useEffect } from "react";
@@ -45,6 +46,7 @@ const navigationItems = [
   { name: "Standup Recording", href: "/standups", icon: Mic },
   { name: "Meeting Preview", href: "/meeting-preview", icon: Eye },
   { name: "Calendar", href: "/calendar", icon: Calendar },
+  { name: "Calendar Setup", href: "/calendar-instructions", icon: CalendarDays },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
 ];
 

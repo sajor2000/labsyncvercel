@@ -24,6 +24,7 @@ import FileManagement from "@/pages/FileManagement";
 import StandupRecording from "@/pages/StandupRecording";
 import MeetingPreview from "@/pages/MeetingPreview";
 import Calendar from "@/pages/Calendar";
+import CalendarInstructions from "@/pages/CalendarInstructions";
 import Analytics from "@/pages/Analytics";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
@@ -63,6 +64,7 @@ function Router() {
           <Route path="/ai-transcription" component={() => <Layout><StandupRecording /></Layout>} />
           <Route path="/meeting-preview" component={() => <Layout><MeetingPreview /></Layout>} />
           <Route path="/calendar" component={() => <Layout><Calendar /></Layout>} />
+          <Route path="/calendar-instructions" component={() => <Layout><CalendarInstructions /></Layout>} />
           <Route path="/analytics" component={() => <Layout><Analytics /></Layout>} />
           <Route path="/profile" component={() => <Layout><Profile /></Layout>} />
           <Route path="/settings" component={() => <Layout><Settings /></Layout>} />

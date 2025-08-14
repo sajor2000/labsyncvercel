@@ -19,10 +19,10 @@ export default function CalendarInstructions() {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
-  // Example URLs for demonstration - in practice, these would be generated for specific labs
-  const exampleUrls = {
-    riccc: "https://your-labsync-domain.replit.app/api/calendar/subscribe/riccc-lab-id",
-    rhedas: "https://your-labsync-domain.replit.app/api/calendar/subscribe/rhedas-lab-id"
+  // Production URLs for calendar subscriptions
+  const productionUrls = {
+    riccc: "https://rush-lab-sync.replit.app/api/calendar/subscribe/069efa27-bbf8-4c27-8c1e-3800148e4985",
+    rhedas: "https://rush-lab-sync.replit.app/api/calendar/subscribe/rhedas-lab-id"
   };
 
   const copyToClipboard = async (url: string) => {
@@ -38,6 +38,30 @@ export default function CalendarInstructions() {
       toast({
         title: "Copy Failed",
         description: "Could not copy to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const testConnection = async (url: string, labName: string) => {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        toast({
+          title: "Connection Test Successful",
+          description: `${labName} calendar feed is working correctly`,
+        });
+      } else {
+        toast({
+          title: "Connection Test Failed",
+          description: `${labName} calendar feed returned status ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Connection Test Failed",
+        description: `Could not connect to ${labName} calendar feed`,
         variant: "destructive",
       });
     }
@@ -79,7 +103,7 @@ export default function CalendarInstructions() {
               <div className="flex gap-2">
                 <Input
                   id="riccc-url"
-                  value={exampleUrls.riccc}
+                  value={productionUrls.riccc}
                   readOnly
                   className="font-mono text-xs"
                   data-testid="input-riccc-url"
@@ -87,10 +111,18 @@ export default function CalendarInstructions() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => copyToClipboard(exampleUrls.riccc)}
+                  onClick={() => copyToClipboard(productionUrls.riccc)}
                   data-testid="button-copy-riccc"
                 >
                   {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => testConnection(productionUrls.riccc, "RICCC")}
+                  data-testid="button-test-riccc"
+                >
+                  <ExternalLink className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -113,7 +145,7 @@ export default function CalendarInstructions() {
               <div className="flex gap-2">
                 <Input
                   id="rhedas-url"
-                  value={exampleUrls.rhedas}
+                  value={productionUrls.rhedas}
                   readOnly
                   className="font-mono text-xs"
                   data-testid="input-rhedas-url"
@@ -121,10 +153,18 @@ export default function CalendarInstructions() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => copyToClipboard(exampleUrls.rhedas)}
+                  onClick={() => copyToClipboard(productionUrls.rhedas)}
                   data-testid="button-copy-rhedas"
                 >
                   {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => testConnection(productionUrls.rhedas, "RHEDAS")}
+                  data-testid="button-test-rhedas"
+                >
+                  <ExternalLink className="h-4 w-4" />
                 </Button>
               </div>
             </div>

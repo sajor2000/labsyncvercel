@@ -39,7 +39,7 @@ export function CalendarSubscription() {
     mutationFn: async () => {
       return await apiRequest(`/api/calendar/subscription-url/${selectedLab?.id}`, "GET");
     },
-    onSuccess: (data) => {
+    onSuccess: (data: SubscriptionData) => {
       setSubscriptionData(data);
       toast({
         title: "Calendar URL Generated",
