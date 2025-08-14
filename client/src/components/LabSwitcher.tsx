@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useLabContext } from "@/hooks/useLabContext";
 
 export function LabSwitcher() {
-  const { selectedLab, setSelectedLab, allLabs } = useLabContext();
+  const { selectedLab, setSelectedLab, allLabs, isLoading } = useLabContext();
 
   // Helper function to get lab abbreviation  
   const getLabAbbreviation = (labName: string | undefined) => {
@@ -21,12 +21,22 @@ export function LabSwitcher() {
     return labName.match(/\(([^)]+)\)$/)?.[1] || labName;
   };
 
-  // Safety check - handle loading state when allLabs is undefined
-  if (!allLabs || allLabs.length === 0) {
+  // Show loading only when explicitly loading, not when labs are empty
+  if (isLoading) {
     return (
       <div className="flex items-center w-[200px] px-3 py-2 rounded-md border bg-muted/50">
         <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
         <span className="truncate text-sm text-muted-foreground">Loading...</span>
+      </div>
+    );
+  }
+
+  // If no labs are available (not loading, but empty)
+  if (!allLabs || allLabs.length === 0) {
+    return (
+      <div className="flex items-center w-[200px] px-3 py-2 rounded-md border bg-muted/50">
+        <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
+        <span className="truncate text-sm text-muted-foreground">No labs</span>
       </div>
     );
   }

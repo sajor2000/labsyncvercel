@@ -21,7 +21,7 @@ export function LabProvider({ children }: LabProviderProps) {
   });
 
   // Fetch labs from database instead of hardcoding
-  const { data: labsData = [] } = useQuery<any[]>({
+  const { data: labsData = [], isLoading: labsLoading } = useQuery<any[]>({
     queryKey: ['/api/labs'],
     enabled: !!user,
   });
@@ -57,7 +57,7 @@ export function LabProvider({ children }: LabProviderProps) {
     setSelectedLab,
     setAllLabs: setAllLabsState,
     allLabs: allLabsState,
-    isLoading,
+    isLoading: isLoading || labsLoading,
   };
   
   return (
