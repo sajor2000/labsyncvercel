@@ -44,6 +44,7 @@ const navigationItems = [
   { name: "File Management", href: "/files", icon: FileText },
   { name: "Team Members", href: "/team-members", icon: Users },
   { name: "Standup Recording", href: "/standups", icon: Mic },
+  { name: "Meeting Testing", href: "/standup-testing", icon: Brain },
   { name: "Meeting Preview", href: "/meeting-preview", icon: Eye },
   { name: "Calendar", href: "/calendar", icon: Calendar },
   { name: "Calendar Setup", href: "/calendar-instructions", icon: CalendarDays },
