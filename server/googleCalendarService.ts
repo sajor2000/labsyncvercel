@@ -204,19 +204,18 @@ export class GoogleCalendarService {
   private createProfessionalTitle(event: CalendarEvent): string {
     const metadata = event.metadata as any;
     
-    // Task deadline events
+    // Task deadline events - format: "Study Name - Assignee (Task Name)"
     if (metadata?.sourceType === 'task' || metadata?.sourceType === 'meeting_task') {
-      const priorityIcon = metadata.taskPriority === 'HIGH' ? '🔴' : 
-                          metadata.taskPriority === 'MEDIUM' ? '🟡' : '🟢';
+      const studyName = metadata.studyName || 'Lab Project';
+      const taskName = metadata.taskName || event.title.replace('Task Deadline: ', '');
       
-      let title = `${priorityIcon} DEADLINE: ${metadata.taskName || event.title.replace('Task Deadline: ', '')}`;
-      
+      // Get primary assignee
+      let assignee = 'Unassigned';
       if (metadata.taskAssignees && metadata.taskAssignees.length > 0) {
-        const assignee = metadata.taskAssignees[0];
-        title += ` (${assignee})`;
+        assignee = metadata.taskAssignees[0];
       }
       
-      return title;
+      return `${studyName} - ${assignee} (${taskName})`;
     }
     
     // Meeting events
