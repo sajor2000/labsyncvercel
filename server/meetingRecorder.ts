@@ -287,20 +287,31 @@ Return both HTML summary and JSON structure.`;
       // Generate plain text version for better deliverability
       const plainTextContent = this.generatePlainTextEmail(meeting, actionItems, meetingDate, labName);
 
+      console.log('Attempting to send meeting summary email:', {
+        hasApiKey: !!process.env.RESEND_API_KEY,
+        apiKeyLength: process.env.RESEND_API_KEY?.length,
+        recipientCount: recipients.length,
+        recipients: recipients,
+        meetingId: meetingId,
+        labName: labName
+      });
+
       const response = await this.resend.emails.send({
-        from: "LabSync <notifications@labsync.clif-icu.org>",
+        from: "onboarding@resend.dev", // Use Resend's default domain temporarily
         to: recipients,
         subject: `${labName} Standup Meeting Summary - ${meetingDate}`,
         html: htmlContent,
         text: plainTextContent,
-        // Disable tracking for better deliverability
-        headers: {
-          'List-Unsubscribe': '<mailto:unsubscribe@labsync.clif-icu.org>',
-        },
         tags: [
           { name: 'category', value: 'meeting-summary' },
           { name: 'lab', value: labName.toLowerCase().replace(/\s+/g, '-') }
         ]
+      });
+
+      console.log('Resend API response:', {
+        success: true,
+        messageId: response.data?.id,
+        response: response
       });
 
       return {

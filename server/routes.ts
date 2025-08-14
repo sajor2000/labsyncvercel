@@ -274,6 +274,238 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Standup Meeting Routes
+  app.get('/api/standups', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { labId } = req.query;
+      const meetings = await storage.getStandupMeetings(labId);
+      res.json(meetings);
+    } catch (error) {
+      console.error("Error fetching standups:", error);
+      res.status(500).json({ error: "Failed to fetch standups" });
+    }
+  });
+
+  app.post('/api/standups', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const meetingData = { ...req.body, createdBy: userId };
+      const meeting = await storage.createStandupMeeting(meetingData);
+      res.json(meeting);
+    } catch (error) {
+      console.error("Error creating standup:", error);
+      res.status(500).json({ error: "Failed to create standup" });
+    }
+  });
+
+  // Legacy endpoint compatibility
+  app.post('/api/standups/meetings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const meetingData = { ...req.body, createdBy: userId };
+      const meeting = await storage.createStandupMeeting(meetingData);
+      res.json(meeting);
+    } catch (error) {
+      console.error("Error creating standup meeting:", error);
+      res.status(500).json({ error: "Failed to create standup meeting" });
+    }
+  });
+
+  // Get meeting email preview
+  app.get('/api/standups/meeting-email/:meetingId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { meetingId } = req.params;
+      const { MeetingRecorderService } = await import('./meetingRecorder');
+      const meetingService = new MeetingRecorderService();
+      
+      const { meeting, actionItems } = await meetingService.getMeetingDetails(meetingId);
+      if (!meeting) {
+        return res.status(404).json({ error: "Meeting not found" });
+      }
+
+      const meetingDate = new Date(meeting.meetingDate).toLocaleDateString();
+      const htmlContent = meetingService.generateEmailHTML(meeting, actionItems, meetingDate, "Your Lab");
+      
+      res.json({
+        html: htmlContent,
+        meeting: meeting,
+        actionItems: actionItems
+      });
+    } catch (error) {
+      console.error("Error generating email preview:", error);
+      res.status(500).json({ error: "Failed to generate email preview" });
+    }
+  });
+
+  // Legacy endpoint compatibility  
+  app.get('/api/standups/meeting-email/', isAuthenticated, async (req: any, res) => {
+    try {
+      const { meetingId } = req.query;
+      if (!meetingId) {
+        return res.status(400).json({ error: "Meeting ID is required" });
+      }
+
+      const { MeetingRecorderService } = await import('./meetingRecorder');
+      const meetingService = new MeetingRecorderService();
+      
+      const { meeting, actionItems } = await meetingService.getMeetingDetails(meetingId);
+      if (!meeting) {
+        return res.status(404).json({ error: "Meeting not found" });
+      }
+
+      const meetingDate = new Date(meeting.meetingDate).toLocaleDateString();
+      const htmlContent = meetingService.generateEmailHTML(meeting, actionItems, meetingDate, "Your Lab");
+      
+      res.json({
+        html: htmlContent,
+        meeting: meeting,
+        actionItems: actionItems
+      });
+    } catch (error) {
+      console.error("Error generating email preview:", error);
+      res.status(500).json({ error: "Failed to generate email preview" });
+    }
+  });
+
+  // Send meeting summary email
+  app.post('/api/standups/:meetingId/send-email', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { meetingId } = req.params;
+      const { recipients, labName = "Your Lab" } = req.body;
+
+      if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+        return res.status(400).json({ error: "Recipients array is required" });
+      }
+
+      const { MeetingRecorderService } = await import('./meetingRecorder');
+      const meetingService = new MeetingRecorderService();
+      
+      const result = await meetingService.sendMeetingSummary(meetingId, recipients, labName);
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          messageId: result.messageId,
+          message: "Email sent successfully"
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: result.error || "Failed to send email"
+        });
+      }
+    } catch (error) {
+      console.error("Error sending meeting email:", error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  // Legacy endpoint compatibility for send email
+  app.get('/api/standups/send-email', isAuthenticated, async (req: any, res) => {
+    try {
+      const { meetingId, recipients, labName = "Your Lab" } = req.query;
+
+      if (!meetingId) {
+        return res.status(400).json({ error: "Meeting ID is required" });
+      }
+
+      if (!recipients) {
+        return res.status(400).json({ error: "Recipients are required" });
+      }
+
+      // Parse recipients if it's a string
+      let recipientList;
+      try {
+        recipientList = typeof recipients === 'string' ? JSON.parse(recipients) : recipients;
+      } catch (e) {
+        recipientList = [recipients]; // Single recipient
+      }
+
+      const { MeetingRecorderService } = await import('./meetingRecorder');
+      const meetingService = new MeetingRecorderService();
+      
+      const result = await meetingService.sendMeetingSummary(meetingId, recipientList, labName);
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          messageId: result.messageId,
+          message: "Email sent successfully"
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: result.error || "Failed to send email"
+        });
+      }
+    } catch (error) {
+      console.error("Error sending meeting email:", error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  // Test email delivery endpoint
+  app.post('/api/test-email', isAuthenticated, async (req: any, res) => {
+    try {
+      const { recipients, testMessage = "This is a test email from LabSync" } = req.body;
+
+      if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+        return res.status(400).json({ error: "Recipients array is required" });
+      }
+
+      // Import Resend directly to test
+      const { Resend } = await import('resend');
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      
+      console.log('Testing email with:', {
+        hasApiKey: !!process.env.RESEND_API_KEY,
+        apiKeyLength: process.env.RESEND_API_KEY?.length,
+        recipients: recipients
+      });
+
+      const response = await resend.emails.send({
+        from: "onboarding@resend.dev", // Use Resend's default domain for testing
+        to: recipients,
+        subject: "LabSync Email Test",
+        html: `<h2>Email Test</h2><p>${testMessage}</p><p>Sent from LabSync at ${new Date().toISOString()}</p>`,
+        text: `Email Test: ${testMessage}\n\nSent from LabSync at ${new Date().toISOString()}`
+      });
+
+      console.log('Resend response:', response);
+
+      res.json({
+        success: true,
+        messageId: response.data?.id,
+        message: "Test email sent successfully",
+        resendResponse: response
+      });
+
+    } catch (error) {
+      console.error("Test email error:", error);
+      
+      // Enhanced error logging
+      if (error instanceof Error) {
+        console.error("Error name:", error.name);
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      }
+
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        errorDetails: error
+      });
+    }
+  });
+
   // Google Calendar integration routes
   app.use('/api/google-calendar', googleCalendarRoutes);
   
