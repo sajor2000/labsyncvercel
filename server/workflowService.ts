@@ -221,11 +221,24 @@ export class WorkflowService {
       
       // Save the extracted tasks as action items
       for (const task of extractedTasks) {
+        let dueDate = undefined;
+        if (task.due_date && task.due_date !== 'undefined' && task.due_date !== 'null') {
+          try {
+            dueDate = new Date(task.due_date);
+            // Check if date is valid
+            if (isNaN(dueDate.getTime())) {
+              dueDate = undefined;
+            }
+          } catch (e) {
+            dueDate = undefined;
+          }
+        }
+        
         await storage.createActionItem({
           meetingId: meeting.id,
-          description: task.task,
-          assignee: task.member,
-          dueDate: task.due_date ? new Date(task.due_date) : undefined,
+          description: task.task || 'Task description not available',
+          assignee: task.member || 'Unassigned',
+          dueDate,
           status: 'OPEN',
         });
       }
