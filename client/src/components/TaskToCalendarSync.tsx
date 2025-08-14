@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarSync, Clock, CheckCircle2, Users } from "lucide-react";
+import { Calendar, Clock, CheckCircle2, Users } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Study, Task } from "@shared/schema";
 
@@ -43,25 +43,19 @@ export function TaskToCalendarSync({ labId, meetingContext }: TaskToCalendarSync
   const taskSyncMutation = useMutation({
     mutationFn: async (data: any) => {
       if (meetingContext) {
-        return apiRequest('/api/google-calendar/meeting-task-sync', {
-          method: 'POST',
-          body: {
-            meetingTitle: meetingContext.title,
-            meetingDate: meetingContext.date.toISOString(),
-            studyIds: selectedStudyIds,
-            labId,
-            syncToGoogle,
-            createMeetingEvent
-          }
+        return apiRequest('/api/google-calendar/meeting-task-sync', 'POST', {
+          meetingTitle: meetingContext.title,
+          meetingDate: meetingContext.date.toISOString(),
+          studyIds: selectedStudyIds,
+          labId,
+          syncToGoogle,
+          createMeetingEvent
         });
       } else {
-        return apiRequest('/api/google-calendar/sync-tasks-to-calendar', {
-          method: 'POST',
-          body: {
-            studyId: selectedStudyIds[0], // For now, handle one at a time
-            labId,
-            syncToGoogle
-          }
+        return apiRequest('/api/google-calendar/sync-tasks-to-calendar', 'POST', {
+          studyId: selectedStudyIds[0], // For now, handle one at a time
+          labId,
+          syncToGoogle
         });
       }
     },
@@ -86,7 +80,7 @@ export function TaskToCalendarSync({ labId, meetingContext }: TaskToCalendarSync
     }
   });
 
-  const tasksWithDueDates = tasks.filter((task: Task) => task.dueDate);
+  const tasksWithDueDates = (tasks as Task[]).filter((task: Task) => task.dueDate);
 
   const handleSync = () => {
     if (selectedStudyIds.length === 0) {
@@ -114,7 +108,7 @@ export function TaskToCalendarSync({ labId, meetingContext }: TaskToCalendarSync
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CalendarSync className="h-5 w-5" />
+          <Calendar className="h-5 w-5" />
           {meetingContext ? 'Meeting Task Sync' : 'Task to Calendar Sync'}
         </CardTitle>
         <CardDescription>
@@ -151,7 +145,7 @@ export function TaskToCalendarSync({ labId, meetingContext }: TaskToCalendarSync
               <SelectValue placeholder="Choose studies to sync tasks from" />
             </SelectTrigger>
             <SelectContent>
-              {studies.map((study: Study) => (
+              {(studies as Study[]).map((study: Study) => (
                 <SelectItem key={study.id} value={study.id}>
                   <div className="flex items-center gap-2">
                     <span>{study.name}</span>
@@ -172,7 +166,7 @@ export function TaskToCalendarSync({ labId, meetingContext }: TaskToCalendarSync
             <Label>Selected Studies</Label>
             <div className="flex flex-wrap gap-2">
               {selectedStudyIds.map((studyId) => {
-                const study = studies.find((s: Study) => s.id === studyId);
+                const study = (studies as Study[]).find((s: Study) => s.id === studyId);
                 return (
                   <Badge key={studyId} variant="outline" className="flex items-center gap-1">
                     {study?.name}
@@ -198,7 +192,7 @@ export function TaskToCalendarSync({ labId, meetingContext }: TaskToCalendarSync
                 <div key={task.id} className="flex items-center justify-between p-2 bg-white border rounded">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{task.name}</span>
+                      <span className="font-medium text-sm">{task.title}</span>
                       <Badge className={getTaskPriorityColor(task.priority || 'MEDIUM')}>
                         {task.priority}
                       </Badge>

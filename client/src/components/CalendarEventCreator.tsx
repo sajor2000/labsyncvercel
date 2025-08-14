@@ -47,16 +47,13 @@ export function CalendarEventCreator({
     mutationFn: async (eventData: any) => {
       const endDate = new Date(eventData.startDate.getTime() + (eventData.duration * 60 * 60 * 1000));
       
-      return apiRequest('/api/google-calendar/events', {
-        method: 'POST',
-        body: {
-          ...eventData,
-          endDate,
-          labId,
-          categoryPrefix: `[${eventData.eventType}]`,
-          exportTitle: `[${eventData.eventType}] ${eventData.title}`,
-          exportDescription: `${eventData.description}\n\nCreated via LabSync Calendar`
-        }
+      return apiRequest('/api/google-calendar/events', 'POST', {
+        ...eventData,
+        endDate,
+        labId,
+        categoryPrefix: `[${eventData.eventType}]`,
+        exportTitle: `[${eventData.eventType}] ${eventData.title}`,
+        exportDescription: `${eventData.description}\n\nCreated via LabSync Calendar`
       });
     },
     onSuccess: () => {

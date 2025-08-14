@@ -160,20 +160,22 @@ router.post("/sync-tasks-to-calendar", isAuthenticated, async (req, res) => {
 
     let tasksQuery = db.select({
       id: tasks.id,
-      name: tasks.name,
+      name: tasks.title,
       description: tasks.description,
       dueDate: tasks.dueDate,
       priority: tasks.priority,
-      assignees: tasks.assignees,
-      studyId: tasks.studyId,
-      labId: tasks.labId
+      assigneeId: tasks.assigneeId,
+      studyId: tasks.studyId
     }).from(tasks);
 
     // Build query based on what was provided
     if (studyId) {
       tasksQuery = tasksQuery.where(eq(tasks.studyId, studyId));
     } else if (labId) {
-      tasksQuery = tasksQuery.where(eq(tasks.labId, labId));
+      // For lab-based queries, join with studies to find tasks in that lab
+      tasksQuery = tasksQuery
+        .innerJoin(studies, eq(tasks.studyId, studies.id))
+        .where(eq(studies.labId, labId));
     }
 
     // Get tasks with due dates
@@ -198,7 +200,7 @@ router.post("/sync-tasks-to-calendar", isAuthenticated, async (req, res) => {
           const studyInfo = await db
             .select()
             .from(studies)
-            .where(eq(studies.id, task.studyId))
+            .where(eq(studies.id, task.studyId!))
             .then(results => results[0]);
 
           // Create calendar event for task due date with rich metadata
@@ -210,7 +212,7 @@ router.post("/sync-tasks-to-calendar", isAuthenticated, async (req, res) => {
 ${task.description ? task.description : 'No additional description provided'}
 
 🎯 Assignment Details:
-${task.assignees && task.assignees.length > 0 ? `Assigned to: ${task.assignees.join(', ')}` : 'Unassigned'}
+${task.assigneeId ? `Assigned to: ${task.assigneeId}` : 'Unassigned'}
 Priority: ${task.priority || 'MEDIUM'}
 
 ${studyInfo ? `🔬 Study Context:
@@ -222,7 +224,7 @@ Study Status: ${studyInfo.status}` : ''}`,
             allDay: false,
             duration: 2,
             userId: userId,
-            labId: task.labId,
+            labId: studyInfo?.labId,
             location: `${studyInfo?.name || 'Lab'} Task Review`,
             color: task.priority === 'HIGH' ? '#ef4444' : task.priority === 'MEDIUM' ? '#f97316' : '#10b981',
             categoryPrefix: '[Task Deadline]',
@@ -233,11 +235,11 @@ Study Status: ${studyInfo.status}` : ''}`,
               sourceId: task.id,
               taskName: task.name,
               taskPriority: task.priority,
-              taskAssignees: task.assignees,
+              taskAssignees: task.assigneeId ? [task.assigneeId] : [],
               studyId: task.studyId,
               studyName: studyInfo?.name,
               studyOraNumber: studyInfo?.oraNumber,
-              labContext: task.labId === 'riccc' ? 'RICCC Lab' : 'RHEDAS Lab',
+              labContext: studyInfo?.labId === 'riccc' ? 'RICCC Lab' : 'RHEDAS Lab',
               additionalInfo: {
                 'Task ID': task.id,
                 'Created in LabSync': new Date().toLocaleDateString(),
@@ -376,21 +378,17 @@ router.post("/meeting-task-sync", isAuthenticated, async (req, res) => {
     // Get all tasks for the specified projects and studies
     let tasksQuery = db.select({
       id: tasks.id,
-      name: tasks.name,
+      name: tasks.title,
       description: tasks.description,
       dueDate: tasks.dueDate,
       priority: tasks.priority,
-      assignees: tasks.assignees,
-      studyId: tasks.studyId,
-      labId: tasks.labId
+      assigneeId: tasks.assigneeId,
+      studyId: tasks.studyId
     }).from(tasks);
 
     const conditions = [];
     if (studyIds.length > 0) {
       conditions.push(or(...studyIds.map((id: string) => eq(tasks.studyId, id))));
-    }
-    if (conditions.length === 0 && labId) {
-      conditions.push(eq(tasks.labId, labId));
     }
 
     if (conditions.length > 0) {
@@ -418,7 +416,7 @@ router.post("/meeting-task-sync", isAuthenticated, async (req, res) => {
           const studyInfo = await db
             .select()
             .from(studies)
-            .where(eq(studies.id, task.studyId))
+            .where(eq(studies.id, task.studyId!))
             .then(results => results[0]);
 
           const eventData = {
@@ -432,7 +430,7 @@ Meeting Date: ${meetingDate ? new Date(meetingDate).toLocaleDateString() : 'N/A'
 📋 Task Details:
 Task: ${task.name}
 ${task.description ? `Description: ${task.description}` : 'No additional description provided'}
-${task.assignees && task.assignees.length > 0 ? `Responsible: ${task.assignees.join(', ')}` : 'Unassigned'}
+${task.assigneeId ? `Responsible: ${task.assigneeId}` : 'Unassigned'}
 Priority: ${task.priority || 'MEDIUM'}
 
 ${studyInfo ? `🔬 Study Information:
@@ -450,7 +448,7 @@ ${studyInfo.firstAuthor ? `First Author: ${studyInfo.firstAuthor}` : ''}` : ''}
             allDay: false,
             duration: 1,
             userId: userId,
-            labId: task.labId,
+            labId: studyInfo?.labId,
             location: `${studyInfo?.name || 'Lab'} Task Review`,
             color: task.priority === 'HIGH' ? '#ef4444' : task.priority === 'MEDIUM' ? '#f97316' : '#10b981',
             categoryPrefix: '[Task Deadline]',
@@ -463,18 +461,18 @@ ${studyInfo.firstAuthor ? `First Author: ${studyInfo.firstAuthor}` : ''}` : ''}
               meetingDate: meetingDate,
               taskName: task.name,
               taskPriority: task.priority,
-              taskAssignees: task.assignees,
+              taskAssignees: task.assigneeId ? [task.assigneeId] : [],
               studyId: task.studyId,
               studyName: studyInfo?.name,
               studyOraNumber: studyInfo?.oraNumber,
               studyStatus: studyInfo?.status,
-              labContext: task.labId === 'riccc' ? 'RICCC Lab' : 'RHEDAS Lab',
+              labContext: studyInfo?.labId === 'riccc' ? 'RICCC Lab' : 'RHEDAS Lab',
               additionalInfo: {
                 'Task ID': task.id,
                 'Study ID': task.studyId,
                 'Meeting Generated': new Date().toLocaleDateString(),
                 'Sync Source': 'Meeting Task Sync',
-                'Lab': task.labId === 'riccc' ? 'RICCC' : 'RHEDAS',
+                'Lab': studyInfo?.labId === 'riccc' ? 'RICCC' : 'RHEDAS',
                 'Priority Level': task.priority || 'MEDIUM'
               }
             },
