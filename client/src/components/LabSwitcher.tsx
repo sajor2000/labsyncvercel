@@ -5,19 +5,16 @@ import { useLabContext } from "@/hooks/useLabContext";
 export function LabSwitcher() {
   const { selectedLab, setSelectedLab, allLabs } = useLabContext();
 
-  // Helper function to get lab abbreviation
+  // Helper function to get lab abbreviation  
   const getLabAbbreviation = (labName: string | undefined) => {
     if (!labName) return "No lab";
     
-    // Map full names to abbreviations
+    // Map full names to abbreviations - only RHEDAS and RICCC should exist
     if (labName.toLowerCase().includes('rush healthcare data') || labName.toLowerCase().includes('rhedas')) {
       return 'RHEDAS';
     }
     if (labName.toLowerCase().includes('rush interdisciplinary') || labName.toLowerCase().includes('riccc')) {
       return 'RICCC';
-    }
-    if (labName.toLowerCase().includes('rush institute for clinical care') || labName.toLowerCase().includes('riccr')) {
-      return 'RICCR';
     }
     
     // Fallback: extract from parentheses or use name as-is
