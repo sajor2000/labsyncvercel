@@ -63,6 +63,7 @@ const studyFormSchema = z.object({
   externalCollaborators: z.string().optional(),
   firstAuthor: z.string().optional(),
   lastAuthor: z.string().optional(),
+  targetJournal: z.string().optional(),
   notes: z.string().optional(),
   priority: z.string().default("MEDIUM"),
   dueDate: z.string().optional(),
@@ -296,6 +297,7 @@ export default function Studies() {
       externalCollaborators: study.externalCollaborators || "",
       firstAuthor: study.firstAuthor || "",
       lastAuthor: study.lastAuthor || "",
+      targetJournal: study.targetJournal || "",
       notes: study.notes || "",
       priority: study.priority || "MEDIUM",
       dueDate: study.dueDate ? new Date(study.dueDate).toISOString().split('T')[0] : "",
@@ -651,6 +653,20 @@ export default function Studies() {
 
                 <FormField
                   control={form.control}
+                  name="targetJournal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Target Journal</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Journal name for submission..." {...field} data-testid="input-target-journal" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
@@ -800,13 +816,16 @@ export default function Studies() {
                     <p className="text-sm text-muted-foreground line-clamp-2">{study.notes}</p>
                   )}
                   {/* Author Information */}
-                  {(study.firstAuthor || study.lastAuthor) && (
+                  {(study.firstAuthor || study.lastAuthor || study.targetJournal) && (
                     <div className="text-xs text-muted-foreground space-y-1">
                       {study.firstAuthor && (
                         <div>First Author: {study.firstAuthor}</div>
                       )}
                       {study.lastAuthor && (
                         <div>Last Author: {study.lastAuthor}</div>
+                      )}
+                      {study.targetJournal && (
+                        <div>Target Journal: {study.targetJournal}</div>
                       )}
                     </div>
                   )}
