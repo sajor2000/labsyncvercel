@@ -16,6 +16,9 @@ export function LabSwitcher() {
     if (labName.toLowerCase().includes('rush interdisciplinary') || labName.toLowerCase().includes('riccc')) {
       return 'RICCC';
     }
+    if (labName.toLowerCase().includes('rush institute for clinical care') || labName.toLowerCase().includes('riccr')) {
+      return 'RICCR';
+    }
     
     // Fallback: extract from parentheses or use name as-is
     return labName.match(/\(([^)]+)\)$/)?.[1] || labName;
