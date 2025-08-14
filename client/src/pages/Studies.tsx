@@ -61,6 +61,8 @@ const studyFormSchema = z.object({
   assignees: z.array(z.string()).optional(),
   funding: z.string().optional(),
   externalCollaborators: z.string().optional(),
+  firstAuthor: z.string().optional(),
+  lastAuthor: z.string().optional(),
   notes: z.string().optional(),
   priority: z.string().default("MEDIUM"),
   dueDate: z.string().optional(),
@@ -292,6 +294,8 @@ export default function Studies() {
       assignees: study.assignees || [],
       funding: study.funding || "",
       externalCollaborators: study.externalCollaborators || "",
+      firstAuthor: study.firstAuthor || "",
+      lastAuthor: study.lastAuthor || "",
       notes: study.notes || "",
       priority: study.priority || "MEDIUM",
       dueDate: study.dueDate ? new Date(study.dueDate).toISOString().split('T')[0] : "",
@@ -615,6 +619,36 @@ export default function Studies() {
                   )}
                 />
 
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="firstAuthor"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Author</FormLabel>
+                        <FormControl>
+                          <Input placeholder="First author name..." {...field} data-testid="input-first-author" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="lastAuthor"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Author</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Last author name..." {...field} data-testid="input-last-author" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <FormField
                   control={form.control}
                   name="notes"
@@ -764,6 +798,17 @@ export default function Studies() {
                 <div className="space-y-3">
                   {study.notes && (
                     <p className="text-sm text-muted-foreground line-clamp-2">{study.notes}</p>
+                  )}
+                  {/* Author Information */}
+                  {(study.firstAuthor || study.lastAuthor) && (
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      {study.firstAuthor && (
+                        <div>First Author: {study.firstAuthor}</div>
+                      )}
+                      {study.lastAuthor && (
+                        <div>Last Author: {study.lastAuthor}</div>
+                      )}
+                    </div>
                   )}
                   {/* File Attachments Compact View */}
                   <AttachmentViewer

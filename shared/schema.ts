@@ -195,6 +195,26 @@ export const updateTypeEnum = pgEnum("update_type", [
   "GENERAL"
 ]);
 
+export const calendarEventTypeEnum = pgEnum("calendar_event_type", [
+  "CLINICAL_SERVICE",
+  "PTO",
+  "HOLIDAY",
+  "CONFERENCE",
+  "TRAINING",
+  "MEETING",
+  "OTHER"
+]);
+
+export const availabilityStatusEnum = pgEnum("availability_status", [
+  "AVAILABLE",
+  "CLINICAL_SERVICE", 
+  "PTO",
+  "SICK_LEAVE",
+  "CONFERENCE",
+  "TRAINING",
+  "UNAVAILABLE"
+]);
+
 export const teamMemberRoleEnum = pgEnum("team_member_role", [
   "PI",
   "CO_PRINCIPAL_INVESTIGATOR",
@@ -376,6 +396,8 @@ export const studies = pgTable("studies", {
   funding: fundingTypeEnum("funding"),
   fundingSource: varchar("funding_source"),
   externalCollaborators: text("external_collaborators"),
+  firstAuthor: varchar("first_author"),
+  lastAuthor: varchar("last_author"), 
   notes: text("notes"),
   priority: priorityEnum("priority").default("MEDIUM"),
   dueDate: timestamp("due_date"),
@@ -1000,6 +1022,50 @@ export const rolePermissions = pgTable("role_permissions", {
   roleIndex: index("role_permissions_role_idx").on(table.role),
 }));
 
+// Calendar Events - Clinical service blocks, PTO, holidays, etc.
+export const calendarEvents = pgTable("calendar_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  eventType: calendarEventTypeEnum("event_type").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  allDay: boolean("all_day").default(false),
+  location: varchar("location"),
+  userId: varchar("user_id").notNull().references(() => users.id), // Event owner/assignee
+  labId: varchar("lab_id").notNull().references(() => labs.id),
+  isRecurring: boolean("is_recurring").default(false),
+  recurrenceRule: varchar("recurrence_rule"), // RRULE format for recurring events
+  color: varchar("color").default("#4C9A92"), // Event color
+  isVisible: boolean("is_visible").default(true), // For calendar filtering
+  metadata: json("metadata"), // Additional event data
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userDateIndex: index("calendar_user_date_idx").on(table.userId, table.startDate),
+  labDateIndex: index("calendar_lab_date_idx").on(table.labId, table.startDate),
+  typeIndex: index("calendar_type_idx").on(table.eventType),
+  dateRangeIndex: index("calendar_date_range_idx").on(table.startDate, table.endDate)
+}));
+
+// Member Availability - Track availability status for each lab member
+export const memberAvailability = pgTable("member_availability", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  labId: varchar("lab_id").notNull().references(() => labs.id),
+  date: timestamp("date").notNull(), // Specific date for availability
+  status: availabilityStatusEnum("status").notNull(),
+  notes: text("notes"), // Optional notes about availability
+  eventId: varchar("event_id").references(() => calendarEvents.id), // Link to calendar event if applicable
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueUserLabDate: index("unique_user_lab_date").on(table.userId, table.labId, table.date),
+  labDateIndex: index("availability_lab_date_idx").on(table.labId, table.date),
+  statusIndex: index("availability_status_idx").on(table.status)
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   // Multi-lab support via labMembers instead of direct lab reference
@@ -1202,6 +1268,18 @@ export const insertTeamMemberAssignmentSchema = createInsertSchema(teamMemberAss
 });
 
 export const insertIdeaSchema = createInsertSchema(ideas).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMemberAvailabilitySchema = createInsertSchema(memberAvailability).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -1594,6 +1672,12 @@ export type StatusHistory = typeof statusHistory.$inferSelect;
 export type InsertStatusHistory = z.infer<typeof insertStatusHistorySchema>;
 export type TimeEntry = typeof timeEntries.$inferSelect;
 export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
+
+// CALENDAR SYSTEM TYPES
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+export type MemberAvailability = typeof memberAvailability.$inferSelect;
+export type InsertMemberAvailability = z.infer<typeof insertMemberAvailabilitySchema>;
 
 // PHASE 4: ENHANCED ORGANIZATION TYPES
 export type Tag = typeof tags.$inferSelect;
