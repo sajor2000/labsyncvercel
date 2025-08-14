@@ -26,6 +26,7 @@ import MeetingPreview from "@/pages/MeetingPreview";
 import Calendar from "@/pages/Calendar";
 import CalendarInstructions from "@/pages/CalendarInstructions";
 import StandupTestingPage from "@/pages/StandupTestingPage";
+import ProductionWorkflow from "@/pages/ProductionWorkflow";
 import Analytics from "@/pages/Analytics";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
@@ -64,6 +65,7 @@ function Router() {
           <Route path="/standups" component={() => <Layout><StandupRecording /></Layout>} />
           <Route path="/ai-transcription" component={() => <Layout><StandupRecording /></Layout>} />
           <Route path="/standup-testing" component={() => <Layout><StandupTestingPage /></Layout>} />
+          <Route path="/production-workflow" component={() => <Layout><ProductionWorkflow /></Layout>} />
           <Route path="/meeting-preview" component={() => <Layout><MeetingPreview /></Layout>} />
           <Route path="/calendar" component={() => <Layout><Calendar /></Layout>} />
           <Route path="/calendar-instructions" component={() => <Layout><CalendarInstructions /></Layout>} />

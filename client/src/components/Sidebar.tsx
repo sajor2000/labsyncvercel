@@ -18,7 +18,8 @@ import {
   Clock,
   Eye,
   Mail,
-  CalendarDays
+  CalendarDays,
+  Database
 } from "lucide-react";
 import logoUrl from "@assets/FullLogo_1754662799020.png";
 import { useEffect } from "react";
@@ -45,6 +46,7 @@ const navigationItems = [
   { name: "Team Members", href: "/team-members", icon: Users },
   { name: "Standup Recording", href: "/standups", icon: Mic },
   { name: "Meeting Testing", href: "/standup-testing", icon: Brain },
+  { name: "Production Workflow", href: "/production-workflow", icon: Database },
   { name: "Meeting Preview", href: "/meeting-preview", icon: Eye },
   { name: "Calendar", href: "/calendar", icon: Calendar },
   { name: "Calendar Setup", href: "/calendar-instructions", icon: CalendarDays },

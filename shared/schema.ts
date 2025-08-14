@@ -1088,6 +1088,33 @@ export const memberAvailability = pgTable("member_availability", {
   statusIndex: index("availability_status_idx").on(table.status)
 }));
 
+// Workflow Steps - Store transformation steps for meeting processing with 2-week retention
+export const workflowSteps = pgTable("workflow_steps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").notNull(), // Groups related steps together
+  stepType: varchar("step_type").notNull(), // 'transcription', 'ai_processing', 'email_generation', 'email_delivery'
+  stepName: varchar("step_name").notNull(), // Human-readable step name
+  status: varchar("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed'
+  inputData: json("input_data"), // Raw input for this step
+  outputData: json("output_data"), // Processed output from this step
+  metadata: json("metadata"), // Additional context (timing, file sizes, etc.)
+  errorMessage: text("error_message"), // Error details if step failed
+  processingTimeMs: integer("processing_time_ms"), // Time taken to complete step
+  userId: varchar("user_id").notNull().references(() => users.id), // User who initiated workflow
+  labId: varchar("lab_id").references(() => labs.id), // Associated lab
+  meetingId: varchar("meeting_id").references(() => standupMeetings.id), // Associated meeting if applicable
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull().default(sql`NOW() + INTERVAL '14 days'`), // Auto-expire after 2 weeks
+}, (table) => ({
+  workflowIndex: index("workflow_steps_workflow_idx").on(table.workflowId, table.startedAt),
+  stepTypeIndex: index("workflow_steps_type_idx").on(table.stepType, table.status),
+  expiryIndex: index("workflow_steps_expiry_idx").on(table.expiresAt),
+  userWorkflowIndex: index("workflow_steps_user_idx").on(table.userId, table.workflowId),
+  meetingWorkflowIndex: index("workflow_steps_meeting_idx").on(table.meetingId)
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   // Multi-lab support via labMembers instead of direct lab reference
@@ -2155,3 +2182,26 @@ export const workflowTemplatesRelations = relations(workflowTemplates, ({ one })
     references: [users.id],
   }),
 }));
+
+// Workflow Steps relations
+export const workflowStepsRelations = relations(workflowSteps, ({ one }) => ({
+  user: one(users, {
+    fields: [workflowSteps.userId],
+    references: [users.id],
+  }),
+  lab: one(labs, {
+    fields: [workflowSteps.labId],
+    references: [labs.id],
+  }),
+  meeting: one(standupMeetings, {
+    fields: [workflowSteps.meetingId],
+    references: [standupMeetings.id],
+  }),
+}));
+
+// Add workflow step types to exports
+export type InsertWorkflowStep = typeof workflowSteps.$inferInsert;
+export type WorkflowStep = typeof workflowSteps.$inferSelect;
+
+// Zod schema for workflow steps
+export const insertWorkflowStepSchema = createInsertSchema(workflowSteps);

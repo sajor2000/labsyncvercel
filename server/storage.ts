@@ -116,6 +116,9 @@ import {
   calendarEvents,
   type CalendarEvent,
   type InsertCalendarEvent,
+  workflowSteps,
+  type WorkflowStep,
+  type InsertWorkflowStep,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, inArray, sql, gte, lte, or, ne } from "drizzle-orm";
@@ -380,6 +383,13 @@ export interface IStorage {
 
   // Global search methods
   globalSearch(query: string, limit: number, userId: string): Promise<any[]>;
+
+  // Workflow Steps Operations  
+  createWorkflowStep(step: InsertWorkflowStep): Promise<string>;
+  updateWorkflowStep(id: string, updates: Partial<WorkflowStep>): Promise<void>;
+  getWorkflowStep(id: string): Promise<WorkflowStep | undefined>;
+  getWorkflowStepsByWorkflowId(workflowId: string): Promise<WorkflowStep[]>;
+  cleanupExpiredWorkflowSteps(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2854,6 +2864,37 @@ export class DatabaseStorage implements IStorage {
       console.error('Error performing global search:', error);
       return [];
     }
+  }
+
+  // Workflow Steps Operations Implementation
+  async createWorkflowStep(step: InsertWorkflowStep): Promise<string> {
+    const [workflowStep] = await db.insert(workflowSteps).values(step).returning();
+    return workflowStep.id;
+  }
+
+  async updateWorkflowStep(id: string, updates: Partial<WorkflowStep>): Promise<void> {
+    await db.update(workflowSteps).set(updates).where(eq(workflowSteps.id, id));
+  }
+
+  async getWorkflowStep(id: string): Promise<WorkflowStep | undefined> {
+    const [step] = await db.select().from(workflowSteps).where(eq(workflowSteps.id, id));
+    return step;
+  }
+
+  async getWorkflowStepsByWorkflowId(workflowId: string): Promise<WorkflowStep[]> {
+    return await db
+      .select()
+      .from(workflowSteps)
+      .where(eq(workflowSteps.workflowId, workflowId))
+      .orderBy(asc(workflowSteps.startedAt));
+  }
+
+  async cleanupExpiredWorkflowSteps(): Promise<number> {
+    const result = await db
+      .delete(workflowSteps)
+      .where(lte(workflowSteps.expiresAt, new Date()));
+    
+    return result.rowCount || 0;
   }
 
 }
