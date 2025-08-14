@@ -20,27 +20,43 @@ export function LabProvider({ children }: LabProviderProps) {
     retry: false,
   });
 
-  // Define available labs
-  const allLabs: Lab[] = user ? [
-    { id: 'riccc', name: 'RICCC (Rush Institute for Clinical Care and Research)', shortName: 'RICCC', primaryColor: '#4C9A92' },
-    { id: 'rhedas', name: 'RHEDAS (Rush Healthcare Data & Analytics)', shortName: 'RHEDAS', primaryColor: '#5DD5E6' }
-  ] : [];
+  // Fetch labs from database instead of hardcoding
+  const { data: labsData = [] } = useQuery<any[]>({
+    queryKey: ['/api/labs'],
+    enabled: !!user,
+  });
+
+  // Transform database labs to Lab interface
+  const allLabs: Lab[] = labsData.map(lab => ({
+    id: lab.id,
+    name: lab.name,
+    shortName: lab.shortName || lab.short_name,
+    primaryColor: lab.primaryColor || lab.primary_color || '#4C9A92'
+  }));
 
   // State for selected lab - initialize with first lab if available
   const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
+  const [allLabsState, setAllLabsState] = useState<Lab[]>([]);
+
+  // Update all labs state when data changes
+  useEffect(() => {
+    if (allLabs.length > 0) {
+      setAllLabsState(allLabs);
+    }
+  }, [JSON.stringify(allLabs)]);
 
   // Update selected lab when user data changes
   useEffect(() => {
-    if (user && allLabs.length > 0 && !selectedLab) {
-      setSelectedLab(allLabs[0]);
+    if (user && allLabsState.length > 0 && !selectedLab) {
+      setSelectedLab(allLabsState[0]);
     }
-  }, [user, allLabs.length, selectedLab]);
+  }, [user, allLabsState.length, selectedLab]);
 
   const value = {
     selectedLab,
     setSelectedLab,
-    setAllLabs: () => {}, // Placeholder implementation
-    allLabs,
+    setAllLabs: setAllLabsState,
+    allLabs: allLabsState,
     isLoading,
   };
   

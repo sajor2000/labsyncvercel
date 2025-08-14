@@ -21,26 +21,19 @@ export const LabContext = createContext<LabContextType | null>(null);
 export function useLabContext() {
   const context = useContext(LabContext);
   if (!context) {
-    // Fallback for when used outside provider
+    // Fallback for when used outside provider - use empty state
     const { data: user, isLoading } = useQuery({
       queryKey: ['/api/auth/user'],
       retry: false,
     });
 
-    const allLabs: Lab[] = user ? [
-      { id: 'riccc', name: 'RICCC (Rush Institute for Clinical Care and Research)', shortName: 'RICCC', primaryColor: '#4C9A92' },
-      { id: 'rhedas', name: 'RHEDAS (Rush Healthcare Data & Analytics)', shortName: 'RHEDAS', primaryColor: '#5DD5E6' }
-    ] : [];
-
-    const [selectedLab, setSelectedLab] = useState<Lab | null>(
-      user && allLabs.length > 0 ? allLabs[0] : null
-    );
+    const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
 
     return {
       selectedLab,
       setSelectedLab,
       setAllLabs: () => {}, // Fallback implementation
-      allLabs,
+      allLabs: [],
       isLoading,
     };
   }

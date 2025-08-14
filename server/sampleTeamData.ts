@@ -1,4 +1,4 @@
-// Team member data for RICCC and RHEDAS labs
+// Team member data for RICCC (Rush Interdisciplinary Consortium for Critical Care) and RHEDAS labs
 import { type InsertTeamMember } from "@shared/schema";
 
 type TeamMemberData = Omit<InsertTeamMember, 'id' | 'createdAt' | 'updatedAt' | 'labId' | 'initials' | 'position'>;
