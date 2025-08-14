@@ -10,6 +10,7 @@ import {
   index,
   jsonb,
   decimal,
+  integer,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -1032,6 +1033,7 @@ export const calendarEvents = pgTable("calendar_events", {
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
   allDay: boolean("all_day").default(false),
+  duration: integer("duration").default(1), // Duration in hours for timed events
   location: varchar("location"),
   userId: varchar("user_id").notNull().references(() => users.id), // Event owner/assignee
   labId: varchar("lab_id").notNull().references(() => labs.id),
@@ -1040,6 +1042,18 @@ export const calendarEvents = pgTable("calendar_events", {
   color: varchar("color").default("#4C9A92"), // Event color
   isVisible: boolean("is_visible").default(true), // For calendar filtering
   metadata: json("metadata"), // Additional event data
+  
+  // Google Calendar Integration for single master calendar approach
+  googleCalendarEventId: varchar("google_calendar_event_id"), // Google Calendar event ID for two-way sync
+  googleCalendarSyncStatus: varchar("google_calendar_sync_status").default("pending"), // pending, synced, error, disabled
+  googleCalendarLastSync: timestamp("google_calendar_last_sync"),
+  googleCalendarColorId: varchar("google_calendar_color_id"), // Google Calendar color mapping (1-11)
+  googleCalendarVisibility: varchar("google_calendar_visibility").default("default"), // default, public, private, confidential
+  
+  // Enhanced categorization for single calendar export
+  categoryPrefix: varchar("category_prefix"), // [PTO], [Clinical], [IRB], [Study], etc.
+  exportTitle: varchar("export_title"), // Formatted title for Google Calendar export
+  exportDescription: text("export_description"), // Rich description with all lab context
   
   // Specific calendar fields
   piClinicalService: varchar("pi_clinical_service"), // PI Clinical Service assignment
@@ -1052,7 +1066,9 @@ export const calendarEvents = pgTable("calendar_events", {
   userDateIndex: index("calendar_user_date_idx").on(table.userId, table.startDate),
   labDateIndex: index("calendar_lab_date_idx").on(table.labId, table.startDate),
   typeIndex: index("calendar_type_idx").on(table.eventType),
-  dateRangeIndex: index("calendar_date_range_idx").on(table.startDate, table.endDate)
+  dateRangeIndex: index("calendar_date_range_idx").on(table.startDate, table.endDate),
+  googleSyncIndex: index("calendar_google_sync_idx").on(table.googleCalendarSyncStatus),
+  categoryIndex: index("calendar_category_idx").on(table.categoryPrefix),
 }));
 
 // Member Availability - Track availability status for each lab member

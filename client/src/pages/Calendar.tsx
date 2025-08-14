@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { CalendarSubscription } from "@/components/CalendarSubscription";
 
 interface CalendarEvent {
   id: string;
@@ -737,6 +738,15 @@ export default function Calendar() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Google Calendar Integration */}
+          {selectedLab && (
+            <CalendarSubscription 
+              labId={selectedLab.id}
+              labName={selectedLab.name}
+              compact={true}
+            />
+          )}
 
           {/* Event Legend */}
           <Card>

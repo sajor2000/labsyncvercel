@@ -2646,7 +2646,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate public calendar subscription URL endpoint
+  // Enhanced Google Calendar integration endpoint
+  app.get("/api/calendar/google-integration/:labId", isAuthenticated, async (req, res) => {
+    try {
+      const labId = req.params.labId;
+      const userId = (req.user as any)?.claims?.sub;
+
+      // Verify user has access to this lab
+      const labMember = await storage.getLabMember(userId, labId);
+      if (!labMember) {
+        return res.status(403).json({ error: "Unauthorized: Not a lab member" });
+      }
+
+      const lab = await storage.getLabById(labId);
+      if (!lab) {
+        return res.status(404).json({ error: "Lab not found" });
+      }
+
+      // Use production domain for calendar subscriptions
+      const subscriptionUrl = `https://rush-lab-sync.replit.app/api/calendar/subscribe/${labId}`;
+
+      // Generate enhanced instructions using Google Calendar service
+      const { googleCalendarService } = await import('./googleCalendarService');
+      const instructions = googleCalendarService.generateSubscriptionInstructions(subscriptionUrl, lab.name);
+
+      res.json({
+        subscriptionUrl,
+        labName: lab.name,
+        ...instructions,
+        integration: {
+          type: 'Single Master Calendar',
+          description: 'All lab events will appear in one calendar with category prefixes like [PTO], [Clinical], [IRB], etc.',
+          colorCoding: 'Events are automatically color-coded by type in Google Calendar',
+          features: [
+            'All-day events with visual indicators',
+            'Multi-hour events with duration display',
+            'Rich descriptions with lab context',
+            'Automatic categorization and filtering',
+            'Real-time sync updates'
+          ]
+        }
+      });
+
+    } catch (error) {
+      console.error("Error generating Google Calendar integration:", error);
+      res.status(500).json({ error: "Failed to generate Google Calendar integration" });
+    }
+  });
+
+  // Generate public calendar subscription URL endpoint (legacy support)
   app.get("/api/calendar/subscription-url/:labId", isAuthenticated, async (req, res) => {
     try {
       const labId = req.params.labId;

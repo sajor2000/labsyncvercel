@@ -1,339 +1,326 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Calendar, 
-  Copy, 
-  ExternalLink, 
-  Info,
-  CheckCircle,
-  Download
-} from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Copy, ExternalLink, Calendar as CalendarIcon, Smartphone, Monitor, Globe, Info, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+interface Lab {
+  id: string;
+  name: string;
+}
 
 export default function CalendarInstructions() {
-  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
+  const [selectedLab, setSelectedLab] = useState<string>("");
+  
+  const { data: labs, isLoading: labsLoading } = useQuery<Lab[]>({
+    queryKey: ['/api/labs'],
+    enabled: isAuthenticated,
+  });
 
-  // Production URLs for calendar subscriptions
-  const productionUrls = {
-    riccc: "https://rush-lab-sync.replit.app/api/calendar/subscribe/069efa27-bbf8-4c27-8c1e-3800148e4985",
-    rhedas: "https://rush-lab-sync.replit.app/api/calendar/subscribe/rhedas-lab-id"
+  const { data: integrationData, isLoading: integrationLoading } = useQuery({
+    queryKey: ['/api/calendar/google-integration', selectedLab],
+    enabled: isAuthenticated && !!selectedLab,
+  });
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: `${label} copied to clipboard`,
+    });
   };
 
-  const copyToClipboard = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      toast({
-        title: "URL Copied",
-        description: "Calendar subscription URL copied to clipboard",
-      });
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      toast({
-        title: "Copy Failed",
-        description: "Could not copy to clipboard",
-        variant: "destructive",
-      });
-    }
-  };
+  if (!isAuthenticated || labsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">
+          {!isAuthenticated ? "Please sign in to view calendar instructions." : "Loading..."}
+        </p>
+      </div>
+    );
+  }
 
-  const testConnection = async (url: string, labName: string) => {
-    try {
-      const response = await fetch(url);
-      if (response.ok) {
-        toast({
-          title: "Connection Test Successful",
-          description: `${labName} calendar feed is working correctly`,
-        });
-      } else {
-        toast({
-          title: "Connection Test Failed",
-          description: `${labName} calendar feed returned status ${response.status}`,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Connection Test Failed",
-        description: `Could not connect to ${labName} calendar feed`,
-        variant: "destructive",
-      });
-    }
-  };
+  const subscriptionUrl = integrationData?.subscriptionUrl || "";
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold" data-testid="calendar-instructions-title">
-          Calendar Subscription Setup
-        </h1>
+        <h1 className="text-2xl font-bold">Google Calendar Integration</h1>
         <p className="text-muted-foreground">
-          Subscribe to lab calendars in Outlook, Google Calendar, or other calendar applications
+          Single Master Calendar approach - all lab events in one organized calendar
         </p>
       </div>
 
+      {/* Integration Strategy Overview */}
       <Alert>
         <Info className="h-4 w-4" />
+        <AlertTitle>Single Master Calendar Strategy</AlertTitle>
         <AlertDescription>
-          <strong>No authentication required!</strong> These calendar feeds are publicly accessible. 
-          Anyone with the URL can subscribe to see lab deadlines, tasks, meetings, and milestones.
+          Instead of managing multiple separate calendars, all lab events appear in one master calendar with category prefixes like [PTO], [Clinical], [IRB], etc. This makes it easier to view your complete schedule while maintaining clear organization.
         </AlertDescription>
       </Alert>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-blue-600" />
-              RICCC Lab Calendar
-            </CardTitle>
-            <CardDescription>
-              Research deadlines, tasks, and events for RICCC
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="riccc-url">Subscription URL</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="riccc-url"
-                  value={productionUrls.riccc}
-                  readOnly
-                  className="font-mono text-xs"
-                  data-testid="input-riccc-url"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(productionUrls.riccc)}
-                  data-testid="button-copy-riccc"
-                >
-                  {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => testConnection(productionUrls.riccc, "RICCC")}
-                  data-testid="button-test-riccc"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-green-600" />
-              RHEDAS Lab Calendar
-            </CardTitle>
-            <CardDescription>
-              Research deadlines, tasks, and events for RHEDAS
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="rhedas-url">Subscription URL</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="rhedas-url"
-                  value={productionUrls.rhedas}
-                  readOnly
-                  className="font-mono text-xs"
-                  data-testid="input-rhedas-url"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(productionUrls.rhedas)}
-                  data-testid="button-copy-rhedas"
-                >
-                  {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => testConnection(productionUrls.rhedas, "RHEDAS")}
-                  data-testid="button-test-rhedas"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
+      {/* Lab Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>Setup Instructions</CardTitle>
+          <CardTitle className="flex items-center">
+            <CalendarIcon className="mr-2 h-5 w-5" />
+            Select Lab
+          </CardTitle>
           <CardDescription>
-            Follow these steps to add lab calendars to your preferred application
+            Choose which lab calendar you want to integrate with Google Calendar
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="outlook" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="outlook">Outlook</TabsTrigger>
-              <TabsTrigger value="google">Google</TabsTrigger>
-              <TabsTrigger value="apple">Apple</TabsTrigger>
-              <TabsTrigger value="other">Other</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="outlook" className="space-y-4">
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <h4 className="font-medium mb-3 flex items-center gap-2">
-                  <Download className="h-4 w-4" />
-                  Microsoft Outlook
-                </h4>
-                <ol className="list-decimal list-inside space-y-2 text-sm">
-                  <li>Open Outlook and go to the <strong>Calendar</strong> view</li>
-                  <li>Click <strong>"Add Calendar"</strong> or <strong>"Subscribe to Calendar"</strong></li>
-                  <li>Select <strong>"From Internet"</strong> or <strong>"From URL"</strong></li>
-                  <li>Paste the subscription URL from above</li>
-                  <li>Give your calendar a name (e.g., "RICCC Research Calendar")</li>
-                  <li>Click <strong>"Subscribe"</strong> or <strong>"Add"</strong></li>
-                </ol>
-                <Alert className="mt-3">
-                  <Info className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    The calendar will appear in your "Other Calendars" section and refresh automatically every hour.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="google" className="space-y-4">
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <h4 className="font-medium mb-3">Google Calendar</h4>
-                <ol className="list-decimal list-inside space-y-2 text-sm">
-                  <li>Open <strong>Google Calendar</strong></li>
-                  <li>Click the <strong>"+"</strong> next to "Other calendars"</li>
-                  <li>Select <strong>"From URL"</strong></li>
-                  <li>Paste the subscription URL</li>
-                  <li>Click <strong>"Add calendar"</strong></li>
-                </ol>
-                <Alert className="mt-3">
-                  <Info className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    Events will appear in your calendar within a few minutes and update automatically.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="apple" className="space-y-4">
-              <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg">
-                <h4 className="font-medium mb-3">Apple Calendar</h4>
-                <ol className="list-decimal list-inside space-y-2 text-sm">
-                  <li>Open the <strong>Calendar</strong> app</li>
-                  <li>Go to <strong>File → New Calendar Subscription</strong></li>
-                  <li>Paste the subscription URL</li>
-                  <li>Click <strong>"Subscribe"</strong></li>
-                  <li>Configure refresh frequency and click <strong>"OK"</strong></li>
-                </ol>
-                <Alert className="mt-3">
-                  <Info className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    Choose "Every hour" for refresh frequency to get the latest updates quickly.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="other" className="space-y-4">
-              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                <h4 className="font-medium mb-3">Other Calendar Apps</h4>
-                <p className="text-sm mb-3">
-                  Most calendar applications support iCal/ICS subscriptions. Look for options like:
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-sm mb-3">
-                  <li><strong>"Subscribe to calendar"</strong></li>
-                  <li><strong>"Add calendar from URL"</strong></li>
-                  <li><strong>"Import calendar"</strong></li>
-                  <li><strong>"Add external calendar"</strong></li>
-                </ul>
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    The URLs provide standard iCal feeds that work with any calendar application supporting the format.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>What Gets Synced</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <h4 className="font-medium flex items-center gap-2">
-                📅 Research Deadlines
-              </h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Grant applications (NIH, NSF, etc.)</li>
-                <li>• Paper submissions to journals</li>
-                <li>• IRB renewals and submissions</li>
-                <li>• Conference abstract deadlines</li>
-              </ul>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-medium flex items-center gap-2">
-                ✅ Tasks & Milestones
-              </h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Task due dates with assignees</li>
-                <li>• Study milestones and targets</li>
-                <li>• Project deliverables</li>
-                <li>• Research checkpoints</li>
-              </ul>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-medium flex items-center gap-2">
-                🎤 Meetings
-              </h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Standup meetings</li>
-                <li>• Team check-ins</li>
-                <li>• Progress reviews</li>
-                <li>• Collaboration sessions</li>
-              </ul>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-medium flex items-center gap-2">
-                🎯 Study Events
-              </h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Patient enrollment targets</li>
-                <li>• Data collection deadlines</li>
-                <li>• Analysis milestones</li>
-                <li>• Publication goals</li>
-              </ul>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {labs?.map((lab) => (
+              <Button
+                key={lab.id}
+                variant={selectedLab === lab.id ? "default" : "outline"}
+                onClick={() => setSelectedLab(lab.id)}
+                className="justify-start"
+                data-testid={`select-lab-${lab.id}`}
+              >
+                {lab.name}
+              </Button>
+            ))}
           </div>
         </CardContent>
       </Card>
 
-      <Alert>
-        <CheckCircle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Automatic Updates:</strong> All calendars refresh every hour automatically. 
-          New deadlines, tasks, and events will appear in your subscribed calendar without any manual action required.
-        </AlertDescription>
-      </Alert>
+      {selectedLab && (
+        <>
+          {/* Integration Features */}
+          {integrationData && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CheckCircle className="mr-2 h-5 w-5 text-green-600" />
+                  {integrationData.integration?.type || 'Calendar Integration'}
+                </CardTitle>
+                <CardDescription>
+                  {integrationData.integration?.description}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="font-medium text-sm">Key Features:</h4>
+                    <ul className="mt-2 space-y-1">
+                      {integrationData.integration?.features?.map((feature: string, index: number) => (
+                        <li key={index} className="text-sm text-muted-foreground flex items-center">
+                          <CheckCircle className="mr-2 h-3 w-3 text-green-500" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  {integrationData.integration?.colorCoding && (
+                    <div className="p-3 bg-muted/20 rounded-lg">
+                      <p className="text-sm">
+                        <strong>Color Coding:</strong> {integrationData.integration.colorCoding}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Subscription URL */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Calendar Subscription URL</CardTitle>
+              <CardDescription>
+                Use this URL to subscribe to your {integrationData?.labName} calendar in any calendar application
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center space-x-2">
+                <code className="flex-1 p-2 bg-muted rounded text-sm font-mono break-all">
+                  {integrationLoading ? "Loading..." : subscriptionUrl}
+                </code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => copyToClipboard(subscriptionUrl, "Subscription URL")}
+                  disabled={!subscriptionUrl}
+                  data-testid="copy-subscription-url"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Enhanced Platform Instructions */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Google Calendar */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Globe className="mr-2 h-5 w-5 text-blue-600" />
+                  Google Calendar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ol className="space-y-2 text-sm">
+                  <li>1. Open Google Calendar in your web browser</li>
+                  <li>2. Click the "+" next to "Other calendars" on the left</li>
+                  <li>3. Select "From URL"</li>
+                  <li>4. Paste the subscription URL above</li>
+                  <li>5. Click "Add Calendar"</li>
+                </ol>
+                
+                <div className="mt-4 space-y-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('https://calendar.google.com', '_blank')}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Open Google Calendar
+                  </Button>
+                  <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded text-xs">
+                    <strong>Tip:</strong> After adding, events will appear with prefixes like [PTO], [Clinical] for easy identification
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Outlook */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Monitor className="mr-2 h-5 w-5 text-blue-500" />
+                  Outlook
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ol className="space-y-2 text-sm">
+                  <li>1. Open Outlook calendar</li>
+                  <li>2. Click "Add calendar" → "Subscribe from web"</li>
+                  <li>3. Paste the subscription URL</li>
+                  <li>4. Enter calendar name</li>
+                  <li>5. Click "Import"</li>
+                </ol>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => window.open('https://outlook.live.com/calendar', '_blank')}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Open Outlook
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Apple Calendar */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Monitor className="mr-2 h-5 w-5 text-gray-600" />
+                  Apple Calendar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ol className="space-y-2 text-sm">
+                  <li>1. Open Calendar app</li>
+                  <li>2. Go to File → New Calendar Subscription</li>
+                  <li>3. Paste the subscription URL</li>
+                  <li>4. Set refresh frequency</li>
+                  <li>5. Click "OK"</li>
+                </ol>
+              </CardContent>
+            </Card>
+
+            {/* Mobile */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Smartphone className="mr-2 h-5 w-5 text-green-600" />
+                  Mobile Apps
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ol className="space-y-2 text-sm">
+                  <li>1. Open your calendar app</li>
+                  <li>2. Look for "Add calendar" or "Subscribe"</li>
+                  <li>3. Paste the subscription URL</li>
+                  <li>4. Follow the app-specific prompts</li>
+                </ol>
+                <Badge variant="secondary" className="mt-2">
+                  Works with most calendar apps
+                </Badge>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Event Categories */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Event Categories & Prefixes</CardTitle>
+              <CardDescription>
+                All events are categorized with clear prefixes for easy identification in your calendar
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <Badge variant="outline" className="text-blue-700 border-blue-200">[PTO] Personal Time Off</Badge>
+                <Badge variant="outline" className="text-teal-700 border-teal-200">[Clinical] Clinical Service</Badge>
+                <Badge variant="outline" className="text-red-700 border-red-200">[Holiday] Lab Holidays</Badge>
+                <Badge variant="outline" className="text-purple-700 border-purple-200">[Conference] Conferences</Badge>
+                <Badge variant="outline" className="text-yellow-700 border-yellow-200">[Training] Training Events</Badge>
+                <Badge variant="outline" className="text-gray-700 border-gray-200">[Meeting] Lab Meetings</Badge>
+              </div>
+              <div className="mt-4 p-4 bg-muted/20 rounded-lg">
+                <h4 className="font-medium text-sm mb-2">Smart Event Details:</h4>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  <li>• All-day events show with special visual indicators</li>
+                  <li>• Multi-hour events display duration (e.g., "3h")</li>
+                  <li>• Rich descriptions include lab context and metadata</li>
+                  <li>• Automatic color coding by event type</li>
+                  <li>• Real-time synchronization with lab calendar changes</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Technical Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Technical Integration Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <strong>Calendar Format:</strong> iCal (.ics) standard
+                </div>
+                <div>
+                  <strong>Update Frequency:</strong> Automatic refresh every hour
+                </div>
+                <div>
+                  <strong>Timezone:</strong> America/Chicago (Central Time)
+                </div>
+                <div>
+                  <strong>Supported Features:</strong> All-day events, multi-day events, recurring events, categories, colors
+                </div>
+                <div>
+                  <strong>Compatibility:</strong> Google Calendar, Outlook, Apple Calendar, and most other calendar applications
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
