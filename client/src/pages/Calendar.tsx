@@ -416,17 +416,33 @@ export default function Calendar() {
 
   const getEventTypeColor = (type: string) => {
     switch (type) {
-      case "standup": return "bg-blue-500";
-      case "deadline": return "bg-red-500";
-      case "meeting": return "bg-green-500";
-      case "milestone": return "bg-purple-500";
-      case "task": return "bg-orange-500";
-      case "study": return "bg-indigo-500";
+      case "standup": return "bg-blue-500 hover:bg-blue-600";
+      case "deadline": return "bg-red-500 hover:bg-red-600";
+      case "meeting": return "bg-green-500 hover:bg-green-600";
+      case "milestone": return "bg-purple-500 hover:bg-purple-600";
+      case "task": return "bg-orange-500 hover:bg-orange-600";
+      case "study": return "bg-indigo-500 hover:bg-indigo-600";
       case "irb":
-      case "regulatory": return "bg-green-600";
-      case "pto": return "bg-cyan-500";
-      case "clinical_service": return "bg-teal-600";
-      default: return "bg-gray-500";
+      case "regulatory": return "bg-emerald-600 hover:bg-emerald-700";
+      case "pto": return "bg-cyan-500 hover:bg-cyan-600";
+      case "clinical_service": return "bg-teal-600 hover:bg-teal-700";
+      default: return "bg-gray-500 hover:bg-gray-600";
+    }
+  };
+
+  const getEventTypeIcon = (type: string) => {
+    switch (type) {
+      case "standup": return "👥";
+      case "deadline": return "⏰";
+      case "meeting": return "📅";
+      case "milestone": return "🎯";
+      case "task": return "✅";
+      case "study": return "🔬";
+      case "irb":
+      case "regulatory": return "📋";
+      case "pto": return "🏖️";
+      case "clinical_service": return "🏥";
+      default: return "📌";
     }
   };
 
@@ -456,9 +472,22 @@ export default function Calendar() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Calendar</h1>
-        <p className="text-muted-foreground">Comprehensive research management hub with events, deadlines, tasks, and milestones</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <span className="text-2xl">📅</span>
+            LabSync Calendar
+          </h1>
+          <p className="text-muted-foreground">🔬 Comprehensive research management hub with events, deadlines, tasks, and milestones</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-blue-50 text-blue-700">
+            {allEvents.length} Total Events
+          </Badge>
+          <Badge variant="outline" className="bg-teal-50 text-teal-700">
+            {selectedLab?.name}
+          </Badge>
+        </div>
       </div>
 
       {/* Google Calendar Integration */}
@@ -477,11 +506,14 @@ export default function Calendar() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center">
-                  <CalendarIcon className="mr-2 h-5 w-5" />
+                  <CalendarIcon className="mr-2 h-5 w-5 text-primary" />
                   {calendarView === 'month' 
                     ? `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`
                     : formatWeekRange(days as Date[])
                   }
+                  <Badge variant="outline" className="ml-3 text-xs">
+                    {events.length} events
+                  </Badge>
                 </CardTitle>
                 <div className="flex space-x-2">
                   <Select value={calendarView} onValueChange={(value: "month" | "week") => setCalendarView(value)}>
@@ -607,20 +639,21 @@ export default function Calendar() {
                                 <Dialog key={event.id}>
                                   <DialogTrigger asChild>
                                     <div
-                                      className={`text-xs p-1 rounded text-white truncate cursor-pointer hover:opacity-80 ${getEventTypeColor(event.type)} ${
+                                      className={`text-xs p-1.5 rounded text-white cursor-pointer transition-all hover:scale-105 hover:shadow-md ${getEventTypeColor(event.type)} ${
                                         event.allDay ? 'border-2 border-dashed border-white/30' : ''
                                       }`}
-                                      title={`${event.title}${event.allDay ? ' (All Day)' : ''}${event.duration && event.duration > 1 ? ` (${event.duration}h)` : ''}`}
+                                      title={`${getEventTypeIcon(event.type)} ${event.title}${event.allDay ? ' (All Day)' : ''}${event.duration && event.duration > 1 ? ` (${event.duration}h)` : ''}`}
                                       data-testid={`event-${event.id}`}
                                       onClick={() => setSelectedEvent(event)}
                                     >
-                                      <div className="flex items-center justify-between">
-                                        <span className="truncate">{event.title}</span>
+                                      <div className="flex items-center gap-1">
+                                        <span className="opacity-90 text-[10px]">{getEventTypeIcon(event.type)}</span>
+                                        <span className="truncate flex-1 font-medium">{event.title}</span>
                                         {event.allDay && (
-                                          <span className="ml-1 text-[10px] opacity-70">●</span>
+                                          <span className="text-[10px] opacity-70">●</span>
                                         )}
                                         {event.duration && event.duration > 1 && !event.allDay && (
-                                          <span className="ml-1 text-[10px] opacity-70">{event.duration}h</span>
+                                          <span className="text-[10px] opacity-70">{event.duration}h</span>
                                         )}
                                       </div>
                                     </div>
@@ -664,22 +697,23 @@ export default function Calendar() {
                             <Dialog key={event.id}>
                               <DialogTrigger asChild>
                                 <div
-                                  className={`text-xs p-1 rounded text-white cursor-pointer hover:opacity-80 ${getEventTypeColor(event.type)} ${
+                                  className={`text-xs p-2 rounded-md text-white cursor-pointer transition-all hover:scale-105 hover:shadow-lg ${getEventTypeColor(event.type)} ${
                                     event.allDay ? 'border-2 border-dashed border-white/30' : ''
                                   }`}
-                                  title={`${event.title}${event.allDay ? ' (All Day)' : ''}${event.duration && event.duration > 1 ? ` (${event.duration}h)` : ''}`}
+                                  title={`${getEventTypeIcon(event.type)} ${event.title}${event.allDay ? ' (All Day)' : ''}${event.duration && event.duration > 1 ? ` (${event.duration}h)` : ''}`}
                                   data-testid={`event-${event.id}`}
                                   onClick={() => setSelectedEvent(event)}
                                 >
-                                  <div className="flex items-center justify-between mb-1">
-                                    <span className="truncate font-medium">{event.title}</span>
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <span className="opacity-90">{getEventTypeIcon(event.type)}</span>
+                                    <span className="truncate font-medium flex-1">{event.title}</span>
                                     {event.allDay && (
-                                      <span className="ml-1 text-[10px] opacity-70">●</span>
+                                      <span className="text-[10px] opacity-70">●</span>
                                     )}
                                   </div>
                                   {event.time && (
-                                    <div className="text-[10px] opacity-80 truncate">
-                                      {event.time}
+                                    <div className="text-[10px] opacity-80 truncate pl-4">
+                                      ⏰ {event.time}
                                       {event.duration && event.duration > 1 && !event.allDay && (
                                         <span className="ml-1">({event.duration}h)</span>
                                       )}
@@ -719,8 +753,9 @@ export default function Calendar() {
                           data-testid={`upcoming-event-${event.id}`}
                           onClick={() => setSelectedEvent(event)}
                         >
-                          <Badge className={`${getEventTypeColor(event.type)} text-white`}>
-                            {event.type}
+                          <Badge className={`${getEventTypeColor(event.type)} text-white flex items-center gap-1`}>
+                            <span>{getEventTypeIcon(event.type)}</span>
+                            <span>{event.type}</span>
                           </Badge>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{event.title}</p>
@@ -764,42 +799,42 @@ export default function Calendar() {
               <CardTitle className="text-lg">Event Types</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
+              <div className="grid grid-cols-1 gap-2">
+                <div className="flex items-center space-x-3">
                   <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                  <span className="text-sm">Standups</span>
+                  <span className="text-sm">👥 Standups</span>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   <div className="w-3 h-3 bg-red-500 rounded"></div>
-                  <span className="text-sm">Deadlines</span>
+                  <span className="text-sm">⏰ Deadlines</span>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                  <span className="text-sm">Task Deadlines</span>
+                  <span className="text-sm">✅ Task Deadlines</span>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   <div className="w-3 h-3 bg-indigo-500 rounded"></div>
-                  <span className="text-sm">Study Milestones</span>
+                  <span className="text-sm">🔬 Study Milestones</span>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   <div className="w-3 h-3 bg-green-500 rounded"></div>
-                  <span className="text-sm">Meetings</span>
+                  <span className="text-sm">📅 Meetings</span>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   <div className="w-3 h-3 bg-purple-500 rounded"></div>
-                  <span className="text-sm">Milestones</span>
+                  <span className="text-sm">🎯 Milestones</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-600 rounded"></div>
-                  <span className="text-sm">IRB Submissions</span>
+                <div className="flex items-center space-x-3">
+                  <div className="w-3 h-3 bg-emerald-600 rounded"></div>
+                  <span className="text-sm">📋 IRB Submissions</span>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   <div className="w-3 h-3 bg-cyan-500 rounded"></div>
-                  <span className="text-sm">PTO Events</span>
+                  <span className="text-sm">🏖️ PTO Events</span>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   <div className="w-3 h-3 bg-teal-600 rounded"></div>
-                  <span className="text-sm">Clinical Service</span>
+                  <span className="text-sm">🏥 Clinical Service</span>
                 </div>
               </div>
             </CardContent>
@@ -812,15 +847,17 @@ export default function Calendar() {
         <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle className="flex items-center space-x-2">
-                <div className={`w-4 h-4 rounded-full ${getEventTypeColor(selectedEvent.type)}`} />
-                <span className="text-xl font-semibold">{selectedEvent.title}</span>
-                <Badge className={`${getEventTypeColor(selectedEvent.type)} text-white ml-2 text-xs px-2 py-1`}>
-                  {selectedEvent.type.charAt(0).toUpperCase() + selectedEvent.type.slice(1)}
-                </Badge>
+              <DialogTitle className="flex items-center space-x-3">
+                <span className="text-2xl">{getEventTypeIcon(selectedEvent.type)}</span>
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold">{selectedEvent.title}</h2>
+                  <Badge className={`${getEventTypeColor(selectedEvent.type)} text-white mt-1 text-xs px-2 py-1`}>
+                    {selectedEvent.type.charAt(0).toUpperCase() + selectedEvent.type.slice(1)}
+                  </Badge>
+                </div>
               </DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                View detailed information about this event
+                📊 View detailed information and manage this event
               </DialogDescription>
             </DialogHeader>
             

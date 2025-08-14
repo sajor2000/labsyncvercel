@@ -25,13 +25,13 @@ export function GoogleCalendarEmbed({
   const [syncInProgress, setSyncInProgress] = useState(false);
 
   // Get Google Calendar embed URL
-  const { data: embedData, isLoading } = useQuery({
+  const { data: embedData, isLoading } = useQuery<{ embedUrl: string }>({
     queryKey: ['/api/google-calendar/embed-url'],
     enabled: !!selectedLab?.id,
   });
 
   // Fetch combined events from Google Calendar and LabSync
-  const { data: events = [], refetch: refetchEvents } = useQuery({
+  const { data: events = [], refetch: refetchEvents } = useQuery<any[]>({
     queryKey: ['/api/google-calendar/events', selectedLab?.id],
     enabled: !!selectedLab?.id,
   });
@@ -90,8 +90,8 @@ export function GoogleCalendarEmbed({
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5" />
-                RICCC Labs Calendar Integration
+                <CalendarIcon className="h-5 w-5 text-blue-600" />
+                📅 Google Calendar Integration
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="bg-blue-50 text-blue-700">
@@ -103,7 +103,7 @@ export function GoogleCalendarEmbed({
               </div>
             </CardTitle>
             <CardDescription>
-              Two-way sync between riccclabs@gmail.com and your LabSync calendar
+              🔄 Two-way sync between riccclabs@gmail.com and your LabSync calendar • Real-time updates and smart event categorization
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -254,7 +254,6 @@ export function GoogleCalendarEmbed({
                           <h4 className="font-medium">{event.title}</h4>
                           <Badge 
                             variant={event.source === 'google' ? 'default' : 'secondary'}
-                            size="sm"
                           >
                             {event.source === 'google' ? 'Google' : 'LabSync'}
                           </Badge>
