@@ -30,6 +30,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Lab routes
+  app.get('/api/labs', isAuthenticated, async (req: any, res) => {
+    try {
+      const labs = await storage.getLabs();
+      res.json(labs);
+    } catch (error) {
+      console.error("Error fetching labs:", error);
+      res.status(500).json({ message: "Failed to fetch labs" });
+    }
+  });
+
   // Production Workflow Routes
   
   // Process complete workflow: audio -> transcript -> AI analysis -> email generation -> delivery

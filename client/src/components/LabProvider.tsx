@@ -36,27 +36,21 @@ export function LabProvider({ children }: LabProviderProps) {
 
   // State for selected lab - initialize with first lab if available
   const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
-  const [allLabsState, setAllLabsState] = useState<Lab[]>([]);
 
-  // Update all labs state when data changes
+  // Update selected lab when user and labs data are available
   useEffect(() => {
-    if (allLabs.length > 0) {
-      setAllLabsState(allLabs);
+    if (user && allLabs.length > 0 && !selectedLab) {
+      setSelectedLab(allLabs[0]);
     }
-  }, [JSON.stringify(allLabs)]);
+  }, [user, allLabs.length, selectedLab]);
 
-  // Update selected lab when user data changes
-  useEffect(() => {
-    if (user && allLabsState.length > 0 && !selectedLab) {
-      setSelectedLab(allLabsState[0]);
-    }
-  }, [user, allLabsState.length, selectedLab]);
+
 
   const value = {
     selectedLab,
     setSelectedLab,
-    setAllLabs: setAllLabsState,
-    allLabs: allLabsState,
+    setAllLabs: () => {}, // Not needed since we use direct data
+    allLabs: allLabs, // Use direct transformed data instead of state
     isLoading: isLoading || labsLoading,
   };
   
