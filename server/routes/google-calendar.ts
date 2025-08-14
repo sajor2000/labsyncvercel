@@ -71,7 +71,7 @@ router.post("/sync-to-google", isAuthenticated, async (req, res) => {
       await db
         .update(calendarEvents)
         .set({ 
-          googleCalendarId: googleEventId,
+          googleCalendarEventId: googleEventId,
           updatedAt: new Date()
         })
         .where(eq(calendarEvents.id, eventId));
@@ -107,6 +107,19 @@ router.get("/auth/callback", async (req, res) => {
   } catch (error) {
     console.error("Error in OAuth callback:", error);
     res.redirect("/calendar?google_auth=error");
+  }
+});
+
+// Get Google Calendar embed URL
+router.get("/embed-url", isAuthenticated, async (req, res) => {
+  try {
+    // Return the Google Calendar embed URL for riccclabs@gmail.com
+    const embedUrl = "https://calendar.google.com/calendar/embed?src=riccclabs@gmail.com&ctz=America/Chicago&bgcolor=%23ffffff&color=%231B887A&showTitle=1&showPrint=1&showTabs=1&showCalendars=1&mode=MONTH";
+    
+    res.json({ embedUrl });
+  } catch (error) {
+    console.error("Error generating embed URL:", error);
+    res.status(500).json({ error: "Failed to generate embed URL" });
   }
 });
 

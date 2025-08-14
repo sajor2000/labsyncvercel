@@ -35,18 +35,21 @@ export class GoogleCalendarService {
    * Initialize Google Calendar API authentication
    */
   private initializeGoogleAuth() {
-    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_CALENDAR_API_KEY) {
-      console.warn('Google Calendar credentials not configured');
+    if (!process.env.GOOGLE_CALENDAR_API_KEY) {
+      console.warn('Google Calendar API key not configured');
       return;
     }
 
-    const auth = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      `${process.env.REPL_URL || 'https://rush-lab-sync.replit.app'}/auth/google/callback`
-    );
-
-    this.calendar = google.calendar({ version: 'v3', auth });
+    try {
+      // Use API key for read-only access to public calendar
+      this.calendar = google.calendar({ 
+        version: 'v3', 
+        auth: process.env.GOOGLE_CALENDAR_API_KEY 
+      });
+      console.log('✅ Google Calendar API initialized with API key');
+    } catch (error) {
+      console.error('❌ Google Calendar API initialization failed:', error);
+    }
   }
 
   /**
@@ -177,8 +180,8 @@ export class GoogleCalendarService {
     description += '\n\n--- LabSync Details ---';
     description += `\nEvent Type: ${event.eventType}`;
     
-    if (event.notes) {
-      description += `\nNotes: ${event.notes}`;
+    if (event.exportDescription) {
+      description += `\nExport Details: ${event.exportDescription}`;
     }
     
     if (event.metadata && typeof event.metadata === 'object') {

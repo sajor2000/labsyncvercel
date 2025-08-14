@@ -113,14 +113,22 @@ export async function setupAuth(app: Express) {
     }
   };
 
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
+  // Get domains and add localhost for development
+  const domains = process.env.REPLIT_DOMAINS!.split(",");
+  
+  // Add localhost support for development
+  if (process.env.NODE_ENV === "development") {
+    domains.push("127.0.0.1:5000", "localhost:5000", "127.0.0.1", "localhost");
+  }
+
+  for (const domain of domains) {
+    const protocol = domain.includes('127.0.0.1') || domain.includes('localhost') ? 'http' : 'https';
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
         config,
         scope: "openid email profile offline_access",
-        callbackURL: `https://${domain}/api/callback`,
+        callbackURL: `${protocol}://${domain}/api/callback`,
       },
       verify,
     );
