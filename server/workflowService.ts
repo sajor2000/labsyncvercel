@@ -201,17 +201,34 @@ export class WorkflowService {
       };
 
       // Process with AI and create meeting record
+      const currentDate = new Date();
       const meeting = await storage.createStandupMeeting({
         transcript,
         labId,
         meetingType,
+        meetingDate: currentDate,
+        scheduledDate: currentDate,
+        startTime: currentDate,
+        endTime: currentDate,
         participants: attendees,
-        createdById: userId,
+        createdBy: userId,
       });
 
       // Process with AI to extract tasks
       const { meetingRecorderService } = await import('./meetingRecorder');
-      await meetingRecorderService.processTranscriptWithAI(meeting.id);
+      const currentDateStr = currentDate.toISOString().split('T')[0];
+      const { processedNotes, extractedTasks } = await meetingRecorderService.processTranscript(transcript, currentDateStr);
+      
+      // Save the extracted tasks as action items
+      for (const task of extractedTasks) {
+        await storage.createActionItem({
+          meetingId: meeting.id,
+          description: task.task,
+          assignee: task.member,
+          dueDate: task.due_date ? new Date(task.due_date) : undefined,
+          status: 'OPEN',
+        });
+      }
 
       const processingTimeMs = Date.now() - startTime;
       const result: WorkflowStepResult = {
