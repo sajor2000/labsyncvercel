@@ -76,6 +76,9 @@ Navigation Cleanup: Removed redundant "Task Board" page since Task Management al
 - **Google Slides Integration**: Embedded presentation functionality in standup recordings with smart URL parsing and session persistence.
 - **Team Member Role Management**: Robust role persistence with lab-specific roles and automatic admin flag assignment for Co-PIs.
 - **World-Class Calendar System**: Integrated multiple event sources (standups, deadlines, tasks, studies, meetings, milestones) with advanced filtering and multi-view support.
+- **Direct Calendar Event Creation**: Create calendar events directly in LabSync with automatic Google Calendar synchronization and rich metadata support.
+- **Intelligent Task-to-Calendar Sync**: Automatically convert task due dates into calendar events with priority-based color coding and Google Calendar integration.
+- **Meeting-Centric Task Synchronization**: Bulk sync project tasks to calendar during meetings with comprehensive project context and deadline tracking.
 - **Global Search System**: Real-time, cross-entity search across studies, tasks, ideas, and documents with smart navigation and relevance sorting.
 - **Production AI Workflow System**: End-to-end meeting processing pipeline with real transcript validation, automated task extraction, and email delivery confirmed operational.
 

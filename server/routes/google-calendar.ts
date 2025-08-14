@@ -2,8 +2,9 @@ import { Router } from "express";
 import { GoogleCalendarService } from "../googleCalendarService";
 import { isAuthenticated } from "../replitAuth";
 import { db } from "../db";
-import { calendarEvents, labs } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { calendarEvents, labs, tasks, studies, insertCalendarEventSchema } from "@shared/schema";
+import { eq, and, or } from "drizzle-orm";
+import { z } from "zod";
 
 const router = Router();
 const googleCalendarService = new GoogleCalendarService();
@@ -96,6 +97,362 @@ router.get("/embed-url", isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error("Error generating embed URL:", error);
     res.status(500).json({ error: "Failed to generate embed URL" });
+  }
+});
+
+// Create a new calendar event directly in LabSync
+router.post("/events", isAuthenticated, async (req, res) => {
+  try {
+    const userId = (req.user as any)?.claims?.sub;
+    const validatedData = insertCalendarEventSchema.parse({
+      ...req.body,
+      createdBy: userId,
+      userId: userId,
+    });
+
+    // Create the event in LabSync database
+    const [newEvent] = await db
+      .insert(calendarEvents)
+      .values(validatedData)
+      .returning();
+
+    // Automatically sync to Google Calendar if enabled
+    const shouldAutoSync = req.body.autoSyncToGoogle !== false; // Default to true
+    if (shouldAutoSync) {
+      try {
+        const googleEventId = await googleCalendarService.syncEventToGoogle(newEvent);
+        if (googleEventId) {
+          // Update with Google Calendar ID
+          await db
+            .update(calendarEvents)
+            .set({ 
+              googleCalendarEventId: googleEventId,
+              googleCalendarSyncStatus: 'synced',
+              googleCalendarLastSync: new Date()
+            })
+            .where(eq(calendarEvents.id, newEvent.id));
+        }
+      } catch (syncError) {
+        console.error("Auto-sync to Google Calendar failed:", syncError);
+        // Event is still created in LabSync even if Google sync fails
+      }
+    }
+
+    res.status(201).json(newEvent);
+  } catch (error) {
+    console.error("Error creating calendar event:", error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Invalid data", details: error.errors });
+    }
+    res.status(500).json({ error: "Failed to create calendar event" });
+  }
+});
+
+// Sync task due dates to calendar events (for meetings and project planning)
+router.post("/sync-tasks-to-calendar", isAuthenticated, async (req, res) => {
+  try {
+    const userId = (req.user as any)?.claims?.sub;
+    const { projectId, studyId, labId, syncToGoogle = true } = req.body;
+
+    if (!projectId && !studyId && !labId) {
+      return res.status(400).json({ error: "Must provide projectId, studyId, or labId" });
+    }
+
+    let tasksQuery = db.select({
+      id: tasks.id,
+      name: tasks.name,
+      description: tasks.description,
+      dueDate: tasks.dueDate,
+      priority: tasks.priority,
+      assignees: tasks.assignees,
+      studyId: tasks.studyId,
+      labId: tasks.labId
+    }).from(tasks);
+
+    // Build query based on what was provided
+    if (studyId) {
+      tasksQuery = tasksQuery.where(eq(tasks.studyId, studyId));
+    } else if (labId) {
+      tasksQuery = tasksQuery.where(eq(tasks.labId, labId));
+    }
+
+    // Get tasks with due dates
+    const taskList = await tasksQuery;
+    const tasksWithDueDates = taskList.filter(task => task.dueDate);
+
+    const createdEvents = [];
+    
+    for (const task of tasksWithDueDates) {
+      try {
+        // Check if calendar event already exists for this task
+        const existingEvent = await db
+          .select()
+          .from(calendarEvents)
+          .where(and(
+            eq(calendarEvents.eventType, 'MEETING'),
+            eq(calendarEvents.title, `Task Deadline: ${task.name}`)
+          ));
+
+        if (existingEvent.length === 0) {
+          // Create calendar event for task due date
+          const eventData = {
+            title: `Task Deadline: ${task.name}`,
+            description: task.description || `Deadline for task: ${task.name}`,
+            eventType: 'MEETING' as const,
+            startDate: task.dueDate!,
+            endDate: new Date(task.dueDate!.getTime() + (2 * 60 * 60 * 1000)), // 2 hour duration
+            allDay: false,
+            duration: 2,
+            userId: userId,
+            labId: task.labId,
+            color: task.priority === 'HIGH' ? '#ef4444' : task.priority === 'MEDIUM' ? '#f97316' : '#10b981',
+            categoryPrefix: '[Task Deadline]',
+            exportTitle: `[Task Deadline] ${task.name}`,
+            exportDescription: `Task deadline reminder for: ${task.name}\n\nAssignees: ${task.assignees?.join(', ') || 'Unassigned'}\n\nPriority: ${task.priority}`,
+            metadata: {
+              sourceType: 'task',
+              sourceId: task.id,
+              taskName: task.name,
+              taskPriority: task.priority,
+              taskAssignees: task.assignees
+            },
+            createdBy: userId
+          };
+
+          const [newEvent] = await db
+            .insert(calendarEvents)
+            .values(eventData)
+            .returning();
+
+          // Sync to Google Calendar if requested
+          if (syncToGoogle) {
+            try {
+              const googleEventId = await googleCalendarService.syncEventToGoogle(newEvent);
+              if (googleEventId) {
+                await db
+                  .update(calendarEvents)
+                  .set({ 
+                    googleCalendarEventId: googleEventId,
+                    googleCalendarSyncStatus: 'synced',
+                    googleCalendarLastSync: new Date()
+                  })
+                  .where(eq(calendarEvents.id, newEvent.id));
+              }
+            } catch (syncError) {
+              console.error(`Google sync failed for task ${task.id}:`, syncError);
+            }
+          }
+
+          createdEvents.push(newEvent);
+        }
+      } catch (taskError) {
+        console.error(`Error processing task ${task.id}:`, taskError);
+      }
+    }
+
+    res.json({
+      message: `Successfully synced ${createdEvents.length} task deadlines to calendar`,
+      createdEvents: createdEvents.length,
+      syncedToGoogle: syncToGoogle,
+      processedTasks: tasksWithDueDates.length
+    });
+
+  } catch (error) {
+    console.error("Error syncing tasks to calendar:", error);
+    res.status(500).json({ error: "Failed to sync tasks to calendar" });
+  }
+});
+
+// Bulk sync project tasks during meetings
+router.post("/meeting-task-sync", isAuthenticated, async (req, res) => {
+  try {
+    const userId = (req.user as any)?.claims?.sub;
+    const { 
+      meetingTitle, 
+      meetingDate, 
+      projectIds = [], 
+      studyIds = [], 
+      labId, 
+      syncToGoogle = true,
+      createMeetingEvent = true 
+    } = req.body;
+
+    if (!labId) {
+      return res.status(400).json({ error: "Lab ID is required" });
+    }
+
+    const results = {
+      meetingEvent: null as any,
+      taskDeadlineEvents: [] as any[],
+      totalProcessed: 0,
+      errors: [] as string[]
+    };
+
+    // Create the meeting event if requested
+    if (createMeetingEvent && meetingTitle && meetingDate) {
+      try {
+        const meetingEventData = {
+          title: meetingTitle,
+          description: `Meeting to review project tasks and deadlines\n\nProjects: ${projectIds.join(', ')}\nStudies: ${studyIds.join(', ')}`,
+          eventType: 'MEETING' as const,
+          startDate: new Date(meetingDate),
+          endDate: new Date(new Date(meetingDate).getTime() + (60 * 60 * 1000)), // 1 hour duration
+          allDay: false,
+          duration: 1,
+          userId: userId,
+          labId: labId,
+          color: '#3b82f6',
+          categoryPrefix: '[Meeting]',
+          exportTitle: `[Meeting] ${meetingTitle}`,
+          exportDescription: `Project review meeting\n\nAgenda: Review task progress and deadlines`,
+          metadata: {
+            sourceType: 'meeting',
+            projectIds,
+            studyIds,
+            meetingType: 'project_review'
+          },
+          createdBy: userId
+        };
+
+        const [meetingEvent] = await db
+          .insert(calendarEvents)
+          .values(meetingEventData)
+          .returning();
+
+        results.meetingEvent = meetingEvent;
+
+        // Sync meeting to Google Calendar
+        if (syncToGoogle) {
+          try {
+            const googleEventId = await googleCalendarService.syncEventToGoogle(meetingEvent);
+            if (googleEventId) {
+              await db
+                .update(calendarEvents)
+                .set({ 
+                  googleCalendarEventId: googleEventId,
+                  googleCalendarSyncStatus: 'synced',
+                  googleCalendarLastSync: new Date()
+                })
+                .where(eq(calendarEvents.id, meetingEvent.id));
+            }
+          } catch (syncError) {
+            results.errors.push(`Meeting Google sync failed: ${syncError}`);
+          }
+        }
+      } catch (meetingError) {
+        results.errors.push(`Meeting creation failed: ${meetingError}`);
+      }
+    }
+
+    // Get all tasks for the specified projects and studies
+    let tasksQuery = db.select({
+      id: tasks.id,
+      name: tasks.name,
+      description: tasks.description,
+      dueDate: tasks.dueDate,
+      priority: tasks.priority,
+      assignees: tasks.assignees,
+      studyId: tasks.studyId,
+      labId: tasks.labId
+    }).from(tasks);
+
+    const conditions = [];
+    if (studyIds.length > 0) {
+      conditions.push(or(...studyIds.map((id: string) => eq(tasks.studyId, id))));
+    }
+    if (conditions.length === 0 && labId) {
+      conditions.push(eq(tasks.labId, labId));
+    }
+
+    if (conditions.length > 0) {
+      tasksQuery = tasksQuery.where(or(...conditions));
+    }
+
+    const taskList = await tasksQuery;
+    const tasksWithDueDates = taskList.filter(task => task.dueDate);
+    results.totalProcessed = tasksWithDueDates.length;
+
+    // Create calendar events for task deadlines
+    for (const task of tasksWithDueDates) {
+      try {
+        // Check if calendar event already exists for this task
+        const existingEvent = await db
+          .select()
+          .from(calendarEvents)
+          .where(and(
+            eq(calendarEvents.eventType, 'MEETING'),
+            eq(calendarEvents.title, `Task Deadline: ${task.name}`)
+          ));
+
+        if (existingEvent.length === 0) {
+          const eventData = {
+            title: `Task Deadline: ${task.name}`,
+            description: `Deadline from ${meetingTitle || 'project meeting'}\n\nTask: ${task.name}\n${task.description || ''}`,
+            eventType: 'MEETING' as const,
+            startDate: task.dueDate!,
+            endDate: new Date(task.dueDate!.getTime() + (30 * 60 * 1000)), // 30 min duration
+            allDay: false,
+            duration: 0.5,
+            userId: userId,
+            labId: task.labId,
+            color: task.priority === 'HIGH' ? '#ef4444' : task.priority === 'MEDIUM' ? '#f97316' : '#10b981',
+            categoryPrefix: '[Task Deadline]',
+            exportTitle: `[Task Deadline] ${task.name}`,
+            exportDescription: `Task deadline from meeting: ${meetingTitle}\n\nTask: ${task.name}\nAssignees: ${task.assignees?.join(', ') || 'Unassigned'}`,
+            metadata: {
+              sourceType: 'meeting_task',
+              sourceId: task.id,
+              meetingTitle: meetingTitle,
+              taskName: task.name,
+              taskPriority: task.priority
+            },
+            createdBy: userId
+          };
+
+          const [newEvent] = await db
+            .insert(calendarEvents)
+            .values(eventData)
+            .returning();
+
+          results.taskDeadlineEvents.push(newEvent);
+
+          // Sync to Google Calendar
+          if (syncToGoogle) {
+            try {
+              const googleEventId = await googleCalendarService.syncEventToGoogle(newEvent);
+              if (googleEventId) {
+                await db
+                  .update(calendarEvents)
+                  .set({ 
+                    googleCalendarEventId: googleEventId,
+                    googleCalendarSyncStatus: 'synced',
+                    googleCalendarLastSync: new Date()
+                  })
+                  .where(eq(calendarEvents.id, newEvent.id));
+              }
+            } catch (syncError) {
+              results.errors.push(`Task ${task.name} Google sync failed: ${syncError}`);
+            }
+          }
+        }
+      } catch (taskError) {
+        results.errors.push(`Task processing failed for ${task.name}: ${taskError}`);
+      }
+    }
+
+    res.json({
+      message: `Meeting and task sync completed successfully`,
+      meetingCreated: !!results.meetingEvent,
+      taskDeadlineEvents: results.taskDeadlineEvents.length,
+      totalTasksProcessed: results.totalProcessed,
+      syncedToGoogle: syncToGoogle,
+      errors: results.errors,
+      results
+    });
+
+  } catch (error) {
+    console.error("Error in meeting task sync:", error);
+    res.status(500).json({ error: "Failed to sync meeting tasks to calendar" });
   }
 });
 
