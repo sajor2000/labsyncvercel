@@ -194,10 +194,28 @@ router.post("/sync-tasks-to-calendar", isAuthenticated, async (req, res) => {
           ));
 
         if (existingEvent.length === 0) {
-          // Create calendar event for task due date
+          // Get study information for context
+          const studyInfo = await db
+            .select()
+            .from(studies)
+            .where(eq(studies.id, task.studyId))
+            .then(results => results[0]);
+
+          // Create calendar event for task due date with rich metadata
           const eventData = {
             title: `Task Deadline: ${task.name}`,
-            description: task.description || `Deadline for task: ${task.name}`,
+            description: `${task.description || `Deadline reminder for task: ${task.name}`}
+
+📋 Task Overview:
+${task.description ? task.description : 'No additional description provided'}
+
+🎯 Assignment Details:
+${task.assignees && task.assignees.length > 0 ? `Assigned to: ${task.assignees.join(', ')}` : 'Unassigned'}
+Priority: ${task.priority || 'MEDIUM'}
+
+${studyInfo ? `🔬 Study Context:
+Study: ${studyInfo.name}${studyInfo.oraNumber ? ` (${studyInfo.oraNumber})` : ''}
+Study Status: ${studyInfo.status}` : ''}`,
             eventType: 'MEETING' as const,
             startDate: task.dueDate!,
             endDate: new Date(task.dueDate!.getTime() + (2 * 60 * 60 * 1000)), // 2 hour duration
@@ -205,16 +223,27 @@ router.post("/sync-tasks-to-calendar", isAuthenticated, async (req, res) => {
             duration: 2,
             userId: userId,
             labId: task.labId,
+            location: `Rush University Medical Center - ${studyInfo?.name || 'Lab'} Task Review`,
             color: task.priority === 'HIGH' ? '#ef4444' : task.priority === 'MEDIUM' ? '#f97316' : '#10b981',
             categoryPrefix: '[Task Deadline]',
             exportTitle: `[Task Deadline] ${task.name}`,
-            exportDescription: `Task deadline reminder for: ${task.name}\n\nAssignees: ${task.assignees?.join(', ') || 'Unassigned'}\n\nPriority: ${task.priority}`,
+            exportDescription: `Professional task deadline event created via LabSync`,
             metadata: {
               sourceType: 'task',
               sourceId: task.id,
               taskName: task.name,
               taskPriority: task.priority,
-              taskAssignees: task.assignees
+              taskAssignees: task.assignees,
+              studyId: task.studyId,
+              studyName: studyInfo?.name,
+              studyOraNumber: studyInfo?.oraNumber,
+              labContext: task.labId === 'riccc' ? 'RICCC Lab' : 'RHEDAS Lab',
+              additionalInfo: {
+                'Task ID': task.id,
+                'Created in LabSync': new Date().toLocaleDateString(),
+                'Sync Type': 'Task Deadline Sync',
+                'Study Status': studyInfo?.status || 'Unknown'
+              }
             },
             createdBy: userId
           };
@@ -385,26 +414,69 @@ router.post("/meeting-task-sync", isAuthenticated, async (req, res) => {
           ));
 
         if (existingEvent.length === 0) {
+          // Get study information for enhanced context
+          const studyInfo = await db
+            .select()
+            .from(studies)
+            .where(eq(studies.id, task.studyId))
+            .then(results => results[0]);
+
           const eventData = {
             title: `Task Deadline: ${task.name}`,
-            description: `Deadline from ${meetingTitle || 'project meeting'}\n\nTask: ${task.name}\n${task.description || ''}`,
+            description: `📅 Meeting-Generated Task Deadline
+
+🤝 Meeting Context:
+Generated from: ${meetingTitle || 'Project Review Meeting'}
+Meeting Date: ${meetingDate ? new Date(meetingDate).toLocaleDateString() : 'N/A'}
+
+📋 Task Details:
+Task: ${task.name}
+${task.description ? `Description: ${task.description}` : 'No additional description provided'}
+${task.assignees && task.assignees.length > 0 ? `Responsible: ${task.assignees.join(', ')}` : 'Unassigned'}
+Priority: ${task.priority || 'MEDIUM'}
+
+${studyInfo ? `🔬 Study Information:
+Study: ${studyInfo.name}${studyInfo.oraNumber ? ` (${studyInfo.oraNumber})` : ''}
+Status: ${studyInfo.status}
+${studyInfo.firstAuthor ? `First Author: ${studyInfo.firstAuthor}` : ''}` : ''}
+
+💡 Next Steps:
+→ Review task requirements
+→ Coordinate with assigned team members
+→ Update progress in LabSync`,
             eventType: 'MEETING' as const,
             startDate: task.dueDate!,
-            endDate: new Date(task.dueDate!.getTime() + (30 * 60 * 1000)), // 30 min duration
+            endDate: new Date(task.dueDate!.getTime() + (60 * 60 * 1000)), // 1 hour duration
             allDay: false,
-            duration: 0.5,
+            duration: 1,
             userId: userId,
             labId: task.labId,
+            location: `Rush University Medical Center - ${studyInfo?.name || 'Lab'} Task Review`,
             color: task.priority === 'HIGH' ? '#ef4444' : task.priority === 'MEDIUM' ? '#f97316' : '#10b981',
             categoryPrefix: '[Task Deadline]',
             exportTitle: `[Task Deadline] ${task.name}`,
-            exportDescription: `Task deadline from meeting: ${meetingTitle}\n\nTask: ${task.name}\nAssignees: ${task.assignees?.join(', ') || 'Unassigned'}`,
+            exportDescription: `Meeting-generated task deadline with full context and team coordination details`,
             metadata: {
               sourceType: 'meeting_task',
               sourceId: task.id,
               meetingTitle: meetingTitle,
+              meetingDate: meetingDate,
               taskName: task.name,
-              taskPriority: task.priority
+              taskPriority: task.priority,
+              taskAssignees: task.assignees,
+              studyId: task.studyId,
+              studyName: studyInfo?.name,
+              studyOraNumber: studyInfo?.oraNumber,
+              studyStatus: studyInfo?.status,
+              labContext: task.labId === 'riccc' ? 'RICCC Lab' : 'RHEDAS Lab',
+              additionalInfo: {
+                'Task ID': task.id,
+                'Study ID': task.studyId,
+                'Meeting Generated': new Date().toLocaleDateString(),
+                'Sync Source': 'Meeting Task Sync',
+                'Lab': task.labId === 'riccc' ? 'RICCC' : 'RHEDAS',
+                'Priority Level': task.priority || 'MEDIUM'
+              }
             },
             createdBy: userId
           };

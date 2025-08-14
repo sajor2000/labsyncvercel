@@ -129,7 +129,7 @@ export class GoogleCalendarService {
   }
 
   /**
-   * Sync LabSync event to Google Calendar
+   * Sync LabSync event to Google Calendar with enhanced formatting
    */
   async syncEventToGoogle(labSyncEvent: CalendarEvent): Promise<string | null> {
     if (!this.calendar) {
@@ -138,8 +138,16 @@ export class GoogleCalendarService {
     }
 
     try {
-      const googleEvent = {
-        summary: `[LabSync] ${labSyncEvent.title}`,
+      const metadata = labSyncEvent.metadata as any;
+      
+      // Create professional title based on event type and metadata
+      let professionalTitle = this.createProfessionalTitle(labSyncEvent);
+      
+      // Build attendees list if we have assignee information
+      const attendees = this.buildAttendeesFromMetadata(metadata);
+
+      const googleEvent: any = {
+        summary: professionalTitle,
         description: this.buildGoogleEventDescription(labSyncEvent),
         start: labSyncEvent.allDay ? {
           date: labSyncEvent.startDate.toISOString().split('T')[0],
@@ -155,9 +163,28 @@ export class GoogleCalendarService {
           dateTime: labSyncEvent.endDate.toISOString(),
           timeZone: CALENDAR_TIMEZONE
         },
-        location: labSyncEvent.location,
+        location: labSyncEvent.location || this.getDefaultLocation(labSyncEvent.eventType),
         colorId: this.getGoogleColorId(labSyncEvent.eventType),
+        transparency: 'opaque', // Show as busy
+        visibility: 'default',
       };
+
+      // Add attendees if we have any
+      if (attendees.length > 0) {
+        googleEvent.attendees = attendees;
+      }
+
+      // Add reminders for important events
+      if (metadata?.taskPriority === 'HIGH' || labSyncEvent.eventType === 'MEETING') {
+        googleEvent.reminders = {
+          useDefault: false,
+          overrides: [
+            { method: 'email', minutes: 24 * 60 }, // 1 day before
+            { method: 'popup', minutes: 60 }, // 1 hour before
+            { method: 'popup', minutes: 15 }, // 15 minutes before
+          ],
+        };
+      }
 
       const response = await this.calendar.events.insert({
         calendarId: GOOGLE_CALENDAR_ID,
@@ -172,28 +199,227 @@ export class GoogleCalendarService {
   }
 
   /**
-   * Build rich description for Google Calendar event
+   * Create professional, context-aware event titles
    */
-  private buildGoogleEventDescription(event: CalendarEvent): string {
-    let description = event.description || '';
+  private createProfessionalTitle(event: CalendarEvent): string {
+    const metadata = event.metadata as any;
     
-    description += '\n\n--- LabSync Details ---';
-    description += `\nEvent Type: ${event.eventType}`;
-    
-    if (event.exportDescription) {
-      description += `\nExport Details: ${event.exportDescription}`;
+    // Task deadline events
+    if (metadata?.sourceType === 'task' || metadata?.sourceType === 'meeting_task') {
+      const priorityIcon = metadata.taskPriority === 'HIGH' ? '🔴' : 
+                          metadata.taskPriority === 'MEDIUM' ? '🟡' : '🟢';
+      
+      let title = `${priorityIcon} DEADLINE: ${metadata.taskName || event.title.replace('Task Deadline: ', '')}`;
+      
+      if (metadata.taskAssignees && metadata.taskAssignees.length > 0) {
+        const assignee = metadata.taskAssignees[0];
+        title += ` (${assignee})`;
+      }
+      
+      return title;
     }
     
-    if (event.metadata && typeof event.metadata === 'object') {
-      const metadata = event.metadata as any;
-      if (metadata.assignees && Array.isArray(metadata.assignees)) {
-        description += `\nAssigned to: ${metadata.assignees.join(', ')}`;
+    // Meeting events
+    if (metadata?.sourceType === 'meeting') {
+      return `🤝 ${event.title}`;
+    }
+    
+    // Default formatting with category prefix
+    const categoryIcon = this.getCategoryIcon(event.eventType);
+    return `${categoryIcon} ${event.exportTitle || event.title}`;
+  }
+
+  /**
+   * Get category icon for event types
+   */
+  private getCategoryIcon(eventType: string): string {
+    const iconMap: Record<string, string> = {
+      'MEETING': '🤝',
+      'CLINICAL_SERVICE': '🏥',
+      'PTO': '🏖️',
+      'TRAINING': '📚',
+      'CONFERENCE': '🎤',
+      'HOLIDAY': '🎉',
+      'OTHER': '📌'
+    };
+    
+    return iconMap[eventType] || '📌';
+  }
+
+  /**
+   * Build attendees list from metadata
+   */
+  private buildAttendeesFromMetadata(metadata: any): any[] {
+    const attendees: any[] = [];
+    
+    if (metadata?.taskAssignees && Array.isArray(metadata.taskAssignees)) {
+      // Try to convert names to emails if possible
+      metadata.taskAssignees.forEach((assignee: string) => {
+        const email = this.getEmailFromName(assignee);
+        if (email) {
+          attendees.push({
+            email: email,
+            displayName: assignee,
+            responseStatus: 'needsAction'
+          });
+        }
+      });
+    }
+    
+    return attendees;
+  }
+
+  /**
+   * Get email from team member name (basic implementation)
+   */
+  private getEmailFromName(name: string): string | null {
+    // This is a basic implementation - in a real system you'd query your database
+    // For now, return null since we don't have email mapping
+    return null;
+  }
+
+  /**
+   * Get default location for event types
+   */
+  private getDefaultLocation(eventType: string): string {
+    const locationMap: Record<string, string> = {
+      'MEETING': 'Rush University Medical Center - Conference Room TBD',
+      'CLINICAL_SERVICE': 'Rush University Medical Center',
+      'TRAINING': 'Rush Education Center',
+      'CONFERENCE': 'Location TBD',
+    };
+    
+    return locationMap[eventType] || '';
+  }
+
+  /**
+   * Build rich, professional description for Google Calendar event
+   */
+  private buildGoogleEventDescription(event: CalendarEvent): string {
+    const lines: string[] = [];
+    const metadata = event.metadata as any;
+
+    // Main description if provided
+    if (event.description) {
+      lines.push(event.description);
+      lines.push(''); // Empty line separator
+    }
+
+    // Task-specific formatting
+    if (metadata?.sourceType === 'task' || metadata?.sourceType === 'meeting_task') {
+      lines.push('📋 TASK DEADLINE DETAILS');
+      lines.push('═══════════════════════════════');
+      
+      if (metadata.taskName) {
+        lines.push(`📌 Task: ${metadata.taskName}`);
+      }
+      
+      if (metadata.taskPriority) {
+        const priorityEmoji = metadata.taskPriority === 'HIGH' ? '🔴' : 
+                             metadata.taskPriority === 'MEDIUM' ? '🟡' : '🟢';
+        lines.push(`${priorityEmoji} Priority: ${metadata.taskPriority}`);
+      }
+      
+      if (metadata.taskAssignees && metadata.taskAssignees.length > 0) {
+        lines.push(`👥 Responsible: ${metadata.taskAssignees.join(', ')}`);
+      }
+      
+      if (metadata.studyName) {
+        lines.push(`🔬 Study: ${metadata.studyName}`);
+      }
+      
+      if (metadata.meetingTitle) {
+        lines.push(`🤝 From Meeting: ${metadata.meetingTitle}`);
+      }
+      
+      lines.push(''); // Empty line separator
+    }
+
+    // Meeting-specific formatting
+    if (metadata?.sourceType === 'meeting') {
+      lines.push('🤝 MEETING DETAILS');
+      lines.push('═══════════════════════════════');
+      
+      if (metadata.meetingType) {
+        lines.push(`📊 Type: ${metadata.meetingType.replace('_', ' ').toUpperCase()}`);
+      }
+      
+      if (metadata.projectIds && metadata.projectIds.length > 0) {
+        lines.push(`📁 Projects: ${metadata.projectIds.length} project(s)`);
+      }
+      
+      if (metadata.studyIds && metadata.studyIds.length > 0) {
+        lines.push(`🔬 Studies: ${metadata.studyIds.length} study(ies)`);
+      }
+      
+      lines.push(''); // Empty line separator
+    }
+
+    // General event information
+    lines.push('📅 EVENT INFORMATION');
+    lines.push('═══════════════════════════════');
+    lines.push(`🏷️ Type: ${this.formatEventType(event.eventType)}`);
+    
+    if (event.location) {
+      lines.push(`📍 Location: ${event.location}`);
+    }
+    
+    if (event.duration) {
+      const hours = Math.floor(event.duration);
+      const minutes = Math.round((event.duration - hours) * 60);
+      if (hours > 0 && minutes > 0) {
+        lines.push(`⏱️ Duration: ${hours}h ${minutes}m`);
+      } else if (hours > 0) {
+        lines.push(`⏱️ Duration: ${hours}h`);
+      } else if (minutes > 0) {
+        lines.push(`⏱️ Duration: ${minutes}m`);
       }
     }
 
-    description += `\n\nManaged by LabSync - https://rush-lab-sync.replit.app`;
+    // Lab context
+    if (metadata?.labContext) {
+      lines.push(`🧪 Lab: ${metadata.labContext}`);
+    }
+
+    // Additional metadata
+    if (metadata?.additionalInfo) {
+      lines.push('');
+      lines.push('ℹ️ ADDITIONAL INFORMATION');
+      lines.push('═══════════════════════════════');
+      if (typeof metadata.additionalInfo === 'string') {
+        lines.push(metadata.additionalInfo);
+      } else {
+        Object.entries(metadata.additionalInfo).forEach(([key, value]) => {
+          lines.push(`${key}: ${value}`);
+        });
+      }
+    }
+
+    // Footer
+    lines.push('');
+    lines.push('──────────────────────────────────');
+    lines.push('🚀 Powered by LabSync');
+    lines.push('🌐 RICCC & RHEDAS Labs @ Rush');
+    lines.push('📧 Contact: riccclabs@gmail.com');
     
-    return description;
+    return lines.join('\n');
+  }
+
+  /**
+   * Format event type for display
+   */
+  private formatEventType(eventType: string): string {
+    const typeMap: Record<string, string> = {
+      'MEETING': '🤝 Meeting',
+      'CLINICAL_SERVICE': '🏥 Clinical Service',
+      'PTO': '🏖️ Time Off',
+      'TRAINING': '📚 Training',
+      'CONFERENCE': '🎤 Conference',
+      'HOLIDAY': '🎉 Holiday',
+      'OTHER': '📌 Other'
+    };
+    
+    return typeMap[eventType] || `📌 ${eventType}`;
   }
 
   /**
