@@ -6,7 +6,7 @@ import { Resend } from 'resend';
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { SecurityAuditLogger, auditAuthenticationMiddleware } from "./auditLogger";
 import multer from "multer";
-import { studyMilestones, users, labs, buckets, studies, tasks, teamMembers, standupMeetings, sessions, deadlines, labMembers, ideas, attachments } from "@shared/schema";
+import { studyMilestones, users, labs, buckets, studies, tasks, teamMembers, standupMeetings, sessions, deadlines, labMembers, ideas, attachments, calendarEvents } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
@@ -1160,6 +1160,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await SecurityAuditLogger.logDeleteAttempt(req, 'DEADLINE', req.params.id!, false, undefined, (error as Error).message);
       console.error("Error deleting deadline:", error);
       res.status(500).json({ message: "Failed to delete deadline" });
+    }
+  });
+
+  // Calendar Events routes
+  app.get("/api/calendar-events", isAuthenticated, async (req, res) => {
+    try {
+      const labId = req.query.labId as string;
+      if (!labId) {
+        return res.status(400).json({ message: "Lab ID is required" });
+      }
+      
+      const events = await storage.getCalendarEvents(labId);
+      res.json(events);
+    } catch (error) {
+      console.error("Error fetching calendar events:", error);
+      res.status(500).json({ message: "Failed to fetch calendar events" });
+    }
+  });
+
+  app.post("/api/calendar-events", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.claims?.sub;
+      const eventData = { ...req.body, userId };
+      const event = await storage.createCalendarEvent(eventData);
+      res.status(201).json(event);
+    } catch (error) {
+      console.error("Error creating calendar event:", error);
+      res.status(500).json({ message: "Failed to create calendar event" });
+    }
+  });
+
+  app.put("/api/calendar-events/:id", isAuthenticated, async (req, res) => {
+    try {
+      const event = await storage.updateCalendarEvent(req.params.id, req.body);
+      res.json(event);
+    } catch (error) {
+      console.error("Error updating calendar event:", error);
+      res.status(500).json({ message: "Failed to update calendar event" });
+    }
+  });
+
+  app.delete("/api/calendar-events/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.claims?.sub;
+      const eventId = req.params.id;
+
+      // Check authorization
+      const authResult = await storage.canDeleteEntity(userId, 'calendar_event', eventId);
+      if (!authResult.canDelete) {
+        await SecurityAuditLogger.logDeleteAttempt(req, 'CALENDAR_EVENT', eventId, false, undefined, authResult.reason);
+        return res.status(403).json({ 
+          error: "Forbidden", 
+          message: authResult.reason 
+        });
+      }
+
+      await storage.deleteCalendarEvent(req.params.id);
+      await SecurityAuditLogger.logSuccessfulDelete(req, 'CALENDAR_EVENT', req.params.id, authResult.method as string);
+      res.json({ 
+        message: "Calendar event deleted successfully",
+        deletedBy: authResult.method 
+      });
+    } catch (error) {
+      await SecurityAuditLogger.logDeleteAttempt(req, 'CALENDAR_EVENT', req.params.id, false, undefined, (error as Error).message);
+      console.error("Error deleting calendar event:", error);
+      res.status(500).json({ message: "Failed to delete calendar event" });
     }
   });
 

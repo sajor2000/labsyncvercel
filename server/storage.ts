@@ -113,6 +113,9 @@ import {
   type InsertResourcePermission,
   type CrossLabAccess,
   type InsertCrossLabAccess,
+  calendarEvents,
+  type CalendarEvent,
+  type InsertCalendarEvent,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, inArray, sql, gte, lte, or, ne } from "drizzle-orm";
@@ -206,6 +209,12 @@ export interface IStorage {
   createDeadline(deadline: InsertDeadline): Promise<Deadline>;
   updateDeadline(id: string, updates: Partial<InsertDeadline>): Promise<Deadline>;
   deleteDeadline(id: string): Promise<void>;
+
+  // Calendar Events operations
+  getCalendarEvents(labId?: string): Promise<CalendarEvent[]>;
+  createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateCalendarEvent(id: string, updates: Partial<InsertCalendarEvent>): Promise<CalendarEvent>;
+  deleteCalendarEvent(id: string): Promise<void>;
 
   // Standups operations (for new endpoint compatibility)
   getStandups(labId?: string): Promise<StandupMeeting[]>;
@@ -712,6 +721,10 @@ export class DatabaseStorage implements IStorage {
         case 'deadline':
           entity = await this.getDeadline(entityId);
           break;
+        case 'calendar_event':
+          entity = await this.getCalendarEvent(entityId);
+          ownerField = 'userId';
+          break;
         case 'standup':
           entity = await this.getStandupMeeting(entityId);
           break;
@@ -788,6 +801,12 @@ export class DatabaseStorage implements IStorage {
           labId = deadline?.labId || null;
           break;
 
+        case 'calendar_event':
+          const [calendarEvent] = await db.select({ labId: calendarEvents.labId })
+            .from(calendarEvents).where(eq(calendarEvents.id, entityId));
+          labId = calendarEvent?.labId || null;
+          break;
+
         case 'standup':
           const [standup] = await db.select({ labId: standupMeetings.labId })
             .from(standupMeetings).where(eq(standupMeetings.id, entityId));
@@ -849,6 +868,7 @@ export class DatabaseStorage implements IStorage {
           return { canDelete: member.isAdmin || member.canEditAllProjects, reason: 'Admin or project editor permission' };
         case 'deadline':
         case 'standup':
+        case 'calendar_event':
           return { canDelete: member.isAdmin || member.canEditAllProjects, reason: 'Admin or project editor permission' };
         default:
           return { canDelete: member.isAdmin, reason: 'Admin permission' };
@@ -1337,6 +1357,44 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDeadline(id: string): Promise<void> {
     await db.delete(deadlines).where(eq(deadlines.id, id));
+  }
+
+  // Calendar Events operations
+  async getCalendarEvents(labId?: string): Promise<CalendarEvent[]> {
+    if (labId) {
+      return await db
+        .select()
+        .from(calendarEvents)
+        .where(eq(calendarEvents.labId, labId))
+        .orderBy(asc(calendarEvents.date));
+    }
+    return await db.select().from(calendarEvents).orderBy(asc(calendarEvents.date));
+  }
+
+  async createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent> {
+    const [newEvent] = await db.insert(calendarEvents).values(event).returning();
+    return newEvent;
+  }
+
+  async updateCalendarEvent(id: string, updates: Partial<InsertCalendarEvent>): Promise<CalendarEvent> {
+    const [updatedEvent] = await db
+      .update(calendarEvents)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(calendarEvents.id, id))
+      .returning();
+    return updatedEvent;
+  }
+
+  async deleteCalendarEvent(id: string): Promise<void> {
+    await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
+  }
+
+  async getCalendarEvent(id: string): Promise<CalendarEvent | undefined> {
+    const [event] = await db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.id, id));
+    return event;
   }
 
   // Standups operations (for new endpoint compatibility)

@@ -13,13 +13,15 @@ import { Separator } from "@/components/ui/separator";
 interface CalendarEvent {
   id: string;
   title: string;
-  type: "standup" | "deadline" | "meeting" | "milestone" | "task" | "study" | "irb" | "regulatory";
+  type: "standup" | "deadline" | "meeting" | "milestone" | "task" | "study" | "irb" | "regulatory" | "clinical_service" | "pto";
   date: string;
   time?: string;
   description?: string;
   participants?: number;
   status?: string;
   priority?: string;
+  piClinicalService?: string;
+  pto?: string;
   metadata?: {
     studyId?: string;
     taskId?: string;
@@ -48,6 +50,8 @@ export default function Calendar() {
     meetings: true,
     milestones: true,
     irb: true,
+    clinicalService: true,
+    pto: true,
   });
   const { selectedLab } = useLabContext();
 
@@ -69,6 +73,12 @@ export default function Calendar() {
 
   const { data: studies = [] } = useQuery<any[]>({
     queryKey: ['/api/studies', selectedLab?.id],
+    enabled: !!selectedLab?.id,
+  });
+
+  // Fetch calendar events (PTO and Clinical Service blocks)
+  const { data: calendarEvents = [] } = useQuery<any[]>({
+    queryKey: ['/api/calendar-events', selectedLab?.id],
     enabled: !!selectedLab?.id,
   });
 
@@ -208,6 +218,38 @@ export default function Calendar() {
           studyId: study.id,
         },
       })),
+
+    // PTO Events (Cyan) - Personal Time Off tracking
+    ...calendarEvents
+      .filter((event: any) => event.pto)
+      .map((event: any) => ({
+        id: `pto-${event.id}`,
+        title: `PTO: ${event.title}`,
+        type: "pto" as const,
+        date: event.date,
+        time: event.startTime ? `${event.startTime}${event.endTime ? ` - ${event.endTime}` : ''}` : undefined,
+        description: event.description,
+        pto: event.pto,
+        metadata: {
+          assignees: [event.userId],
+        },
+      })),
+
+    // Clinical Service Events (Teal) - PI Clinical Service blocks
+    ...calendarEvents
+      .filter((event: any) => event.piClinicalService)
+      .map((event: any) => ({
+        id: `clinical-${event.id}`,
+        title: `Clinical: ${event.title}`,
+        type: "clinical_service" as const,
+        date: event.date,
+        time: event.startTime ? `${event.startTime}${event.endTime ? ` - ${event.endTime}` : ''}` : undefined,
+        description: event.description,
+        piClinicalService: event.piClinicalService,
+        metadata: {
+          assignees: [event.userId],
+        },
+      })),
   ];
 
   // Apply filters to events
@@ -221,6 +263,8 @@ export default function Calendar() {
       case "milestone": return eventFilters.milestones;
       case "irb": return eventFilters.irb;
       case "regulatory": return eventFilters.irb;
+      case "clinical_service": return eventFilters.clinicalService;
+      case "pto": return eventFilters.pto;
       default: return true;
     }
   });
@@ -311,6 +355,8 @@ export default function Calendar() {
       case "study": return "bg-indigo-500";
       case "irb":
       case "regulatory": return "bg-green-600";
+      case "pto": return "bg-cyan-500";
+      case "clinical_service": return "bg-teal-600";
       default: return "bg-gray-500";
     }
   };
@@ -423,7 +469,9 @@ export default function Calendar() {
                            type === 'studies' ? 'Study Milestones' :
                            type === 'meetings' ? 'Meetings' :
                            type === 'milestones' ? 'Milestones' :
-                           type === 'irb' ? 'IRB Submissions' : type}
+                           type === 'irb' ? 'IRB Submissions' :
+                           type === 'clinicalService' ? 'PI Clinical Service' :
+                           type === 'pto' ? 'PTO Events' : type}
                         </label>
                       </div>
                     ))}
@@ -629,6 +677,14 @@ export default function Calendar() {
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-green-600 rounded"></div>
                   <span className="text-sm">IRB Submissions</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-cyan-500 rounded"></div>
+                  <span className="text-sm">PTO Events</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-teal-600 rounded"></div>
+                  <span className="text-sm">Clinical Service</span>
                 </div>
               </div>
             </CardContent>

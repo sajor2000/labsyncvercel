@@ -1040,6 +1040,11 @@ export const calendarEvents = pgTable("calendar_events", {
   color: varchar("color").default("#4C9A92"), // Event color
   isVisible: boolean("is_visible").default(true), // For calendar filtering
   metadata: json("metadata"), // Additional event data
+  
+  // Specific calendar fields
+  piClinicalService: varchar("pi_clinical_service"), // PI Clinical Service assignment
+  pto: varchar("pto"), // PTO details/type
+  
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
