@@ -204,8 +204,8 @@ export class WorkflowService {
       const currentDate = new Date();
       const meeting = await storage.createStandupMeeting({
         transcript,
-        labId,
-        meetingType,
+        labId: labId || 'default',
+        meetingType: (meetingType as any) || 'DAILY_STANDUP',
         meetingDate: currentDate,
         scheduledDate: currentDate,
         startTime: currentDate,
@@ -237,7 +237,7 @@ export class WorkflowService {
         await storage.createActionItem({
           meetingId: meeting.id,
           description: task.task || 'Task description not available',
-          assignee: task.member || 'Unassigned',
+          assigneeId: task.member || 'unassigned',
           dueDate,
           status: 'OPEN',
         });

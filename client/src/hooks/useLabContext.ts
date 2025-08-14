@@ -4,12 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 interface Lab {
   id: string;
   name: string;
+  shortName?: string;
   primaryColor?: string;
 }
 
 interface LabContextType {
   selectedLab: Lab | null;
   setSelectedLab: (lab: Lab) => void;
+  setAllLabs: (labs: Lab[]) => void;
   allLabs: Lab[];
   isLoading: boolean;
 }
@@ -26,8 +28,8 @@ export function useLabContext() {
     });
 
     const allLabs: Lab[] = user ? [
-      { id: 'riccc', name: 'RICCC (Rush Institute for Clinical Care and Research)', primaryColor: '#4C9A92' },
-      { id: 'rhedas', name: 'RHEDAS (Rush Healthcare Data & Analytics)', primaryColor: '#5DD5E6' }
+      { id: 'riccc', name: 'RICCC (Rush Institute for Clinical Care and Research)', shortName: 'RICCC', primaryColor: '#4C9A92' },
+      { id: 'rhedas', name: 'RHEDAS (Rush Healthcare Data & Analytics)', shortName: 'RHEDAS', primaryColor: '#5DD5E6' }
     ] : [];
 
     const [selectedLab, setSelectedLab] = useState<Lab | null>(
@@ -37,6 +39,7 @@ export function useLabContext() {
     return {
       selectedLab,
       setSelectedLab,
+      setAllLabs: () => {}, // Fallback implementation
       allLabs,
       isLoading,
     };
@@ -51,6 +54,7 @@ export function useLabContextValue(): LabContextType {
   return {
     selectedLab: null,
     setSelectedLab: () => {},
+    setAllLabs: () => {},
     allLabs: [],
     isLoading: true,
   };

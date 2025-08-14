@@ -841,7 +841,7 @@ export class DatabaseStorage implements IStorage {
               }
             })()
           ).where(eq(sql`"id"`, entityId)).limit(1);
-          labId = entity[0]?.labId || null;
+          labId = String(entity[0]?.labId || '');
           break;
       }
 
@@ -867,7 +867,7 @@ export class DatabaseStorage implements IStorage {
 
       switch (entityType) {
         case 'idea':
-          return { canDelete: member.isAdmin || member.canApproveIdeas, reason: 'Admin or idea approver permission' };
+          return { canDelete: Boolean(member.isAdmin || member.canApproveIdeas), reason: 'Admin or idea approver permission' };
         case 'task':
         case 'study':
         case 'bucket':
@@ -875,13 +875,13 @@ export class DatabaseStorage implements IStorage {
         case 'automation_rule':
         case 'automated_schedule':
         case 'workflow_template':
-          return { canDelete: member.isAdmin || member.canEditAllProjects, reason: 'Admin or project editor permission' };
+          return { canDelete: Boolean(member.isAdmin || member.canEditAllProjects), reason: 'Admin or project editor permission' };
         case 'deadline':
         case 'standup':
         case 'calendar_event':
-          return { canDelete: member.isAdmin || member.canEditAllProjects, reason: 'Admin or project editor permission' };
+          return { canDelete: Boolean(member.isAdmin || member.canEditAllProjects), reason: 'Admin or project editor permission' };
         default:
-          return { canDelete: member.isAdmin, reason: 'Admin permission' };
+          return { canDelete: member.isAdmin || false, reason: 'Admin permission' };
       }
     } catch (error) {
       console.error('Admin override validation error:', error);
@@ -1376,9 +1376,9 @@ export class DatabaseStorage implements IStorage {
         .select()
         .from(calendarEvents)
         .where(eq(calendarEvents.labId, labId))
-        .orderBy(asc(calendarEvents.date));
+        .orderBy(asc(calendarEvents.startDate));
     }
-    return await db.select().from(calendarEvents).orderBy(asc(calendarEvents.date));
+    return await db.select().from(calendarEvents).orderBy(asc(calendarEvents.startDate));
   }
 
   async createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent> {
@@ -1905,6 +1905,82 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.id, notificationId));
   }
 
+  // PHASE 2: SECURITY AUDIT LOGGING IMPLEMENTATION
+  async createSecurityAuditLog(log: any): Promise<any> {
+    const [newLog] = await db
+      .insert(securityAuditLogs)
+      .values({
+        action: log.action || "READ",
+        entityType: log.entityType || "UNKNOWN",
+        entityId: log.entityId,
+        userId: log.userId,
+        userEmail: log.userEmail,
+        labId: log.labId,
+        authorizationMethod: log.authorizationMethod,
+        requiredPermission: log.requiredPermission,
+        wasAuthorized: log.wasAuthorized || false,
+        ipAddress: log.ipAddress,
+        userAgent: log.userAgent,
+        endpoint: log.endpoint,
+        httpMethod: log.httpMethod,
+        details: log.details,
+        errorMessage: log.errorMessage,
+        sessionId: log.sessionId,
+      })
+      .returning();
+    return newLog;
+  }
+
+  async getSecurityAuditLogs(filters?: {
+    userId?: string;
+    labId?: string;
+    entityType?: string;
+    action?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }): Promise<any[]> {
+    const conditions = [];
+    
+    if (filters?.userId) conditions.push(eq(securityAuditLogs.userId, filters.userId));
+    if (filters?.labId) conditions.push(eq(securityAuditLogs.labId, filters.labId));
+    if (filters?.entityType) conditions.push(eq(securityAuditLogs.entityType, filters.entityType as any));
+    if (filters?.action) conditions.push(eq(securityAuditLogs.action, filters.action as any));
+    if (filters?.startDate) conditions.push(sql`${securityAuditLogs.timestamp} >= ${filters.startDate}`);
+    if (filters?.endDate) conditions.push(sql`${securityAuditLogs.timestamp} <= ${filters.endDate}`);
+
+    let query = db
+      .select()
+      .from(securityAuditLogs)
+      .orderBy(desc(securityAuditLogs.timestamp));
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+
+    return await query;
+  }
+
+  async getFailedAccessAttempts(labId?: string, hours?: number): Promise<any[]> {
+    const conditions = [eq(securityAuditLogs.wasAuthorized, false)];
+    
+    if (labId) conditions.push(eq(securityAuditLogs.labId, labId));
+    if (hours) {
+      const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+      conditions.push(sql`${securityAuditLogs.timestamp} >= ${since}`);
+    }
+
+    return await db
+      .select()
+      .from(securityAuditLogs)
+      .where(and(...conditions))
+      .orderBy(desc(securityAuditLogs.timestamp));
+  }
+
   // PHASE 2: ATTACHMENT OPERATIONS
 
   async getAllAttachments(userId?: string): Promise<Attachment[]> {
@@ -2086,7 +2162,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Project Tags
-  async getProjectTags(projectId: string): Promise<ProjectTag[]>;
   async getProjectTags(projectId: string): Promise<ProjectTag[]> {
     return await db.select().from(projectTags).where(eq(projectTags.projectId, projectId));
   }

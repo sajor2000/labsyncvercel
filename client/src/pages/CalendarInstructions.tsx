@@ -23,7 +23,16 @@ export default function CalendarInstructions() {
     enabled: isAuthenticated,
   });
 
-  const { data: integrationData, isLoading: integrationLoading } = useQuery({
+  const { data: integrationData, isLoading: integrationLoading } = useQuery<{
+    subscriptionUrl?: string;
+    labName?: string;
+    integration?: {
+      type?: string;
+      description?: string;
+      features?: string[];
+      colorCoding?: string;
+    };
+  }>({
     queryKey: ['/api/calendar/google-integration', selectedLab],
     enabled: isAuthenticated && !!selectedLab,
   });

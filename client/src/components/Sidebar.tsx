@@ -73,7 +73,12 @@ export function Sidebar() {
   // Update lab context when labs are loaded
   useEffect(() => {
     if (labs.length > 0 && setAllLabs) {
-      setAllLabs(labs);
+      setAllLabs(labs.map(lab => ({
+        id: lab.id,
+        name: lab.name,
+        shortName: lab.shortName || undefined,
+        primaryColor: lab.primaryColor || undefined
+      })));
     }
   }, [labs, setAllLabs]);
 

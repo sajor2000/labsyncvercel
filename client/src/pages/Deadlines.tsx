@@ -633,7 +633,7 @@ export default function Deadlines() {
       </div>
 
       {showCalendarSync && (
-        <CalendarSubscription />
+        <CalendarSubscription labId="default" labName="Lab Calendar" />
       )}
 
       {showBulkUpload && (

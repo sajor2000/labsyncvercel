@@ -9,6 +9,7 @@ interface LabProviderProps {
 interface Lab {
   id: string;
   name: string;
+  shortName?: string;
   primaryColor?: string;
 }
 
@@ -21,8 +22,8 @@ export function LabProvider({ children }: LabProviderProps) {
 
   // Define available labs
   const allLabs: Lab[] = user ? [
-    { id: 'riccc', name: 'RICCC (Rush Institute for Clinical Care and Research)', primaryColor: '#4C9A92' },
-    { id: 'rhedas', name: 'RHEDAS (Rush Healthcare Data & Analytics)', primaryColor: '#5DD5E6' }
+    { id: 'riccc', name: 'RICCC (Rush Institute for Clinical Care and Research)', shortName: 'RICCC', primaryColor: '#4C9A92' },
+    { id: 'rhedas', name: 'RHEDAS (Rush Healthcare Data & Analytics)', shortName: 'RHEDAS', primaryColor: '#5DD5E6' }
   ] : [];
 
   // State for selected lab - initialize with first lab if available
@@ -38,6 +39,7 @@ export function LabProvider({ children }: LabProviderProps) {
   const value = {
     selectedLab,
     setSelectedLab,
+    setAllLabs: () => {}, // Placeholder implementation
     allLabs,
     isLoading,
   };

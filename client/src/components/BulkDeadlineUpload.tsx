@@ -30,11 +30,11 @@ export function BulkDeadlineUpload() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const uploadMutation = useMutation({
+  const uploadMutation = useMutation<BulkUploadResult, Error, any[]>({
     mutationFn: async (deadlines: any[]) => {
-      return await apiRequest("/api/deadlines/bulk-upload", "POST", { deadlines });
+      return (await apiRequest("/api/deadlines/bulk-upload", "POST", { deadlines })) as unknown as BulkUploadResult;
     },
-    onSuccess: (result) => {
+    onSuccess: (result: BulkUploadResult) => {
       setUploadResult(result);
       queryClient.invalidateQueries({ queryKey: ["/api/deadlines"] });
       

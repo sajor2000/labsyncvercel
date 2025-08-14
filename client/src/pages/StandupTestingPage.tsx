@@ -113,7 +113,7 @@ All: Sounds good. Thanks everyone!`;
       return apiRequest(`/api/standups/meeting-email/${meetingId}`, 'GET');
     },
     onSuccess: (data) => {
-      setEmailHtml(data.html);
+      setEmailHtml((data as any)?.html || '');
       toast({
         title: "Email HTML Generated",
         description: "Professional email template has been created",
@@ -140,7 +140,7 @@ All: Sounds good. Thanks everyone!`;
       setEmailResult(data);
       toast({
         title: "Email Sent Successfully",
-        description: `Email delivered to recipients. Message ID: ${data.messageId || 'No ID'}`,
+        description: `Email delivered to recipients. Message ID: ${(data as any)?.messageId || 'No ID'}`,
       });
     },
     onError: (error) => {
@@ -201,11 +201,11 @@ All: Sounds good. Thanks everyone!`;
       const meeting = await processMeetingMutation.mutateAsync(transcript);
       
       // Step 2: Generate email HTML
-      await generateEmailMutation.mutateAsync(meeting.id);
+      await generateEmailMutation.mutateAsync((meeting as any)?.id || '');
       
       // Step 3: Send email
       await sendEmailMutation.mutateAsync({
-        meetingId: meeting.id,
+        meetingId: (meeting as any)?.id || '',
         recipients: attendeeEmails,
         labName: labName,
       });

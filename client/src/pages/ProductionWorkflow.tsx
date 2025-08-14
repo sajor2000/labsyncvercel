@@ -108,14 +108,12 @@ export default function ProductionWorkflow() {
   // Cleanup mutation
   const cleanupMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/workflow/cleanup', {
-        method: 'POST',
-      });
+      return await apiRequest('/api/workflow/cleanup', 'POST', {});
     },
     onSuccess: (result) => {
       toast({
         title: "Cleanup Completed",
-        description: `Cleaned up ${result.deletedCount} expired workflow steps`,
+        description: `Cleaned up ${(result as any)?.deletedCount || 0} expired workflow steps`,
       });
     },
   });
@@ -420,8 +418,7 @@ export default function ProductionWorkflow() {
         </Card>
       </div>
 
-      {/* Database Workflow Steps Panel */}
-      {workflowSteps && workflowSteps.length > 0 && (
+      {workflowSteps && Array.isArray(workflowSteps) && workflowSteps.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -439,7 +436,7 @@ export default function ProductionWorkflow() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {workflowSteps.map((step: WorkflowStep) => (
+              {(workflowSteps as WorkflowStep[]).map((step: WorkflowStep) => (
                 <div key={step.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-3">
                     {getStepIcon(step.status)}
@@ -470,7 +467,7 @@ export default function ProductionWorkflow() {
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Production Features Info */}
       <Card className="border-teal-200 bg-teal-50">
