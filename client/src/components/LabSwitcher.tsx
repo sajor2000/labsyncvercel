@@ -5,6 +5,22 @@ import { useLabContext } from "@/hooks/useLabContext";
 export function LabSwitcher() {
   const { selectedLab, setSelectedLab, allLabs } = useLabContext();
 
+  // Helper function to get lab abbreviation
+  const getLabAbbreviation = (labName: string | undefined) => {
+    if (!labName) return "No lab";
+    
+    // Map full names to abbreviations
+    if (labName.toLowerCase().includes('rush healthcare data') || labName.toLowerCase().includes('rhedas')) {
+      return 'RHEDAS';
+    }
+    if (labName.toLowerCase().includes('rush interdisciplinary') || labName.toLowerCase().includes('riccc')) {
+      return 'RICCC';
+    }
+    
+    // Fallback: extract from parentheses or use name as-is
+    return labName.match(/\(([^)]+)\)$/)?.[1] || labName;
+  };
+
   // Safety check - handle loading state when allLabs is undefined
   if (!allLabs || allLabs.length === 0) {
     return (
@@ -28,10 +44,7 @@ export function LabSwitcher() {
       <div className="flex items-center w-[200px] px-3 py-2 rounded-md border bg-muted/50">
         <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
         <span className="truncate text-sm text-muted-foreground">
-          {selectedLab?.name 
-            ? selectedLab.name.match(/\(([^)]+)\)$/)?.[1] || selectedLab.name
-            : "No lab"
-          }
+          {getLabAbbreviation(selectedLab?.name)}
         </span>
       </div>
     );
@@ -51,10 +64,7 @@ export function LabSwitcher() {
         />
         <Building2 className="mr-2 h-4 w-4" />
         <span className="truncate">
-          {selectedLab?.name 
-            ? selectedLab.name.match(/\(([^)]+)\)$/)?.[1] || selectedLab.name
-            : "Select lab..."
-          }
+          {selectedLab?.name ? getLabAbbreviation(selectedLab.name) : "Select lab..."}
         </span>
       </div>
       <ArrowLeftRight className="ml-2 h-4 w-4 shrink-0 opacity-70" />
