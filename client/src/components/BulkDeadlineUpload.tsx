@@ -139,7 +139,7 @@ export function BulkDeadlineUpload() {
 
   const generateSampleCsv = () => {
     const sample = `title,description,type,dueDate,priority,status,assignedTo,relatedStudy,notes
-"Grant Application Deadline","NIH R01 Application Due","GRANT_APPLICATION","2025-03-15","HIGH","PENDING","jcrojas@clif-icu.org","Sepsis Study","Final submission"
+"Grant Application Deadline","NIH R01 Application Due","GRANT_APPLICATION","2025-03-15","HIGH","PENDING","notifications@labsync.clif-icu.org","Sepsis Study","Final submission"
 "Paper Submission","NEJM Manuscript Deadline","PAPER_SUBMISSION","2025-02-28","HIGH","PENDING","","Cardiac Study","First draft complete"
 "IRB Renewal","Annual IRB Review","IRB_SUBMISSION","2025-04-01","MEDIUM","PENDING","coordinator@lab.com","","Annual renewal required"
 "Abstract Deadline","AHA Conference Abstract","ABSTRACT_SUBMISSION","2025-01-30","MEDIUM","PENDING","student@university.edu","Heart Study","250 word limit"`;
