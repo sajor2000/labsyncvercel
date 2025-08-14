@@ -283,9 +283,9 @@ export class GoogleCalendarService {
    */
   private getDefaultLocation(eventType: string): string {
     const locationMap: Record<string, string> = {
-      'MEETING': 'Rush University Medical Center - Conference Room TBD',
+      'MEETING': 'Conference Room TBD',
       'CLINICAL_SERVICE': 'Rush University Medical Center',
-      'TRAINING': 'Rush Education Center',
+      'TRAINING': 'Education Center',
       'CONFERENCE': 'Location TBD',
     };
     
