@@ -14,14 +14,18 @@ interface CalendarEvent {
   id: string;
   title: string;
   type: "standup" | "deadline" | "meeting" | "milestone" | "task" | "study" | "irb" | "regulatory" | "clinical_service" | "pto";
-  date: string;
+  startDate: string;
+  endDate: string;
+  allDay?: boolean;
   time?: string;
   description?: string;
   participants?: number;
   status?: string;
   priority?: string;
-  piClinicalService?: string;
-  pto?: string;
+  location?: string;
+  duration?: number; // in hours
+  piClinicalService?: boolean;
+  pto?: boolean;
   metadata?: {
     studyId?: string;
     taskId?: string;
@@ -90,76 +94,98 @@ export default function Calendar() {
   // Combine all events from multiple sources
   const allEvents: CalendarEvent[] = [
     // Standups (Blue)
-    ...standups.map((standup: any) => ({
-      id: `standup-${standup.id}`,
-      title: 'Standup Meeting',
-      type: "standup" as const,
-      date: standup.scheduledDate,
-      time: (() => {
-        if (standup.startTime && standup.startTime.includes(':')) {
-          // Handle time string format like "14:30:00"
-          const [hours, minutes] = standup.startTime.split(':');
-          const startDate = new Date();
-          startDate.setHours(parseInt(hours), parseInt(minutes), 0);
-          let timeStr = startDate.toLocaleTimeString('en-US', { 
-            hour: 'numeric', 
-            minute: '2-digit',
-            hour12: true 
-          });
-          
-          if (standup.endTime && standup.endTime.includes(':')) {
-            const [endHours, endMinutes] = standup.endTime.split(':');
-            const endDate = new Date();
-            endDate.setHours(parseInt(endHours), parseInt(endMinutes), 0);
-            const endTimeStr = endDate.toLocaleTimeString('en-US', { 
+    ...standups.map((standup: any) => {
+      const baseDate = standup.scheduledDate;
+      let startDate = baseDate;
+      let endDate = baseDate;
+      let duration = 1; // Default 1 hour
+      
+      // Calculate duration from start/end times
+      if (standup.startTime && standup.endTime) {
+        const start = new Date(`${baseDate}T${standup.startTime}`);
+        const end = new Date(`${baseDate}T${standup.endTime}`);
+        duration = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60)));
+        startDate = start.toISOString();
+        endDate = end.toISOString();
+      }
+      
+      return {
+        id: `standup-${standup.id}`,
+        title: 'Standup Meeting',
+        type: "standup" as const,
+        startDate,
+        endDate,
+        allDay: false,
+        duration,
+        time: (() => {
+          if (standup.startTime && standup.startTime.includes(':')) {
+            const [hours, minutes] = standup.startTime.split(':');
+            const startDate = new Date();
+            startDate.setHours(parseInt(hours), parseInt(minutes), 0);
+            let timeStr = startDate.toLocaleTimeString('en-US', { 
               hour: 'numeric', 
               minute: '2-digit',
               hour12: true 
             });
-            timeStr += ` - ${endTimeStr}`;
+            
+            if (standup.endTime && standup.endTime.includes(':')) {
+              const [endHours, endMinutes] = standup.endTime.split(':');
+              const endDate = new Date();
+              endDate.setHours(parseInt(endHours), parseInt(endMinutes), 0);
+              const endTimeStr = endDate.toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true 
+              });
+              timeStr += ` - ${endTimeStr}`;
+            }
+            return timeStr;
           }
-          return timeStr;
-        }
-        return undefined;
-      })(),
-      description: standup.aiSummary || standup.transcript || 'Weekly standup meeting',
-      participants: (() => {
-        if (typeof standup.participants === 'string') {
-          try {
-            return JSON.parse(standup.participants).length;
-          } catch {
-            return 0;
+          return undefined;
+        })(),
+        description: standup.aiSummary || standup.transcript || 'Weekly standup meeting',
+        participants: (() => {
+          if (typeof standup.participants === 'string') {
+            try {
+              return JSON.parse(standup.participants).length;
+            } catch {
+              return 0;
+            }
           }
+          return Array.isArray(standup.participants) ? standup.participants.length : 0;
+        })(),
+        status: standup.isActive ? 'SCHEDULED' : 'COMPLETED',
+        metadata: {
+          meetingType: standup.meetingType || 'Weekly Standup',
+          hasRecording: !!standup.recordingUrl,
+          hasTranscript: !!standup.transcript,
         }
-        return Array.isArray(standup.participants) ? standup.participants.length : 0;
-      })(),
-      status: standup.isActive ? 'SCHEDULED' : 'COMPLETED',
-      metadata: {
-        meetingType: standup.meetingType || 'Weekly Standup',
-        hasRecording: !!standup.recordingUrl,
-        hasTranscript: !!standup.transcript,
-      }
-    })),
+      };
+    }),
     
-    // Deadlines (Red)
+    // Deadlines (Red) - All day events
     ...deadlines.map((deadline: any) => ({
       id: `deadline-${deadline.id}`,
       title: deadline.title,
       type: "deadline" as const,
-      date: deadline.dueDate,
+      startDate: deadline.dueDate,
+      endDate: deadline.dueDate,
+      allDay: true,
       description: deadline.description,
       status: deadline.status,
       priority: deadline.priority,
     })),
     
-    // Task Deadlines (Orange)
+    // Task Deadlines (Orange) - All day events
     ...tasks
       .filter((task: any) => task.dueDate)
       .map((task: any) => ({
         id: `task-${task.id}`,
         title: `Task: ${task.title}`,
         type: "task" as const,
-        date: task.dueDate,
+        startDate: task.dueDate,
+        endDate: task.dueDate,
+        allDay: true,
         description: task.description,
         status: task.status,
         priority: task.priority,
@@ -169,12 +195,14 @@ export default function Calendar() {
         },
       })),
     
-    // Study Milestones (Purple) - now from dedicated milestones table
+    // Study Milestones (Purple) - All day events
     ...milestones.map((milestone: any) => ({
       id: `milestone-${milestone.id}`,
       title: `${milestone.name}`,
       type: "milestone" as const,
-      date: milestone.targetDate,
+      startDate: milestone.targetDate,
+      endDate: milestone.targetDate,
+      allDay: true,
       description: milestone.description,
       status: milestone.status,
       priority: milestone.priority,
@@ -186,14 +214,16 @@ export default function Calendar() {
       },
     })),
 
-    // IRB Submissions (Green) - from studies with IRB dates
+    // IRB Submissions (Green) - All day events
     ...studies
       .filter((study: any) => study.irbSubmissionDate)
       .map((study: any) => ({
         id: `irb-${study.id}`,
         title: `IRB: ${study.name}`,
         type: "irb" as const,
-        date: study.irbSubmissionDate,
+        startDate: study.irbSubmissionDate,
+        endDate: study.irbSubmissionDate,
+        allDay: true,
         description: `IRB submission for ${study.name}`,
         status: study.irbStatus,
         priority: "HIGH",
@@ -203,14 +233,16 @@ export default function Calendar() {
         },
       })),
 
-    // Study Due Dates (Indigo) - for studies with general due dates
+    // Study Due Dates (Indigo) - All day events
     ...studies
       .filter((study: any) => study.dueDate)
       .map((study: any) => ({
         id: `study-${study.id}`,
         title: `Study: ${study.name}`,
         type: "study" as const,
-        date: study.dueDate,
+        startDate: study.dueDate,
+        endDate: study.dueDate,
+        allDay: true,
         description: study.notes,
         status: study.status,
         priority: study.priority,
@@ -219,37 +251,57 @@ export default function Calendar() {
         },
       })),
 
-    // PTO Events (Cyan) - Personal Time Off tracking
+    // PTO Events (Cyan) - Support multi-day and multi-hour events
     ...calendarEvents
       .filter((event: any) => event.pto)
-      .map((event: any) => ({
-        id: `pto-${event.id}`,
-        title: `PTO: ${event.title}`,
-        type: "pto" as const,
-        date: event.date,
-        time: event.startTime ? `${event.startTime}${event.endTime ? ` - ${event.endTime}` : ''}` : undefined,
-        description: event.description,
-        pto: event.pto,
-        metadata: {
-          assignees: [event.userId],
-        },
-      })),
+      .map((event: any) => {
+        const start = new Date(event.startDate);
+        const end = new Date(event.endDate);
+        const duration = event.allDay ? 0 : Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60));
+        
+        return {
+          id: `pto-${event.id}`,
+          title: `PTO: ${event.title}`,
+          type: "pto" as const,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          allDay: event.allDay,
+          duration,
+          time: event.allDay ? 'All Day' : `${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`,
+          description: event.description,
+          location: event.location,
+          pto: event.pto,
+          metadata: {
+            assignees: [event.userId],
+          },
+        };
+      }),
 
-    // Clinical Service Events (Teal) - PI Clinical Service blocks
+    // Clinical Service Events (Teal) - Support multi-day and multi-hour events
     ...calendarEvents
       .filter((event: any) => event.piClinicalService)
-      .map((event: any) => ({
-        id: `clinical-${event.id}`,
-        title: `Clinical: ${event.title}`,
-        type: "clinical_service" as const,
-        date: event.date,
-        time: event.startTime ? `${event.startTime}${event.endTime ? ` - ${event.endTime}` : ''}` : undefined,
-        description: event.description,
-        piClinicalService: event.piClinicalService,
-        metadata: {
-          assignees: [event.userId],
-        },
-      })),
+      .map((event: any) => {
+        const start = new Date(event.startDate);
+        const end = new Date(event.endDate);
+        const duration = event.allDay ? 0 : Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60));
+        
+        return {
+          id: `clinical-${event.id}`,
+          title: `Clinical: ${event.title}`,
+          type: "clinical_service" as const,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          allDay: event.allDay,
+          duration,
+          time: event.allDay ? 'All Day' : `${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`,
+          description: event.description,
+          location: event.location,
+          piClinicalService: event.piClinicalService,
+          metadata: {
+            assignees: [event.userId],
+          },
+        };
+      }),
   ];
 
   // Apply filters to events
@@ -309,20 +361,35 @@ export default function Calendar() {
   const getEventsForDay = (day: number | Date) => {
     if (!day) return [];
     
-    let dateStr: string;
+    let targetDate: Date;
     if (day instanceof Date) {
-      dateStr = day.toISOString().split('T')[0];
+      targetDate = day;
     } else {
-      dateStr = new Date(
+      targetDate = new Date(
         currentDate.getFullYear(),
         currentDate.getMonth(),
         day
-      ).toISOString().split('T')[0];
+      );
     }
     
-    return events.filter(event => 
-      event.date.startsWith(dateStr)
-    );
+    const targetDateStr = targetDate.toISOString().split('T')[0];
+    
+    return events.filter(event => {
+      const startDate = new Date(event.startDate);
+      const endDate = new Date(event.endDate);
+      
+      // Check if target date falls within the event's date range
+      if (event.allDay) {
+        // For all-day events, include any day within the range
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        return targetDateStr >= startDateStr && targetDateStr <= endDateStr;
+      } else {
+        // For timed events, check if it's on the same day as start date
+        const eventDateStr = startDate.toISOString().split('T')[0];
+        return eventDateStr === targetDateStr;
+      }
+    });
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -529,12 +596,22 @@ export default function Calendar() {
                                 <Dialog key={event.id}>
                                   <DialogTrigger asChild>
                                     <div
-                                      className={`text-xs p-1 rounded text-white truncate cursor-pointer hover:opacity-80 ${getEventTypeColor(event.type)}`}
-                                      title={event.title}
+                                      className={`text-xs p-1 rounded text-white truncate cursor-pointer hover:opacity-80 ${getEventTypeColor(event.type)} ${
+                                        event.allDay ? 'border-2 border-dashed border-white/30' : ''
+                                      }`}
+                                      title={`${event.title}${event.allDay ? ' (All Day)' : ''}${event.duration && event.duration > 1 ? ` (${event.duration}h)` : ''}`}
                                       data-testid={`event-${event.id}`}
                                       onClick={() => setSelectedEvent(event)}
                                     >
-                                      {event.title}
+                                      <div className="flex items-center justify-between">
+                                        <span className="truncate">{event.title}</span>
+                                        {event.allDay && (
+                                          <span className="ml-1 text-[10px] opacity-70">●</span>
+                                        )}
+                                        {event.duration && event.duration > 1 && !event.allDay && (
+                                          <span className="ml-1 text-[10px] opacity-70">{event.duration}h</span>
+                                        )}
+                                      </div>
                                     </div>
                                   </DialogTrigger>
                                 </Dialog>
@@ -576,12 +653,27 @@ export default function Calendar() {
                             <Dialog key={event.id}>
                               <DialogTrigger asChild>
                                 <div
-                                  className={`text-xs p-1 rounded text-white truncate cursor-pointer hover:opacity-80 ${getEventTypeColor(event.type)}`}
-                                  title={event.title}
+                                  className={`text-xs p-1 rounded text-white cursor-pointer hover:opacity-80 ${getEventTypeColor(event.type)} ${
+                                    event.allDay ? 'border-2 border-dashed border-white/30' : ''
+                                  }`}
+                                  title={`${event.title}${event.allDay ? ' (All Day)' : ''}${event.duration && event.duration > 1 ? ` (${event.duration}h)` : ''}`}
                                   data-testid={`event-${event.id}`}
                                   onClick={() => setSelectedEvent(event)}
                                 >
-                                  {event.title}
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="truncate font-medium">{event.title}</span>
+                                    {event.allDay && (
+                                      <span className="ml-1 text-[10px] opacity-70">●</span>
+                                    )}
+                                  </div>
+                                  {event.time && (
+                                    <div className="text-[10px] opacity-80 truncate">
+                                      {event.time}
+                                      {event.duration && event.duration > 1 && !event.allDay && (
+                                        <span className="ml-1">({event.duration}h)</span>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </DialogTrigger>
                             </Dialog>
@@ -605,8 +697,8 @@ export default function Calendar() {
             <CardContent>
               <div className="space-y-3">
                 {events
-                  .filter(event => new Date(event.date) >= new Date())
-                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                  .filter(event => new Date(event.startDate) >= new Date())
+                  .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
                   .slice(0, 5)
                   .map(event => (
                     <Dialog key={event.id}>
@@ -623,7 +715,10 @@ export default function Calendar() {
                             <p className="text-sm font-medium truncate">{event.title}</p>
                             <div className="flex items-center text-xs text-muted-foreground">
                               <Clock className="mr-1 h-3 w-3" />
-                              {new Date(event.date).toLocaleDateString()}
+                              {event.allDay ? 'All Day' : new Date(event.startDate).toLocaleDateString()}
+                              {event.duration && event.duration > 1 && !event.allDay && (
+                                <span className="ml-1 text-xs">({event.duration}h)</span>
+                              )}
                             </div>
                             {event.participants && (
                               <div className="flex items-center text-xs text-muted-foreground">
@@ -636,7 +731,7 @@ export default function Calendar() {
                       </DialogTrigger>
                     </Dialog>
                   ))}
-                {events.filter(event => new Date(event.date) >= new Date()).length === 0 && (
+                {events.filter(event => new Date(event.startDate) >= new Date()).length === 0 && (
                   <p className="text-sm text-muted-foreground">No upcoming events</p>
                 )}
               </div>
@@ -719,12 +814,32 @@ export default function Calendar() {
                       <div>
                         <span className="text-sm font-medium text-muted-foreground">Event Date</span>
                         <p className="text-base font-semibold">
-                          {new Date(selectedEvent.date).toLocaleDateString('en-US', { 
-                            weekday: 'long', 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                          })}
+                          {selectedEvent.allDay ? (
+                            // Multi-day all-day event
+                            new Date(selectedEvent.startDate).toDateString() === new Date(selectedEvent.endDate).toDateString() ? 
+                            new Date(selectedEvent.startDate).toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            }) :
+                            `${new Date(selectedEvent.startDate).toLocaleDateString('en-US', { 
+                              weekday: 'short', 
+                              month: 'short', 
+                              day: 'numeric' 
+                            })} - ${new Date(selectedEvent.endDate).toLocaleDateString('en-US', { 
+                              weekday: 'short', 
+                              month: 'short', 
+                              day: 'numeric' 
+                            })}`
+                          ) : (
+                            new Date(selectedEvent.startDate).toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })
+                          )}
                         </p>
                       </div>
                     </div>
@@ -732,8 +847,26 @@ export default function Calendar() {
                       <div className="flex items-center space-x-3">
                         <Clock className="w-5 h-5 text-primary" />
                         <div>
-                          <span className="text-sm font-medium text-muted-foreground">Time</span>
-                          <p className="text-base font-semibold">{selectedEvent.time}</p>
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {selectedEvent.allDay ? 'Duration' : 'Time'}
+                          </span>
+                          <p className="text-base font-semibold">
+                            {selectedEvent.time}
+                            {selectedEvent.duration && selectedEvent.duration > 1 && !selectedEvent.allDay && (
+                              <span className="ml-2 text-sm text-muted-foreground">
+                                ({selectedEvent.duration} hour{selectedEvent.duration > 1 ? 's' : ''})
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {selectedEvent.location && (
+                      <div className="flex items-center space-x-3">
+                        <MapPin className="w-5 h-5 text-primary" />
+                        <div>
+                          <span className="text-sm font-medium text-muted-foreground">Location</span>
+                          <p className="text-base font-semibold">{selectedEvent.location}</p>
                         </div>
                       </div>
                     )}
