@@ -47,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/workflow/complete', isAuthenticated, upload.single('audio'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { recipients, labName, labId, meetingType = 'standup', attendees = [] } = req.body;
+      const { recipients, labName, labId, meetingType = 'DAILY_STANDUP', attendees = [] } = req.body;
       
       if (!req.file) {
         return res.status(400).json({ error: 'Audio file is required' });
@@ -301,7 +301,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/standups', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const meetingData = { ...req.body, createdBy: userId };
+      const meetingData = { 
+        ...req.body, 
+        createdBy: userId,
+        meetingType: req.body.meetingType || 'DAILY_STANDUP',
+        meetingDate: req.body.meetingDate || new Date(),
+        scheduledDate: req.body.scheduledDate || new Date(),
+        startTime: req.body.startTime || new Date()
+      };
       const meeting = await storage.createStandupMeeting(meetingData);
       res.json(meeting);
     } catch (error) {
@@ -314,7 +321,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/standups/meetings', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const meetingData = { ...req.body, createdBy: userId };
+      const meetingData = { 
+        ...req.body, 
+        createdBy: userId,
+        meetingType: req.body.meetingType || 'DAILY_STANDUP',
+        meetingDate: req.body.meetingDate || new Date(),
+        scheduledDate: req.body.scheduledDate || new Date(), 
+        startTime: req.body.startTime || new Date()
+      };
       const meeting = await storage.createStandupMeeting(meetingData);
       res.json(meeting);
     } catch (error) {
@@ -335,8 +349,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Meeting not found" });
       }
 
-      const meetingDate = new Date(meeting.meetingDate).toLocaleDateString();
-      const htmlContent = meetingService.generateEmailHTML(meeting, actionItems, meetingDate, "Your Lab");
+      const htmlContent = await meetingService.generateEmailHtml({
+        meeting,
+        actionItems,
+        title: "Your Lab"
+      });
       
       res.json({
         html: htmlContent,
@@ -365,8 +382,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Meeting not found" });
       }
 
-      const meetingDate = new Date(meeting.meetingDate).toLocaleDateString();
-      const htmlContent = meetingService.generateEmailHTML(meeting, actionItems, meetingDate, "Your Lab");
+      const htmlContent = await meetingService.generateEmailHtml({
+        meeting,
+        actionItems,
+        title: "Your Lab"
+      });
       
       res.json({
         html: htmlContent,

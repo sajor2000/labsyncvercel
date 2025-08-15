@@ -175,7 +175,7 @@ export class WorkflowService {
     transcript: string,
     userId: string,
     labId?: string,
-    meetingType: string = 'standup',
+    meetingType: string = 'DAILY_STANDUP',
     attendees: string[] = []
   ): Promise<WorkflowStepResult> {
     const startTime = Date.now();
@@ -412,7 +412,7 @@ export class WorkflowService {
     userId: string,
     labName: string,
     labId?: string,
-    meetingType: string = 'standup',
+    meetingType: string = 'DAILY_STANDUP',
     attendees: string[] = []
   ): Promise<{
     workflowId: string;
