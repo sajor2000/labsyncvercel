@@ -48,6 +48,7 @@ const standupSchema = z.object({
   description: z.string().optional(),
   scheduledDate: z.string().min(1, "Scheduled date is required"),
   facilitatorId: z.string().optional(),
+  meetingType: z.string().default("DAILY_STANDUP"),
 });
 
 type StandupFormData = z.infer<typeof standupSchema>;
@@ -73,6 +74,7 @@ export default function Standups() {
       description: "",
       scheduledDate: "",
       facilitatorId: "",
+      meetingType: "DAILY_STANDUP",
     },
   });
 
@@ -81,6 +83,7 @@ export default function Standups() {
       return apiRequest('/api/standups', 'POST', {
         ...data,
         labId: selectedLab?.id,
+        meetingType: data.meetingType || "DAILY_STANDUP",
       });
     },
     onSuccess: () => {
@@ -190,6 +193,29 @@ export default function Standups() {
                       <FormControl>
                         <Input type="datetime-local" {...field} data-testid="input-standup-date" />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="meetingType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Meeting Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value || "DAILY_STANDUP"}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-meeting-type">
+                            <SelectValue placeholder="Select meeting type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="DAILY_STANDUP">Daily Standup</SelectItem>
+                          <SelectItem value="WEEKLY_REVIEW">Weekly Review</SelectItem>
+                          <SelectItem value="PROJECT_SYNC">Project Sync</SelectItem>
+                          <SelectItem value="STUDY_REVIEW">Study Review</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
