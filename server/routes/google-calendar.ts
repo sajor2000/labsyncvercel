@@ -158,28 +158,44 @@ router.post("/sync-tasks-to-calendar", isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: "Must provide projectId, studyId, or labId" });
     }
 
-    let tasksQuery = db.select({
-      id: tasks.id,
-      name: tasks.title,
-      description: tasks.description,
-      dueDate: tasks.dueDate,
-      priority: tasks.priority,
-      assigneeId: tasks.assigneeId,
-      studyId: tasks.studyId
-    }).from(tasks);
-
     // Build query based on what was provided
+    let taskList;
     if (studyId) {
-      tasksQuery = tasksQuery.where(eq(tasks.studyId, studyId));
+      taskList = await db.select({
+        id: tasks.id,
+        name: tasks.title,
+        description: tasks.description,
+        dueDate: tasks.dueDate,
+        priority: tasks.priority,
+        assigneeId: tasks.assigneeId,
+        studyId: tasks.studyId
+      }).from(tasks).where(eq(tasks.studyId, studyId));
     } else if (labId) {
       // For lab-based queries, join with studies to find tasks in that lab
-      tasksQuery = tasksQuery
+      taskList = await db.select({
+        id: tasks.id,
+        name: tasks.title,
+        description: tasks.description,
+        dueDate: tasks.dueDate,
+        priority: tasks.priority,
+        assigneeId: tasks.assigneeId,
+        studyId: tasks.studyId
+      }).from(tasks)
         .innerJoin(studies, eq(tasks.studyId, studies.id))
         .where(eq(studies.labId, labId));
+    } else {
+      taskList = await db.select({
+        id: tasks.id,
+        name: tasks.title,
+        description: tasks.description,
+        dueDate: tasks.dueDate,
+        priority: tasks.priority,
+        assigneeId: tasks.assigneeId,
+        studyId: tasks.studyId
+      }).from(tasks);
     }
 
     // Get tasks with due dates
-    const taskList = await tasksQuery;
     const tasksWithDueDates = taskList.filter(task => task.dueDate);
 
     const createdEvents = [];
@@ -376,26 +392,29 @@ router.post("/meeting-task-sync", isAuthenticated, async (req, res) => {
     }
 
     // Get all tasks for the specified projects and studies
-    let tasksQuery = db.select({
-      id: tasks.id,
-      name: tasks.title,
-      description: tasks.description,
-      dueDate: tasks.dueDate,
-      priority: tasks.priority,
-      assigneeId: tasks.assigneeId,
-      studyId: tasks.studyId
-    }).from(tasks);
-
-    const conditions = [];
+    let taskList;
     if (studyIds.length > 0) {
-      conditions.push(or(...studyIds.map((id: string) => eq(tasks.studyId, id))));
+      const conditions = studyIds.map((id: string) => eq(tasks.studyId, id));
+      taskList = await db.select({
+        id: tasks.id,
+        name: tasks.title,
+        description: tasks.description,
+        dueDate: tasks.dueDate,
+        priority: tasks.priority,
+        assigneeId: tasks.assigneeId,
+        studyId: tasks.studyId
+      }).from(tasks).where(or(...conditions));
+    } else {
+      taskList = await db.select({
+        id: tasks.id,
+        name: tasks.title,
+        description: tasks.description,
+        dueDate: tasks.dueDate,
+        priority: tasks.priority,
+        assigneeId: tasks.assigneeId,
+        studyId: tasks.studyId
+      }).from(tasks);
     }
-
-    if (conditions.length > 0) {
-      tasksQuery = tasksQuery.where(or(...conditions));
-    }
-
-    const taskList = await tasksQuery;
     const tasksWithDueDates = taskList.filter(task => task.dueDate);
     results.totalProcessed = tasksWithDueDates.length;
 

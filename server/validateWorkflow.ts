@@ -148,7 +148,11 @@ export async function validateCompleteWorkflow(): Promise<{
     // Step 4: Test AI Analysis Service
     console.log('🔍 STEP 4: Testing AI Analysis Service...');
     try {
-      const workflowId = await workflowService.startWorkflow('test-user', 'test-lab');
+      // Get real lab ID for AI analysis testing
+      const labs = await storage.getLabs();
+      const testLabId = labs.length > 0 ? labs[0].id : 'default-lab';
+      
+      const workflowId = await workflowService.startWorkflow('test-user', testLabId);
       const testTranscript = `
         Test meeting transcript:
         John: I'm working on the data analysis project, should be done by Friday.
