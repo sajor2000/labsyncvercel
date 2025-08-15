@@ -191,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/workflow/analyze', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { workflowId, transcript, labId, meetingType = 'standup', attendees = [] } = req.body;
+      const { workflowId, transcript, labId, meetingType = 'DAILY_STANDUP', attendees = [] } = req.body;
       
       if (!workflowId || !transcript) {
         return res.status(400).json({ error: 'Workflow ID and transcript are required' });
@@ -479,6 +479,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  // Workflow validation endpoint (for testing)
+  app.get('/api/validate-workflow', async (req, res) => {
+    try {
+      const { validateCompleteWorkflow } = await import('./validateWorkflow');
+      const results = await validateCompleteWorkflow();
+      
+      res.json({
+        timestamp: new Date().toISOString(),
+        ...results
+      });
+    } catch (error) {
+      console.error('Workflow validation error:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown validation error',
+        timestamp: new Date().toISOString()
       });
     }
   });

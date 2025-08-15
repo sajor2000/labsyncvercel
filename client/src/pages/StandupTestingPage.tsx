@@ -87,7 +87,7 @@ All: Sounds good. Thanks everyone!`;
       return apiRequest(`/api/standups/meetings`, 'POST', {
         transcript: transcriptText,
         labId: selectedLab?.id,
-        meetingType: 'standup',
+        meetingType: 'DAILY_STANDUP',
         attendees: [], // For demo purposes
       });
     },

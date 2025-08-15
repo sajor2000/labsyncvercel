@@ -48,7 +48,7 @@ export default function ProductionWorkflow() {
   const [recipients, setRecipients] = useState("jc.rojas@mail.utoronto.ca");
   const [labName, setLabName] = useState("RICCC Lab");
   const [labId, setLabId] = useState("");
-  const [meetingType, setMeetingType] = useState("standup");
+  const [meetingType, setMeetingType] = useState("DAILY_STANDUP");
   const [attendees, setAttendees] = useState("J.C. Rojas, Research Team");
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<CompleteWorkflowResult | null>(null);

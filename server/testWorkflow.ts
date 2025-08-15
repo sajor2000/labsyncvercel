@@ -44,7 +44,7 @@ async function testProductionWorkflow() {
     const userId = 'production-test-user';
     const labName = 'RICCC Lab - Production Pipeline Test';
     const labId = 'riccc-prod-test';
-    const meetingType = 'standup';
+    const meetingType = 'DAILY_STANDUP';
     const attendees = ['J.C. Rojas', 'Production Test System', 'LabSync AI'];
     
     console.log('🔄 Processing complete workflow...');

@@ -755,7 +755,7 @@ export default function StandupRecording() {
                             transcript,
                             attendees: selectedAttendees,
                             labId: selectedLab?.id,
-                            meetingType: 'standup',
+                            meetingType: 'DAILY_STANDUP',
                             slidesUrl: showSlides ? slidesUrl : undefined
                           }),
                         })

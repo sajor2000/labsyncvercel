@@ -90,7 +90,7 @@ export default function UpcomingStandups() {
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="text-xs text-muted-foreground">
-                      {standup.meetingType ? (meetingTypeLabels[standup.meetingType] || standup.meetingType).toLowerCase() : 'standup'}
+                      {standup.meetingType ? (meetingTypeLabels[standup.meetingType] || standup.meetingType).toLowerCase() : 'daily standup'}
                     </span>
                     <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded mt-1">
                       Scheduled
