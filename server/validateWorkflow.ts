@@ -162,11 +162,13 @@ export async function validateCompleteWorkflow(): Promise<{
     // Step 4: Test AI Analysis Service
     console.log('🔍 STEP 4: Testing AI Analysis Service...');
     try {
-      // Get real lab ID for AI analysis testing
+      // Get real lab ID and user ID for AI analysis testing
       const labs = await storage.getLabs();
       const testLabId = labs.length > 0 ? labs[0].id : 'default-lab';
+      const allUsers = await storage.getAllUsers();
+      const testUserId = allUsers.length > 0 ? allUsers[0].id : 'default-user';
       
-      const workflowId = await workflowService.startWorkflow('test-user', testLabId);
+      const workflowId = await workflowService.startWorkflow(testUserId, testLabId);
       const testTranscript = `
         Test meeting transcript:
         John: I'm working on the data analysis project, should be done by Friday.
@@ -177,7 +179,7 @@ export async function validateCompleteWorkflow(): Promise<{
       const aiResult = await workflowService.processAIAnalysisStep(
         workflowId,
         testTranscript,
-        'test-user',
+        testUserId,
         testLabId,
         'DAILY_STANDUP',
         ['John', 'Jane']
@@ -242,7 +244,7 @@ export async function validateCompleteWorkflow(): Promise<{
       };
 
       const meeting = await storage.createStandupMeeting(testMeeting);
-      const workflowId = await workflowService.startWorkflow('test-user', testLabId);
+      const workflowId = await workflowService.startWorkflow(testUserId || 'default-user', testLabId);
 
       const emailResult = await workflowService.processEmailGenerationStep(
         workflowId,
