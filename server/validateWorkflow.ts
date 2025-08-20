@@ -31,6 +31,10 @@ export async function validateCompleteWorkflow(): Promise<{
         throw new Error('No labs found in database. Please create a lab first.');
       }
 
+      // Get a real user ID from database to avoid foreign key constraint
+      const allUsers = await storage.getAllUsers();
+      const testUserId = allUsers.length > 0 ? allUsers[0].id : null;
+
       const testMeeting = {
         title: 'Workflow Validation Test Meeting',
         description: 'Testing the complete meeting recording workflow',
@@ -39,7 +43,7 @@ export async function validateCompleteWorkflow(): Promise<{
         meetingDate: new Date(),
         scheduledDate: new Date(),
         startTime: new Date(),
-        createdBy: 'test-user-id'
+        createdBy: testUserId || 'default-user'
       };
 
       const meeting = await storage.createStandupMeeting(testMeeting);
@@ -84,28 +88,38 @@ export async function validateCompleteWorkflow(): Promise<{
     // Step 3: Test Transcription Service
     console.log('🔍 STEP 3: Testing Transcription Service...');
     try {
-      // Create a proper audio file buffer (minimal WAV file)
-      const wavHeader = Buffer.from([
-        0x52, 0x49, 0x46, 0x46, // "RIFF"
-        0x24, 0x00, 0x00, 0x00, // File size (36 bytes)
-        0x57, 0x41, 0x56, 0x45, // "WAVE"
-        0x66, 0x6D, 0x74, 0x20, // "fmt "
-        0x10, 0x00, 0x00, 0x00, // Subchunk1Size (16)
-        0x01, 0x00,             // AudioFormat (PCM)
-        0x01, 0x00,             // NumChannels (1)
-        0x44, 0xAC, 0x00, 0x00, // SampleRate (44100)
-        0x88, 0x58, 0x01, 0x00, // ByteRate
-        0x02, 0x00,             // BlockAlign
-        0x10, 0x00,             // BitsPerSample (16)
-        0x64, 0x61, 0x74, 0x61, // "data"
-        0x00, 0x00, 0x00, 0x00  // Subchunk2Size (0)
-      ]);
+      // Create a proper 1-second WAV file for testing
+      const sampleRate = 44100;
+      const duration = 1; // 1 second 
+      const samples = sampleRate * duration;
+      const audioBuffer = Buffer.alloc(44 + samples * 2);
+      
+      // WAV header
+      audioBuffer.write('RIFF', 0);
+      audioBuffer.writeUInt32LE(36 + samples * 2, 4);
+      audioBuffer.write('WAVE', 8);
+      audioBuffer.write('fmt ', 12);
+      audioBuffer.writeUInt32LE(16, 16);
+      audioBuffer.writeUInt16LE(1, 20); // PCM
+      audioBuffer.writeUInt16LE(1, 22); // mono
+      audioBuffer.writeUInt32LE(sampleRate, 24);
+      audioBuffer.writeUInt32LE(sampleRate * 2, 28);
+      audioBuffer.writeUInt16LE(2, 32);
+      audioBuffer.writeUInt16LE(16, 34);
+      audioBuffer.write('data', 36);
+      audioBuffer.writeUInt32LE(samples * 2, 40);
+      
+      // Generate 440Hz sine wave for 1 second
+      for (let i = 0; i < samples; i++) {
+        const sample = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 32767;
+        audioBuffer.writeInt16LE(Math.round(sample), 44 + i * 2);
+      }
 
       const mockFile = {
-        buffer: wavHeader,
+        buffer: audioBuffer,
         originalname: 'test-audio.wav',
         mimetype: 'audio/wav',
-        size: wavHeader.length
+        size: audioBuffer.length
       } as Express.Multer.File;
 
       // Get real lab ID
@@ -203,6 +217,10 @@ export async function validateCompleteWorkflow(): Promise<{
         throw new Error('No labs found for email testing');
       }
 
+      // Get a real user ID from database to avoid foreign key constraint
+      const allUsers = await storage.getAllUsers();
+      const testUserId = allUsers.length > 0 ? allUsers[0].id : null;
+
       // Test email generation requires a meeting with AI summary
       const testMeeting = {
         title: 'Email Test Meeting',
@@ -212,7 +230,7 @@ export async function validateCompleteWorkflow(): Promise<{
         meetingDate: new Date(),
         scheduledDate: new Date(),
         startTime: new Date(),
-        createdBy: 'test-user-id',
+        createdBy: testUserId || 'default-user',
         aiSummary: {
           participants: ['John Doe', 'Jane Smith'],
           actionItems: [
