@@ -28,7 +28,7 @@ router.get('/diagnose', isAuthenticated, async (req, res) => {
   }
 });
 
-// Simple direct email test route
+// Simple direct email test route with detailed error handling
 router.post('/send-direct', isAuthenticated, async (req, res) => {
   try {
     const { email, subject } = req.body;
@@ -37,13 +37,18 @@ router.post('/send-direct', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: 'Email address is required' });
     }
 
+    // Log the attempt with detailed info
+    console.log(`📧 Starting email send test...`);
+    console.log(`📧 To: ${email}`);
+    console.log(`📧 API Key present: ${process.env.RESEND_API_KEY ? 'Yes' : 'No'}`);
+    console.log(`📧 API Key format: ${process.env.RESEND_API_KEY?.startsWith('re_') ? 'Valid' : 'Invalid'}`);
+    console.log(`📧 FROM_EMAIL: ${process.env.FROM_EMAIL || 'Not set'}`);
+
     const resend = new Resend(process.env.RESEND_API_KEY);
     const fromEmail = process.env.FROM_EMAIL || 'noreply@labsync.app';
 
-    console.log(`📧 Attempting to send test email to: ${email}`);
-    console.log(`📧 From: ${fromEmail}`);
-    console.log(`📧 API Key present: ${process.env.RESEND_API_KEY ? 'Yes' : 'No'}`);
-
+    console.log(`📧 Calling Resend API...`);
+    
     const result = await resend.emails.send({
       from: `LabSync Test <${fromEmail}>`,
       to: [email],
@@ -75,12 +80,16 @@ router.post('/send-direct', isAuthenticated, async (req, res) => {
       `
     });
 
+    console.log(`📧 Resend API call completed`);
+
     if (result.error) {
-      console.error('❌ Resend API error:', result.error);
+      console.error('❌ Resend API returned error:', JSON.stringify(result.error, null, 2));
       return res.status(500).json({ 
         error: 'Email send failed', 
         details: result.error,
-        apiKeyPresent: !!process.env.RESEND_API_KEY
+        apiKeyPresent: !!process.env.RESEND_API_KEY,
+        fromEmail,
+        timestamp: new Date().toISOString()
       });
     }
 
@@ -91,15 +100,20 @@ router.post('/send-direct', isAuthenticated, async (req, res) => {
       message: 'Test email sent successfully',
       emailId: result.data?.id,
       sentTo: email,
-      from: fromEmail
+      from: fromEmail,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('❌ Email send error:', error);
+    console.error('❌ Email send exception:', error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
     res.status(500).json({ 
       error: 'Failed to send test email',
       details: error instanceof Error ? error.message : 'Unknown error',
-      apiKeyPresent: !!process.env.RESEND_API_KEY
+      errorType: error instanceof Error ? error.constructor.name : 'Unknown',
+      apiKeyPresent: !!process.env.RESEND_API_KEY,
+      timestamp: new Date().toISOString()
     });
   }
 });
