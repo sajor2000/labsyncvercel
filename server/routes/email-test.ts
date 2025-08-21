@@ -4,6 +4,30 @@ import { isAuthenticated } from '../replitAuth';
 
 const router = Router();
 
+// Quick API key diagnostic test
+router.get('/diagnose', isAuthenticated, async (req, res) => {
+  try {
+    const hasApiKey = !!process.env.RESEND_API_KEY;
+    const hasFromEmail = !!process.env.FROM_EMAIL;
+    
+    res.json({
+      success: true,
+      config: {
+        apiKeyPresent: hasApiKey,
+        apiKeyFormat: hasApiKey ? (process.env.RESEND_API_KEY?.startsWith('re_') ? 'valid' : 'invalid') : 'missing',
+        fromEmail: process.env.FROM_EMAIL || 'not set',
+        fromEmailPresent: hasFromEmail
+      },
+      status: 'Email system configuration checked'
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Diagnostic failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Simple direct email test route
 router.post('/send-direct', isAuthenticated, async (req, res) => {
   try {
