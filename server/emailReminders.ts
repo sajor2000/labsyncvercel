@@ -61,7 +61,7 @@ export class EmailReminderService {
       const subject = `📋 New Task Assigned: ${taskData.title}`;
       const htmlContent = this.generateTaskCreationHTML(taskData);
       
-      const fromEmail = process.env.FROM_EMAIL || 'noreply@labsync.app';
+      const fromEmail = (process.env.FROM_EMAIL || 'noreply@labsync.app').trim();
       await resend.emails.send({
         from: `LabSync <${fromEmail}>`,
         to: [taskData.assigneeEmail],
@@ -219,7 +219,7 @@ export class EmailReminderService {
     const htmlContent = this.generateTaskReminderHTML(task, isOverdue, daysUntilDue);
 
     try {
-      const fromEmail = process.env.FROM_EMAIL || 'noreply@labsync.app';
+      const fromEmail = (process.env.FROM_EMAIL || 'noreply@labsync.app').trim();
       await resend.emails.send({
         from: `LabSync <${fromEmail}>`,
         to: [task.assigneeEmail!],
@@ -738,7 +738,7 @@ export class EmailReminderService {
 
       const htmlContent = this.generateWeeklyDigestHTML(upcomingTasks);
       
-      const fromEmail = process.env.FROM_EMAIL || 'noreply@labsync.app';
+      const fromEmail = (process.env.FROM_EMAIL || 'noreply@labsync.app').trim();
       await resend.emails.send({
         from: `LabSync <${fromEmail}>`,
         to: [userEmail],

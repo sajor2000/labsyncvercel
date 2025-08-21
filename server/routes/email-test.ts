@@ -45,7 +45,7 @@ router.post('/send-direct', isAuthenticated, async (req, res) => {
     console.log(`📧 FROM_EMAIL: ${process.env.FROM_EMAIL || 'Not set'}`);
 
     const resend = new Resend(process.env.RESEND_API_KEY2);
-    const fromEmail = process.env.FROM_EMAIL || 'noreply@labsync.app';
+    const fromEmail = (process.env.FROM_EMAIL || 'noreply@labsync.app').trim();
 
     console.log(`📧 Using RESEND_API_KEY2 (verified working key)`);
     console.log(`📧 Calling Resend API...`);
