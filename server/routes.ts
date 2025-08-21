@@ -577,6 +577,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create team member
+  app.post('/api/team-members', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      console.log('➕ API: Creating new team member...');
+      
+      // Create user with provided data
+      const userData = {
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        middleName: req.body.middleName || null,
+        email: req.body.email,
+        role: req.body.role,
+        title: req.body.title || null,
+        department: req.body.department || null,
+        institution: req.body.institution || 'Rush University Medical Center',
+        phone: req.body.phone || null,
+        capacity: req.body.capacity || '40.00',
+        bio: req.body.bio || null,
+        linkedIn: req.body.linkedIn || null,
+        orcid: req.body.orcid || null,
+        expertise: req.body.expertise || [],
+        skills: req.body.skills || [],
+        isExternal: req.body.isExternal || false,
+        isActive: true,
+      };
+      
+      const newUser = await storage.createUser(userData);
+      
+      // If labId is provided, add user to the lab
+      if (req.body.labId) {
+        await storage.addUserToLab(newUser.id, req.body.labId, req.body.role);
+      }
+      
+      console.log(`✅ API: Created team member ${newUser.firstName} ${newUser.lastName}`);
+      res.status(201).json(newUser);
+    } catch (error) {
+      console.error("❌ API: Error creating team member:", error);
+      res.status(500).json({ message: "Failed to create team member", error: error.message });
+    }
+  });
+
+  // Update team member
+  app.put('/api/team-members/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      console.log(`✏️ API: Updating team member ${id}...`);
+      
+      const updatedUser = await storage.updateTeamMember(id, req.body);
+      
+      // If labId and labRole provided, update lab membership
+      if (req.body.labId && req.body.labRole) {
+        await storage.updateLabMemberRole(id, req.body.labId, req.body.labRole);
+      }
+      
+      console.log(`✅ API: Updated team member ${id}`);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("❌ API: Error updating team member:", error);
+      res.status(500).json({ message: "Failed to update team member", error: error.message });
+    }
+  });
+
+  // Delete team member
+  app.delete('/api/team-members/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      console.log(`🗑️ API: Deleting team member ${id}...`);
+      
+      // Check if user can delete (only admins or self)
+      const currentUser = await storage.getUser(userId);
+      const isAdmin = await storage.isUserAdmin(userId);
+      
+      if (id !== userId && !isAdmin) {
+        return res.status(403).json({ message: "Only admins can delete other users" });
+      }
+      
+      // Soft delete - set isActive to false
+      await storage.updateUser(id, { isActive: false });
+      
+      console.log(`✅ API: Deleted team member ${id}`);
+      res.json({ message: "Team member deleted successfully" });
+    } catch (error) {
+      console.error("❌ API: Error deleting team member:", error);
+      res.status(500).json({ message: "Failed to delete team member", error: error.message });
+    }
+  });
+
   // Lab Members routes (lab-specific)
   app.get('/api/lab-members', isAuthenticated, async (req: any, res) => {
     try {

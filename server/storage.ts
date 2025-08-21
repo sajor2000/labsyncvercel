@@ -419,6 +419,62 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async createUser(userData: any): Promise<User> {
+    const id = userData.id || crypto.randomUUID();
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        id,
+        ...userData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return newUser;
+  }
+
+  async addUserToLab(userId: string, labId: string, role: string): Promise<void> {
+    await db
+      .insert(labMembers)
+      .values({
+        id: crypto.randomUUID(),
+        userId,
+        labId,
+        labRole: role,
+        isActive: true,
+        joinedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .onConflictDoNothing();
+  }
+
+  async updateLabMemberRole(userId: string, labId: string, role: string): Promise<void> {
+    await db
+      .update(labMembers)
+      .set({
+        labRole: role,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(labMembers.userId, userId),
+        eq(labMembers.labId, labId)
+      ));
+  }
+
+  async isUserAdmin(userId: string): Promise<boolean> {
+    const [labMember] = await db
+      .select()
+      .from(labMembers)
+      .where(and(
+        eq(labMembers.userId, userId),
+        eq(labMembers.isAdmin, true)
+      ))
+      .limit(1);
+    
+    return !!labMember;
+  }
+
   async findTeamMemberByEmailOrName(email: string, firstName?: string, lastName?: string): Promise<User | undefined> {
     // First try exact email match (case-insensitive)
     if (email) {
