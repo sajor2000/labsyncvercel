@@ -37,10 +37,11 @@ Navigation Cleanup: Removed redundant "Task Board" page since Task Management al
 - **Hierarchy Structure**: Labs → Buckets → Studies/Projects → Tasks/Subtasks relationship
 
 ### Authentication & Authorization
-- **Provider**: Replit OIDC integration
-- **Session Storage**: PostgreSQL-backed sessions
-- **Authorization**: Role-based access control with comprehensive lab roles and ownership validation.
-- **Access Control**: Whitelist-based access for registered team members with smart name matching and dual email support.
+- **Provider**: Replit OIDC integration with comprehensive team member validation
+- **Session Storage**: PostgreSQL-backed sessions with 7-day TTL
+- **Authorization**: Role-based access control with comprehensive lab roles and ownership validation
+- **Access Control**: Whitelist-based access for registered team members with smart name matching (handles "J.C." vs "JC"), dual email support, and case-insensitive matching
+- **User Support**: Works with any Replit user who is registered in the team members database, providing secure access control while maintaining ease of use
 
 ### File Storage & AI Integration
 - **Cloud Storage**: Google Cloud Storage for file uploads

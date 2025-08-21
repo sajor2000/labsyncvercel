@@ -1684,6 +1684,7 @@ export class DatabaseStorage implements IStorage {
           tags: tasks.tags,
           completedAt: tasks.completedAt,
           completedById: tasks.completedById,
+          lastReminderSent: tasks.lastReminderSent,
           createdBy: tasks.createdBy,
         })
         .from(tasks)
