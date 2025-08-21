@@ -169,7 +169,7 @@ export function ProjectTeamManager({ study, children }: ProjectTeamManagerProps)
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {assignedMembers.map((member) => (
-                    <Card key={member.id}>
+                    <Card key={`assigned-${member.id}`}>
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
@@ -259,7 +259,7 @@ export function ProjectTeamManager({ study, children }: ProjectTeamManagerProps)
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {availableMembers.map((member) => (
-                    <Card key={member.id} className="hover:shadow-md transition-shadow">
+                    <Card key={`available-${member.id}`} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
