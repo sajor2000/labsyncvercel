@@ -7,14 +7,14 @@ const router = Router();
 // Quick API key diagnostic test
 router.get('/diagnose', isAuthenticated, async (req, res) => {
   try {
-    const hasApiKey = !!process.env.RESEND_API_KEY;
+    const hasApiKey = !!process.env.RESEND_API_KEY2;
     const hasFromEmail = !!process.env.FROM_EMAIL;
     
     res.json({
       success: true,
       config: {
         apiKeyPresent: hasApiKey,
-        apiKeyFormat: hasApiKey ? (process.env.RESEND_API_KEY?.startsWith('re_') ? 'valid' : 'invalid') : 'missing',
+        apiKeyFormat: hasApiKey ? (process.env.RESEND_API_KEY2?.startsWith('re_') ? 'valid' : 'invalid') : 'missing',
         fromEmail: process.env.FROM_EMAIL || 'not set',
         fromEmailPresent: hasFromEmail
       },
@@ -40,13 +40,14 @@ router.post('/send-direct', isAuthenticated, async (req, res) => {
     // Log the attempt with detailed info
     console.log(`📧 Starting email send test...`);
     console.log(`📧 To: ${email}`);
-    console.log(`📧 API Key present: ${process.env.RESEND_API_KEY ? 'Yes' : 'No'}`);
-    console.log(`📧 API Key format: ${process.env.RESEND_API_KEY?.startsWith('re_') ? 'Valid' : 'Invalid'}`);
+    console.log(`📧 API Key 2 present: ${process.env.RESEND_API_KEY2 ? 'Yes' : 'No'}`);
+    console.log(`📧 API Key 2 format: ${process.env.RESEND_API_KEY2?.startsWith('re_') ? 'Valid' : 'Invalid'}`);
     console.log(`📧 FROM_EMAIL: ${process.env.FROM_EMAIL || 'Not set'}`);
 
-    const resend = new Resend(process.env.RESEND_API_KEY);
+    const resend = new Resend(process.env.RESEND_API_KEY2);
     const fromEmail = process.env.FROM_EMAIL || 'noreply@labsync.app';
 
+    console.log(`📧 Using RESEND_API_KEY2 (verified working key)`);
     console.log(`📧 Calling Resend API...`);
     
     const result = await resend.emails.send({
@@ -63,7 +64,7 @@ router.post('/send-direct', isAuthenticated, async (req, res) => {
       return res.status(500).json({ 
         error: 'Email send failed', 
         details: result.error,
-        apiKeyPresent: !!process.env.RESEND_API_KEY,
+        apiKeyPresent: !!process.env.RESEND_API_KEY2,
         fromEmail,
         timestamp: new Date().toISOString()
       });
@@ -88,7 +89,7 @@ router.post('/send-direct', isAuthenticated, async (req, res) => {
       error: 'Failed to send test email',
       details: error instanceof Error ? error.message : 'Unknown error',
       errorType: error instanceof Error ? error.constructor.name : 'Unknown',
-      apiKeyPresent: !!process.env.RESEND_API_KEY,
+      apiKeyPresent: !!process.env.RESEND_API_KEY2,
       timestamp: new Date().toISOString()
     });
   }

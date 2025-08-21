@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 import { neon } from '@neondatabase/serverless';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY2);
 const sql = neon(process.env.DATABASE_URL!);
 
 interface TaskReminderData {
