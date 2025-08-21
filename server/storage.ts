@@ -475,6 +475,15 @@ export class DatabaseStorage implements IStorage {
     return !!labMember;
   }
 
+  async updateUser(id: string, updates: Partial<User>): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
   async findTeamMemberByEmailOrName(email: string, firstName?: string, lastName?: string): Promise<User | undefined> {
     // Special handling for Mia's multiple Replit accounts
     if (email && email.toLowerCase().includes('mia')) {
