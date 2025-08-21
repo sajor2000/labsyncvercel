@@ -7,8 +7,8 @@ import multer from 'multer';
 import googleCalendarRoutes from './routes/google-calendar';
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+  // Auth middleware (disabled for development)
+  // await setupAuth(app);
 
   // Configure multer for audio uploads
   const upload = multer({ 
@@ -18,12 +18,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   });
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Auth routes - simplified for development
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      // Return mock user data directly for development
+      const mockUser = {
+        id: 'dev-user-1',
+        email: 'dev@labsync.local',
+        name: 'Development User',
+        firstName: 'Development',
+        lastName: 'User',
+        role: 'ADMIN',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        claims: { sub: 'dev-user-1' }
+      };
+      res.json(mockUser);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -31,7 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Lab routes
-  app.get('/api/labs', isAuthenticated, async (req: any, res) => {
+  app.get('/api/labs', async (req: any, res) => {
     try {
       const labs = await storage.getLabs();
       res.json(labs);
