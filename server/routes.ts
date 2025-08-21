@@ -476,7 +476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting standup meeting:", error);
-      res.status(500).json({ message: "Failed to delete standup meeting", error: error.message });
+      res.status(500).json({ message: "Failed to delete standup meeting", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -611,7 +611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(teamMembers);
     } catch (error) {
       console.error("❌ API: Error fetching team members:", error);
-      res.status(500).json({ message: "Failed to fetch team members", error: error.message });
+      res.status(500).json({ message: "Failed to fetch team members", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -653,7 +653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(newUser);
     } catch (error) {
       console.error("❌ API: Error creating team member:", error);
-      res.status(500).json({ message: "Failed to create team member", error: error.message });
+      res.status(500).json({ message: "Failed to create team member", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -674,7 +674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedUser);
     } catch (error) {
       console.error("❌ API: Error updating team member:", error);
-      res.status(500).json({ message: "Failed to update team member", error: error.message });
+      res.status(500).json({ message: "Failed to update team member", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -694,7 +694,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Team member deleted successfully" });
     } catch (error) {
       console.error("❌ API: Error deleting team member:", error);
-      res.status(500).json({ message: "Failed to delete team member", error: error.message });
+      res.status(500).json({ message: "Failed to delete team member", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -716,7 +716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error("❌ API: Error fetching lab members:", error);
-      res.status(500).json({ message: "Failed to fetch lab members", error: error.message });
+      res.status(500).json({ message: "Failed to fetch lab members", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -732,7 +732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(studies);
     } catch (error) {
       console.error("Error fetching studies:", error);
-      res.status(500).json({ message: "Failed to fetch studies", error: error.message });
+      res.status(500).json({ message: "Failed to fetch studies", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -748,7 +748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(study);
     } catch (error) {
       console.error("Error creating study:", error);
-      res.status(500).json({ message: "Failed to create study", error: error.message });
+      res.status(500).json({ message: "Failed to create study", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -759,7 +759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedStudy);
     } catch (error) {
       console.error("Error updating study:", error);
-      res.status(500).json({ message: "Failed to update study", error: error.message });
+      res.status(500).json({ message: "Failed to update study", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -789,10 +789,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting study:", error);
-      if (error.message.includes('not found')) {
+      if (error instanceof Error && error.message.includes('not found')) {
         return res.status(404).json({ error: "Study not found" });
       }
-      res.status(500).json({ message: "Failed to delete study", error: error.message });
+      res.status(500).json({ message: "Failed to delete study", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -804,7 +804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(buckets);
     } catch (error) {
       console.error("Error fetching buckets:", error);
-      res.status(500).json({ message: "Failed to fetch buckets", error: error.message });
+      res.status(500).json({ message: "Failed to fetch buckets", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -820,7 +820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(bucket);
     } catch (error) {
       console.error("Error creating bucket:", error);
-      res.status(500).json({ message: "Failed to create bucket", error: error.message });
+      res.status(500).json({ message: "Failed to create bucket", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -831,7 +831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedBucket);
     } catch (error) {
       console.error("Error updating bucket:", error);
-      res.status(500).json({ message: "Failed to update bucket", error: error.message });
+      res.status(500).json({ message: "Failed to update bucket", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -861,13 +861,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting bucket:", error);
-      if (error.message.includes('study(ies)')) {
+      if (error instanceof Error && error.message.includes('study(ies)')) {
         return res.status(409).json({ error: error.message });
       }
-      if (error.message.includes('not found')) {
+      if (error instanceof Error && error.message.includes('not found')) {
         return res.status(404).json({ error: "Bucket not found" });
       }
-      res.status(500).json({ message: "Failed to delete bucket", error: error.message });
+      res.status(500).json({ message: "Failed to delete bucket", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -879,7 +879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(ideas);
     } catch (error) {
       console.error("Error fetching ideas:", error);
-      res.status(500).json({ message: "Failed to fetch ideas", error: error.message });
+      res.status(500).json({ message: "Failed to fetch ideas", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -895,7 +895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(idea);
     } catch (error) {
       console.error("Error creating idea:", error);
-      res.status(500).json({ message: "Failed to create idea", error: error.message });
+      res.status(500).json({ message: "Failed to create idea", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -906,7 +906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedIdea);
     } catch (error) {
       console.error("Error updating idea:", error);
-      res.status(500).json({ message: "Failed to update idea", error: error.message });
+      res.status(500).json({ message: "Failed to update idea", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -917,7 +917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Idea deleted successfully" });
     } catch (error) {
       console.error("Error deleting idea:", error);
-      res.status(500).json({ message: "Failed to delete idea", error: error.message });
+      res.status(500).json({ message: "Failed to delete idea", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -931,7 +931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(tasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
-      res.status(500).json({ message: "Failed to fetch tasks", error: error.message });
+      res.status(500).json({ message: "Failed to fetch tasks", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 

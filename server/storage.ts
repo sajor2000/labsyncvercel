@@ -450,10 +450,9 @@ export class DatabaseStorage implements IStorage {
     await db
       .insert(labMembers)
       .values({
-        id: crypto.randomUUID(),
         userId,
         labId,
-        labRole: role,
+        labRole: role as any,
         isActive: true,
         joinedAt: new Date(),
         createdAt: new Date(),
@@ -466,7 +465,7 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(labMembers)
       .set({
-        labRole: role,
+        labRole: role as any,
         updatedAt: new Date(),
       })
       .where(and(
@@ -637,8 +636,8 @@ export class DatabaseStorage implements IStorage {
   async deleteLab(id: string, cascade: boolean = false): Promise<void> {
     if (cascade) {
       // Soft delete related entities first
-      const studies = await db.select().from(studies).where(eq(studies.labId, id));
-      for (const study of studies) {
+      const relatedStudies = await db.select().from(studies).where(eq(studies.labId, id));
+      for (const study of relatedStudies) {
         await db.update(studies)
           .set({ isActive: false, deletedAt: new Date() })
           .where(eq(studies.id, study.id));
