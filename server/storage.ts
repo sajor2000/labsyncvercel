@@ -135,10 +135,13 @@ export interface IStorage {
   getLabs(): Promise<Lab[]>;
   createLab(lab: InsertLab): Promise<Lab>;
   updateLab(id: string, updates: Partial<InsertLab>): Promise<Lab>;
+  deleteLab(id: string): Promise<void>;
   getLabMembers(labId: string): Promise<User[]>;
 
   // Study operations
   getStudies(labId?: string): Promise<Study[]>;
+  getStudiesByLab(labId: string): Promise<Study[]>;
+  getAllStudies(): Promise<Study[]>;
   getStudy(id: string): Promise<Study | undefined>;
   createStudy(study: InsertStudy): Promise<Study>;
   updateStudy(id: string, study: Partial<Study>): Promise<Study>;
@@ -146,8 +149,13 @@ export interface IStorage {
 
   // Task operations
   getTasks(studyId?: string, assigneeId?: string): Promise<Task[]>;
+  getTasksByLab(labId: string): Promise<Task[]>;
+  getTasksByStudy(studyId: string): Promise<Task[]>;
+  getAllTasks(): Promise<Task[]>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, task: Partial<Task>): Promise<Task>;
+  moveTask(id: string, updates: { newStatus?: string; newPosition?: number; newStudyId?: string }): Promise<Task>;
+  deleteTask(id: string): Promise<void>;
 
   // Standup operations
   getStandupMeetings(labId: string): Promise<StandupMeeting[]>;
@@ -199,11 +207,16 @@ export interface IStorage {
 
   // Bucket operations
   getBuckets(labId?: string): Promise<Bucket[]>;
+  getBucketsByLab(labId: string): Promise<Bucket[]>;
+  getAllBuckets(): Promise<Bucket[]>;
   createBucket(bucket: InsertBucket): Promise<Bucket>;
+  updateBucket(id: string, updates: Partial<InsertBucket>): Promise<Bucket>;
   deleteBucket(id: string): Promise<void>;
 
   // Ideas operations
   getIdeas(labId?: string): Promise<Idea[]>;
+  getIdeasByLab(labId: string): Promise<Idea[]>;
+  getAllIdeas(): Promise<Idea[]>;
   createIdea(idea: InsertIdea): Promise<Idea>;
   updateIdea(id: string, updates: Partial<InsertIdea>): Promise<Idea>;
   deleteIdea(id: string): Promise<void>;
@@ -621,6 +634,14 @@ export class DatabaseStorage implements IStorage {
     return updatedLab;
   }
 
+  async deleteLab(id: string): Promise<void> {
+    await db.delete(labs).where(eq(labs.id, id));
+  }
+
+  async deleteLab(id: string): Promise<void> {
+    await db.delete(labs).where(eq(labs.id, id));
+  }
+
   async getLabById(id: string): Promise<Lab | undefined> {
     const [lab] = await db.select().from(labs).where(eq(labs.id, id));
     return lab;
@@ -774,6 +795,18 @@ export class DatabaseStorage implements IStorage {
     await db.delete(studies).where(eq(studies.id, id));
   }
 
+  async getStudiesByLab(labId: string): Promise<Study[]> {
+    return await db.select().from(studies)
+      .where(and(eq(studies.labId, labId), eq(studies.isActive, true)))
+      .orderBy(asc(studies.position), desc(studies.updatedAt));
+  }
+
+  async getAllStudies(): Promise<Study[]> {
+    return await db.select().from(studies)
+      .where(eq(studies.isActive, true))
+      .orderBy(asc(studies.position), desc(studies.updatedAt));
+  }
+
   // Task operations
   async getTasks(studyId?: string, assigneeId?: string): Promise<Task[]> {
     let query = db.select().from(tasks);
@@ -801,6 +834,39 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTask(id: string): Promise<void> {
     await db.delete(tasks).where(eq(tasks.id, id));
+  }
+
+  async getTasksByLab(labId: string): Promise<Task[]> {
+    return await db.select().from(tasks)
+      .innerJoin(studies, eq(tasks.studyId, studies.id))
+      .where(and(eq(studies.labId, labId), eq(tasks.isActive, true)))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async getTasksByStudy(studyId: string): Promise<Task[]> {
+    return await db.select().from(tasks)
+      .where(and(eq(tasks.studyId, studyId), eq(tasks.isActive, true)))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async getAllTasks(): Promise<Task[]> {
+    return await db.select().from(tasks)
+      .where(eq(tasks.isActive, true))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async moveTask(id: string, updates: { newStatus?: string; newPosition?: number; newStudyId?: string }): Promise<Task> {
+    const updateData: any = { updatedAt: new Date() };
+    if (updates.newStatus) updateData.status = updates.newStatus;
+    if (updates.newPosition !== undefined) updateData.position = updates.newPosition.toString();
+    if (updates.newStudyId) updateData.studyId = updates.newStudyId;
+
+    const [updatedTask] = await db
+      .update(tasks)
+      .set(updateData)
+      .where(eq(tasks.id, id))
+      .returning();
+    return updatedTask;
   }
 
   // SECURITY: Ownership validation methods
@@ -1013,9 +1079,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async moveTask(id: string, updates: { status?: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'BLOCKED'; position?: string; studyId?: string }): Promise<Task> {
-    return this.updateTask(id, updates);
-  }
+  // moveTask is already defined below in the new CRUD section
 
   // PHASE 3: Enhanced Permission Management Implementation
   async getLabMember(userId: string, labId: string): Promise<any> {
@@ -1244,6 +1308,26 @@ export class DatabaseStorage implements IStorage {
     }
 
     await db.delete(buckets).where(eq(buckets.id, id));
+  }
+
+  async getBucketsByLab(labId: string): Promise<Bucket[]> {
+    return await db.select().from(buckets)
+      .where(eq(buckets.labId, labId))
+      .orderBy(asc(buckets.position), desc(buckets.updatedAt));
+  }
+
+  async getAllBuckets(): Promise<Bucket[]> {
+    return await db.select().from(buckets)
+      .orderBy(asc(buckets.position), desc(buckets.updatedAt));
+  }
+
+  async updateBucket(id: string, updates: Partial<InsertBucket>): Promise<Bucket> {
+    const [updatedBucket] = await db
+      .update(buckets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(buckets.id, id))
+      .returning();
+    return updatedBucket;
   }
 
   // Team member operations
@@ -1479,6 +1563,27 @@ export class DatabaseStorage implements IStorage {
 
   async deleteIdea(id: string): Promise<void> {
     await db.delete(ideas).where(eq(ideas.id, id));
+  }
+
+  async getIdeasByLab(labId: string): Promise<Idea[]> {
+    return await db.select().from(ideas)
+      .where(eq(ideas.labId, labId))
+      .orderBy(desc(ideas.createdAt));
+  }
+
+  async getAllIdeas(): Promise<Idea[]> {
+    return await db.select().from(ideas)
+      .orderBy(desc(ideas.createdAt));
+  }
+
+  // Attachment operations
+  async createAttachment(attachment: any): Promise<any> {
+    const [newAttachment] = await db.insert(attachments).values(attachment).returning();
+    return newAttachment;
+  }
+
+  async deleteAttachment(id: string): Promise<void> {
+    await db.delete(attachments).where(eq(attachments.id, id));
   }
 
   // Deadlines operations

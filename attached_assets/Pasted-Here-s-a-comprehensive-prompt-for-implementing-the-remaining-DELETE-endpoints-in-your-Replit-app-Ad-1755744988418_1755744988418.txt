@@ -1,0 +1,60 @@
+Here's a comprehensive prompt for implementing the remaining DELETE endpoints in your Replit app:
+Add the missing DELETE endpoints to complete the CRUD operations for this research lab management application:
+
+## Required DELETE Endpoints
+
+### 1. Studies - DELETE /api/studies/:id
+- Soft delete to preserve data integrity
+- Check for dependent tasks before deletion
+- Return 409 if study has active tasks
+- Update deletedAt timestamp
+
+### 2. Labs - DELETE /api/labs/:id  
+- Soft delete implementation
+- Validate no active studies/members/buckets exist
+- Return 409 if lab has dependencies
+- Cascade soft delete to related entities if force=true query param
+
+### 3. Standup Meetings - DELETE /api/standups/meetings/:id
+- Hard delete allowed (meeting recordings)
+- Remove associated action items
+- Clean up any file attachments from storage
+
+## Implementation Requirements
+
+1. **Authorization**: Verify user has delete permissions for the resource
+2. **Response Format**: Return 204 No Content on success
+3. **Error Handling**: 
+   - 404 if resource not found
+   - 403 if unauthorized
+   - 409 if conflicts exist
+4. **Database**: Use Prisma transactions for multi-table operations
+5. **Audit**: Log deletion events with userId and timestamp
+
+## Example Implementation Pattern:
+```typescript
+app.delete('/api/studies/:id', authenticate, async (req, res) => {
+  const { id } = req.params;
+  
+  // Check dependencies
+  const taskCount = await prisma.task.count({
+    where: { studyId: id, deletedAt: null }
+  });
+  
+  if (taskCount > 0) {
+    return res.status(409).json({ 
+      error: 'Cannot delete study with active tasks' 
+    });
+  }
+  
+  // Soft delete
+  await prisma.study.update({
+    where: { id },
+    data: { deletedAt: new Date() }
+  });
+  
+  return res.status(204).send();
+});
+Add these endpoints to complete the CRUD matrix for full application functionality.
+
+This prompt provides clear specifications for implementing the missing DELETE operations while maintaining consistency with your existing architecture.

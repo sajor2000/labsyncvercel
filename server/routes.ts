@@ -682,14 +682,295 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ================================
+  // CORE CRUD ENDPOINTS
+  // ================================
+
+  // STUDIES CRUD
+  app.get('/api/studies', isAuthenticated, async (req: any, res) => {
+    try {
+      const { labId } = req.query;
+      const studies = labId ? await storage.getStudiesByLab(labId) : await storage.getAllStudies();
+      res.json(studies);
+    } catch (error) {
+      console.error("Error fetching studies:", error);
+      res.status(500).json({ message: "Failed to fetch studies", error: error.message });
+    }
+  });
+
+  app.post('/api/studies', isAuthenticated, async (req: any, res) => {
+    try {
+      const studyData = {
+        ...req.body,
+        createdBy: req.user.claims.sub,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const study = await storage.createStudy(studyData);
+      res.status(201).json(study);
+    } catch (error) {
+      console.error("Error creating study:", error);
+      res.status(500).json({ message: "Failed to create study", error: error.message });
+    }
+  });
+
+  app.put('/api/studies/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updatedStudy = await storage.updateStudy(id, req.body);
+      res.json(updatedStudy);
+    } catch (error) {
+      console.error("Error updating study:", error);
+      res.status(500).json({ message: "Failed to update study", error: error.message });
+    }
+  });
+
+  app.delete('/api/studies/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteStudy(id);
+      res.json({ message: "Study deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting study:", error);
+      res.status(500).json({ message: "Failed to delete study", error: error.message });
+    }
+  });
+
+  // BUCKETS CRUD
+  app.get('/api/buckets', isAuthenticated, async (req: any, res) => {
+    try {
+      const { labId } = req.query;
+      const buckets = labId ? await storage.getBucketsByLab(labId) : await storage.getAllBuckets();
+      res.json(buckets);
+    } catch (error) {
+      console.error("Error fetching buckets:", error);
+      res.status(500).json({ message: "Failed to fetch buckets", error: error.message });
+    }
+  });
+
+  app.post('/api/buckets', isAuthenticated, async (req: any, res) => {
+    try {
+      const bucketData = {
+        ...req.body,
+        createdBy: req.user.claims.sub,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const bucket = await storage.createBucket(bucketData);
+      res.status(201).json(bucket);
+    } catch (error) {
+      console.error("Error creating bucket:", error);
+      res.status(500).json({ message: "Failed to create bucket", error: error.message });
+    }
+  });
+
+  app.put('/api/buckets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updatedBucket = await storage.updateBucket(id, req.body);
+      res.json(updatedBucket);
+    } catch (error) {
+      console.error("Error updating bucket:", error);
+      res.status(500).json({ message: "Failed to update bucket", error: error.message });
+    }
+  });
+
+  app.delete('/api/buckets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteBucket(id);
+      res.json({ message: "Bucket deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting bucket:", error);
+      res.status(500).json({ message: "Failed to delete bucket", error: error.message });
+    }
+  });
+
+  // IDEAS CRUD
+  app.get('/api/ideas', isAuthenticated, async (req: any, res) => {
+    try {
+      const { labId } = req.query;
+      const ideas = labId ? await storage.getIdeasByLab(labId) : await storage.getAllIdeas();
+      res.json(ideas);
+    } catch (error) {
+      console.error("Error fetching ideas:", error);
+      res.status(500).json({ message: "Failed to fetch ideas", error: error.message });
+    }
+  });
+
+  app.post('/api/ideas', isAuthenticated, async (req: any, res) => {
+    try {
+      const ideaData = {
+        ...req.body,
+        createdBy: req.user.claims.sub,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const idea = await storage.createIdea(ideaData);
+      res.status(201).json(idea);
+    } catch (error) {
+      console.error("Error creating idea:", error);
+      res.status(500).json({ message: "Failed to create idea", error: error.message });
+    }
+  });
+
+  app.put('/api/ideas/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updatedIdea = await storage.updateIdea(id, req.body);
+      res.json(updatedIdea);
+    } catch (error) {
+      console.error("Error updating idea:", error);
+      res.status(500).json({ message: "Failed to update idea", error: error.message });
+    }
+  });
+
+  app.delete('/api/ideas/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteIdea(id);
+      res.json({ message: "Idea deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting idea:", error);
+      res.status(500).json({ message: "Failed to delete idea", error: error.message });
+    }
+  });
+
+  // TASKS CRUD
+  app.get('/api/tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const { labId, studyId } = req.query;
+      const tasks = labId ? await storage.getTasksByLab(labId) : 
+                    studyId ? await storage.getTasksByStudy(studyId) :
+                    await storage.getAllTasks();
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({ message: "Failed to fetch tasks", error: error.message });
+    }
+  });
+
+  app.post('/api/tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskData = {
+        ...req.body,
+        createdBy: req.user.claims.sub,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const task = await storage.createTask(taskData);
+      res.status(201).json(task);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ message: "Failed to create task", error: error.message });
+    }
+  });
+
+  app.put('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updatedTask = await storage.updateTask(id, req.body);
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ message: "Failed to update task", error: error.message });
+    }
+  });
+
+  app.patch('/api/tasks/:id/move', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { newStatus, newPosition, newStudyId } = req.body;
+      const updatedTask = await storage.moveTask(id, { newStatus, newPosition, newStudyId });
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error moving task:", error);
+      res.status(500).json({ message: "Failed to move task", error: error.message });
+    }
+  });
+
+  app.delete('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteTask(id);
+      res.json({ message: "Task deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      res.status(500).json({ message: "Failed to delete task", error: error.message });
+    }
+  });
+
+  // LABS CRUD (Complete the missing endpoints)
+  app.post('/api/labs', isAuthenticated, async (req: any, res) => {
+    try {
+      const labData = {
+        ...req.body,
+        createdBy: req.user.claims.sub,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const lab = await storage.createLab(labData);
+      res.status(201).json(lab);
+    } catch (error) {
+      console.error("Error creating lab:", error);
+      res.status(500).json({ message: "Failed to create lab", error: error.message });
+    }
+  });
+
+  app.put('/api/labs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updatedLab = await storage.updateLab(id, req.body);
+      res.json(updatedLab);
+    } catch (error) {
+      console.error("Error updating lab:", error);
+      res.status(500).json({ message: "Failed to update lab", error: error.message });
+    }
+  });
+
+  app.delete('/api/labs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteLab(id);
+      res.json({ message: "Lab deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting lab:", error);
+      res.status(500).json({ message: "Failed to delete lab", error: error.message });
+    }
+  });
+
+  // ATTACHMENTS for file management
+  app.post('/api/attachments', isAuthenticated, async (req: any, res) => {
+    try {
+      const attachmentData = {
+        ...req.body,
+        createdBy: req.user.claims.sub,
+        createdAt: new Date(),
+      };
+      const attachment = await storage.createAttachment(attachmentData);
+      res.status(201).json(attachment);
+    } catch (error) {
+      console.error("Error creating attachment:", error);
+      res.status(500).json({ message: "Failed to create attachment", error: error.message });
+    }
+  });
+
+  app.delete('/api/attachments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteAttachment(id);
+      res.json({ message: "Attachment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting attachment:", error);
+      res.status(500).json({ message: "Failed to delete attachment", error: error.message });
+    }
+  });
+
   // Google Calendar integration routes
   app.use('/api/google-calendar', googleCalendarRoutes);
   
   // Email reminder routes  
   app.use('/api/email-reminders', (await import('./routes/email-reminders')).emailReminderRoutes);
-  
-  // Existing routes would go here...
-  // (Other existing API routes for labs, studies, tasks, etc.)
 
   const httpServer = createServer(app);
   return httpServer;
