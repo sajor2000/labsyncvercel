@@ -71,9 +71,9 @@ const fundingLabels: Record<string, string> = {
   NONE: "None",
   NIH: "NIH",
   NSF: "NSF", 
-  PRIVATE_FOUNDATION: "Private Foundation",
-  INDUSTRY: "Industry",
-  INSTITUTIONAL: "Institutional",
+  INDUSTRY_SPONSORED: "Industry-sponsored",
+  INTERNAL: "Internal",
+  FOUNDATION: "Foundation",
   OTHER: "Other"
 };
 
