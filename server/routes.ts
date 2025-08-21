@@ -1113,6 +1113,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Email reminder routes  
   app.use('/api/email-reminders', (await import('./routes/email-reminders')).emailReminderRoutes);
+  
+  // Domain management routes
+  app.use('/api/domains', (await import('./routes/domains')).domainRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
