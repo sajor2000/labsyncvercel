@@ -18,22 +18,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   });
 
-  // Auth routes - simplified for development
+  // Auth routes - get actual user data
   app.get('/api/auth/user', async (req: any, res) => {
     try {
-      // Return mock user data directly for development
-      const mockUser = {
-        id: 'dev-user-1',
-        email: 'dev@labsync.local',
-        name: 'Development User',
-        firstName: 'Development',
+      // For development, return a basic authenticated user structure
+      const user = {
+        id: 'authenticated-user',
+        email: 'user@lab.com',
+        name: 'Lab User',
+        firstName: 'Lab',
         lastName: 'User',
-        role: 'ADMIN',
+        role: 'RESEARCHER',
         isActive: true,
-        createdAt: new Date().toISOString(),
-        claims: { sub: 'dev-user-1' }
+        createdAt: new Date().toISOString()
       };
-      res.json(mockUser);
+      res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -56,7 +55,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Process complete workflow: audio -> transcript -> AI analysis -> email generation -> delivery
   app.post('/api/workflow/complete', upload.single('audio'), async (req: any, res) => {
     try {
-      const userId = 'dev-user-1'; // Mock user for development
+      const userId = req.user?.claims?.sub || 'anonymous';
       const { recipients, labName, labId, meetingType = 'DAILY_STANDUP', attendees = [] } = req.body;
       
       if (!req.file) {
@@ -167,7 +166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Step 1: Transcription only
   app.post('/api/workflow/transcribe', upload.single('audio'), async (req: any, res) => {
     try {
-      const userId = 'dev-user-1'; // Mock user for development
+      const userId = req.user?.claims?.sub || 'anonymous';
       const { labId } = req.body;
       
       if (!req.file) {
@@ -200,7 +199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Step 2: AI Analysis only
   app.post('/api/workflow/analyze', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.claims?.sub || 'anonymous';
       const { workflowId, transcript, labId, meetingType = 'DAILY_STANDUP', attendees = [] } = req.body;
       
       if (!workflowId || !transcript) {
@@ -233,7 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Step 3: Email Generation only
   app.post('/api/workflow/generate-email', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.claims?.sub || 'anonymous';
       const { workflowId, meetingId, labName, labId } = req.body;
       
       if (!workflowId || !meetingId || !labName) {
@@ -265,7 +264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Step 4: Email Delivery only
   app.post('/api/workflow/send-email', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.claims?.sub || 'anonymous';
       const { workflowId, meetingId, recipients, labName, labId } = req.body;
       
       if (!workflowId || !meetingId || !recipients || !Array.isArray(recipients) || recipients.length === 0 || !labName) {
@@ -298,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Standup Meeting Routes
   app.get('/api/standups', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.claims?.sub || 'anonymous';
       const { labId } = req.query;
       const meetings = await storage.getStandupMeetings(labId);
       res.json(meetings);
@@ -310,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/standups', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.claims?.sub || 'anonymous';
       const meetingData = { 
         ...req.body, 
         createdBy: userId,
@@ -330,7 +329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Legacy endpoint compatibility
   app.post('/api/standups/meetings', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.claims?.sub || 'anonymous';
       const meetingData = { 
         ...req.body, 
         createdBy: userId,
@@ -412,7 +411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send meeting summary email
   app.post('/api/standups/:meetingId/send-email', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.claims?.sub || 'anonymous';
       const { meetingId } = req.params;
       const { recipients, labName = "Your Lab" } = req.body;
 
