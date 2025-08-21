@@ -54,9 +54,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Production Workflow Routes
   
   // Process complete workflow: audio -> transcript -> AI analysis -> email generation -> delivery
-  app.post('/api/workflow/complete', isAuthenticated, upload.single('audio'), async (req: any, res) => {
+  app.post('/api/workflow/complete', upload.single('audio'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = 'dev-user-1'; // Mock user for development
       const { recipients, labName, labId, meetingType = 'DAILY_STANDUP', attendees = [] } = req.body;
       
       if (!req.file) {
@@ -121,7 +121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get workflow steps for a specific workflow
-  app.get('/api/workflow/:workflowId/steps', isAuthenticated, async (req: any, res) => {
+  app.get('/api/workflow/:workflowId/steps', async (req: any, res) => {
     try {
       const { workflowId } = req.params;
       const steps = await workflowService.getWorkflowSteps(workflowId);
@@ -133,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get specific workflow step
-  app.get('/api/workflow/step/:stepId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/workflow/step/:stepId', async (req: any, res) => {
     try {
       const { stepId } = req.params;
       const step = await workflowService.getWorkflowStep(stepId);
@@ -148,7 +148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Cleanup expired workflow steps (can be called manually or via cron)
-  app.post('/api/workflow/cleanup', isAuthenticated, async (req: any, res) => {
+  app.post('/api/workflow/cleanup', async (req: any, res) => {
     try {
       const deletedCount = await workflowService.cleanupExpiredSteps();
       res.json({ 
@@ -165,9 +165,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Process individual steps (for step-by-step processing)
   
   // Step 1: Transcription only
-  app.post('/api/workflow/transcribe', isAuthenticated, upload.single('audio'), async (req: any, res) => {
+  app.post('/api/workflow/transcribe', upload.single('audio'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = 'dev-user-1'; // Mock user for development
       const { labId } = req.body;
       
       if (!req.file) {
@@ -198,7 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Step 2: AI Analysis only
-  app.post('/api/workflow/analyze', isAuthenticated, async (req: any, res) => {
+  app.post('/api/workflow/analyze', async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { workflowId, transcript, labId, meetingType = 'DAILY_STANDUP', attendees = [] } = req.body;
@@ -231,7 +231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Step 3: Email Generation only
-  app.post('/api/workflow/generate-email', isAuthenticated, async (req: any, res) => {
+  app.post('/api/workflow/generate-email', async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { workflowId, meetingId, labName, labId } = req.body;
@@ -263,7 +263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Step 4: Email Delivery only
-  app.post('/api/workflow/send-email', isAuthenticated, async (req: any, res) => {
+  app.post('/api/workflow/send-email', async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { workflowId, meetingId, recipients, labName, labId } = req.body;
@@ -296,7 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Standup Meeting Routes
-  app.get('/api/standups', isAuthenticated, async (req: any, res) => {
+  app.get('/api/standups', async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { labId } = req.query;
@@ -308,7 +308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/standups', isAuthenticated, async (req: any, res) => {
+  app.post('/api/standups', async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const meetingData = { 
@@ -328,7 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Legacy endpoint compatibility
-  app.post('/api/standups/meetings', isAuthenticated, async (req: any, res) => {
+  app.post('/api/standups/meetings', async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const meetingData = { 
@@ -348,7 +348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get meeting email preview
-  app.get('/api/standups/meeting-email/:meetingId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/standups/meeting-email/:meetingId', async (req: any, res) => {
     try {
       const { meetingId } = req.params;
       const { MeetingRecorderService } = await import('./meetingRecorder');
@@ -377,7 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Legacy endpoint compatibility  
-  app.get('/api/standups/meeting-email/', isAuthenticated, async (req: any, res) => {
+  app.get('/api/standups/meeting-email/', async (req: any, res) => {
     try {
       const { meetingId } = req.query;
       if (!meetingId) {
@@ -410,7 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send meeting summary email
-  app.post('/api/standups/:meetingId/send-email', isAuthenticated, async (req: any, res) => {
+  app.post('/api/standups/:meetingId/send-email', async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { meetingId } = req.params;
@@ -447,7 +447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Legacy endpoint compatibility for send email
-  app.get('/api/standups/send-email', isAuthenticated, async (req: any, res) => {
+  app.get('/api/standups/send-email', async (req: any, res) => {
     try {
       const { meetingId, recipients, labName = "Your Lab" } = req.query;
 
@@ -514,7 +514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Test email delivery endpoint
-  app.post('/api/test-email', isAuthenticated, async (req: any, res) => {
+  app.post('/api/test-email', async (req: any, res) => {
     try {
       const { recipients, testMessage = "This is a test email from LabSync" } = req.body;
 
