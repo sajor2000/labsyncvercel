@@ -7,10 +7,12 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Users, FlaskConical, Folder, Settings, Eye } from "lucide-react";
+import { Plus, Users, FlaskConical, Folder, Settings, Eye, Trash2, MoreVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
@@ -114,6 +116,27 @@ export default function Labs() {
     },
   });
 
+  // Mutation for deleting lab
+  const deleteLabMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/labs/${id}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/labs'] });
+      toast({
+        title: "Success",
+        description: "Lab deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateLab = (data: InsertLab) => {
     createLabMutation.mutate(data);
   };
@@ -122,6 +145,10 @@ export default function Labs() {
     if (editingLab) {
       updateLabMutation.mutate({ id: editingLab.id, data });
     }
+  };
+
+  const handleDeleteLab = (id: string) => {
+    deleteLabMutation.mutate(id);
   };
 
   const handleOpenCreateDialog = () => {
@@ -319,14 +346,46 @@ export default function Labs() {
                       {lab.name}
                     </CardTitle>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => handleOpenEditDialog(lab)}
-                    data-testid={`button-lab-settings-${lab.id}`}
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" data-testid={`button-lab-menu-${lab.id}`}>
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleOpenEditDialog(lab)} data-testid={`button-edit-lab-${lab.id}`}>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Edit Lab
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} data-testid={`button-delete-lab-${lab.id}`}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Lab
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the lab
+                              "{lab.name}" and remove all associated data.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDeleteLab(lab.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </CardHeader>
               <CardContent>

@@ -12,6 +12,8 @@ import Studies from "@/pages/Studies";
 import RegistrationRequest from "@/pages/RegistrationRequest";
 import SearchResults from "@/pages/SearchResults";
 import { LoginPage } from "@/components/LoginPage";
+import { ResetPassword } from "@/pages/ResetPassword";
+import { ChangePassword } from "@/pages/ChangePassword";
 
 import TaskManagement from "@/pages/TaskManagement";
 import StudyManagement from "@/pages/StudyManagement";
@@ -48,6 +50,7 @@ function Router() {
           <Route path="/" component={Landing} />
           <Route path="/login" component={LoginPage} />
           <Route path="/register" component={RegistrationRequest} />
+          <Route path="/reset-password" component={ResetPassword} />
           <Route path="*" component={Landing} />
         </>
       ) : (
@@ -78,6 +81,7 @@ function Router() {
           <Route path="/profile" component={() => <Layout><Profile /></Layout>} />
           <Route path="/settings" component={() => <Layout><Settings /></Layout>} />
           <Route path="/email-settings" component={() => <Layout><EmailSettings /></Layout>} />
+          <Route path="/change-password" component={() => <Layout><ChangePassword /></Layout>} />
         </LabProvider>
       )}
       <Route component={NotFound} />

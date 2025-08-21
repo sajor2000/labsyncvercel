@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { studyMilestones, studies } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
-import { isAuthenticated } from "../replitAuth";
+import { isAuthenticated } from "../auth/localAuth";
 
 const router = Router();
 
@@ -49,7 +49,7 @@ router.get("/", isAuthenticated, async (req, res) => {
 // Create a new study milestone
 router.post("/", isAuthenticated, async (req, res) => {
   try {
-    const userId = (req.user as any)?.claims?.sub;
+    const userId = (req.user as any)?.id;
     const milestoneData = {
       ...req.body,
       createdBy: userId,

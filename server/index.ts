@@ -1,12 +1,45 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { automationScheduler } from "./automationScheduler";
 import { emailReminderService } from "./emailReminders";
+import { validateEnvironment } from "./utils/envValidation";
+import { securityHeaders, corsProtection, generateCSRFToken } from "./middleware/security";
+import { compressionMiddleware } from "./middleware/compression";
+import { auditMiddleware } from "./middleware/auditLogger";
+import { initializeDbOptimizations } from "./utils/dbOptimization";
+import { logger } from "./utils/logger";
+import { setupReplitMiddleware } from "./middleware/replitMiddleware";
+import { getReplitServerConfig } from "./utils/replitConfig";
+
+// Validate environment before starting
+validateEnvironment();
+
+// Initialize database optimizations
+initializeDbOptimizations().catch(error => {
+  logger.error('Failed to initialize database optimizations', { error: error.message });
+});
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Setup Replit middleware (health checks, graceful shutdown)
+const shutdownHandler = setupReplitMiddleware(app);
+
+// Security middleware (must be first)
+app.use(securityHeaders);
+app.use(corsProtection);
+app.use(generateCSRFToken);
+
+// Audit logging for compliance
+app.use(auditMiddleware);
+
+// Compression for better performance
+app.use(compressionMiddleware);
+
+// Body parsing with limits for security
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -22,16 +55,25 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      // Use structured logging instead of simple log
+      logger.performance('API Request', {
+        method: req.method,
+        path,
+        statusCode: res.statusCode,
+        duration,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        userId: req.user?.id
+      });
+      
+      // Keep original log for development
+      if (process.env.NODE_ENV === 'development') {
+        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+        if (logLine.length > 80) {
+          logLine = logLine.slice(0, 79) + "…";
+        }
+        log(logLine);
       }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
     }
   });
 
@@ -58,17 +100,31 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
+  // Get Replit-optimized server configuration
+  const serverConfig = getReplitServerConfig();
+  
+  // Update the shutdown handler with the server instance
+  if (shutdownHandler && typeof shutdownHandler.updateServer === 'function') {
+    shutdownHandler.updateServer(server);
+  }
+  
+  // Configure server with Replit optimizations
+  if (serverConfig.keepAliveTimeout) {
+    server.keepAliveTimeout = serverConfig.keepAliveTimeout;
+  }
+  if (serverConfig.headersTimeout) {
+    server.headersTimeout = serverConfig.headersTimeout;
+  }
+  if (serverConfig.requestTimeout) {
+    server.requestTimeout = serverConfig.requestTimeout;
+  }
+  
   server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
+    port: serverConfig.port,
+    host: serverConfig.host,
+    reusePort: false, // Disable reusePort for macOS compatibility
   }, () => {
-    log(`serving on port ${port}`);
+    log(`serving on port ${serverConfig.port}`);
     
     // Start the automation scheduler for Phase 5 automation features
     automationScheduler.start();

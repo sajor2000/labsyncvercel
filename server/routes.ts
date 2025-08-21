@@ -1,14 +1,47 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupLocalAuth, isAuthenticated, requiresPasswordChange } from "./auth/localAuth";
+import { authRoutes } from "./routes/auth";
 import { workflowService } from "./workflowService";
 import multer from 'multer';
 import googleCalendarRoutes from './routes/google-calendar';
+import type {
+  WorkflowCompleteRequest,
+  SendEmailRequest,
+  CreateTeamMemberRequest,
+  UpdateTeamMemberRequest,
+  StudiesQuery,
+  TasksQuery,
+  BucketsQuery,
+  IdeasQuery,
+  StandupsQuery,
+  CreateStudyRequest,
+  UpdateStudyRequest,
+  CreateTaskRequest,
+  UpdateTaskRequest,
+  MoveTaskRequest,
+  CreateBucketRequest,
+  UpdateBucketRequest,
+  CreateIdeaRequest,
+  UpdateIdeaRequest,
+  CreateLabRequest,
+  UpdateLabRequest,
+  DeleteOptions,
+  ErrorResponse
+} from './types/api';
+import './types/express.d.ts'; // Import type extensions
+import { handleError, handleNotFound, handleUnauthorized, handleConflict, AppError } from './utils/errorHandler';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
-  await setupAuth(app);
+  await setupLocalAuth(app);
+  
+  // Authentication routes
+  app.use('/api/auth', authRoutes);
+  
+  // Apply password change requirement middleware
+  app.use(requiresPasswordChange);
 
   // Configure multer for audio uploads
   const upload = multer({ 
@@ -18,42 +51,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   });
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Legacy auth endpoint (now handled in auth routes)
+  // Keeping for backward compatibility
+  app.get('/api/auth/legacy-user', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      // Session validation is already handled by isAuthenticated middleware
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      
-      // Add session info to response
-      res.json({
-        ...user,
-        sessionValid: true,
-        expiresAt: req.user.expires_at
-      });
+      // Redirect to new endpoint
+      res.redirect('/api/auth/user');
     } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
+      handleError(res, error, "Failed to fetch user");
     }
   });
 
   // Lab routes
-  app.get('/api/labs', isAuthenticated, async (req: any, res) => {
+  app.get('/api/labs', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const labs = await storage.getLabs();
       res.json(labs);
     } catch (error) {
-      console.error("Error fetching labs:", error);
-      res.status(500).json({ message: "Failed to fetch labs" });
+      handleError(res, error, "Failed to fetch labs");
+    }
+  });
+
+  // Global search endpoint
+  app.get('/api/search', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { q, limit } = req.query;
+      const userId = req.user!.id;
+      
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ error: 'Search query (q) is required' });
+      }
+      
+      const searchLimit = limit ? parseInt(limit as string, 10) : 15;
+      const results = await storage.globalSearch(q, searchLimit, userId);
+      
+      res.json({
+        results: results,
+        query: q,
+        total: results.length
+      });
+    } catch (error) {
+      handleError(res, error, "Failed to perform search");
     }
   });
 
   // Production Workflow Routes
   
   // Process complete workflow: audio -> transcript -> AI analysis -> email generation -> delivery
-  app.post('/api/workflow/complete', isAuthenticated, upload.single('audio'), async (req: any, res) => {
+  app.post('/api/workflow/complete', isAuthenticated, upload.single('audio'), async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       const { recipients, labName, labId, meetingType = 'DAILY_STANDUP', attendees = [] } = req.body;
       
       if (!req.file) {
@@ -109,16 +156,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error) {
-      console.error('Complete workflow error:', error);
-      res.status(500).json({ 
-        error: 'Workflow processing failed', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
-      });
+      handleError(res, error, "Workflow processing failed");
     }
   });
 
   // Get workflow steps for a specific workflow
-  app.get('/api/workflow/:workflowId/steps', isAuthenticated, async (req: any, res) => {
+  app.get('/api/workflow/:workflowId/steps', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { workflowId } = req.params;
       const steps = await workflowService.getWorkflowSteps(workflowId);
@@ -130,7 +173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get specific workflow step
-  app.get('/api/workflow/step/:stepId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/workflow/step/:stepId', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { stepId } = req.params;
       const step = await workflowService.getWorkflowStep(stepId);
@@ -145,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Cleanup expired workflow steps (can be called manually or via cron)
-  app.post('/api/workflow/cleanup', isAuthenticated, async (req: any, res) => {
+  app.post('/api/workflow/cleanup', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const deletedCount = await workflowService.cleanupExpiredSteps();
       res.json({ 
@@ -162,9 +205,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Process individual steps (for step-by-step processing)
   
   // Step 1: Transcription only
-  app.post('/api/workflow/transcribe', isAuthenticated, upload.single('audio'), async (req: any, res) => {
+  app.post('/api/workflow/transcribe', isAuthenticated, upload.single('audio'), async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       const { labId } = req.body;
       
       if (!req.file) {
@@ -195,9 +238,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Step 2: AI Analysis only
-  app.post('/api/workflow/analyze', isAuthenticated, async (req: any, res) => {
+  app.post('/api/workflow/analyze', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       const { workflowId, transcript, labId, meetingType = 'DAILY_STANDUP', attendees = [] } = req.body;
       
       if (!workflowId || !transcript) {
@@ -228,9 +271,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Step 3: Email Generation only
-  app.post('/api/workflow/generate-email', isAuthenticated, async (req: any, res) => {
+  app.post('/api/workflow/generate-email', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       const { workflowId, meetingId, labName, labId } = req.body;
       
       if (!workflowId || !meetingId || !labName) {
@@ -260,9 +303,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Step 4: Email Delivery only
-  app.post('/api/workflow/send-email', isAuthenticated, async (req: any, res) => {
+  app.post('/api/workflow/send-email', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       const { workflowId, meetingId, recipients, labName, labId } = req.body;
       
       if (!workflowId || !meetingId || !recipients || !Array.isArray(recipients) || recipients.length === 0 || !labName) {
@@ -293,11 +336,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Standup Meeting Routes
-  app.get('/api/standups', isAuthenticated, async (req: any, res) => {
+  app.get('/api/standups', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       const { labId } = req.query;
-      const meetings = await storage.getStandupMeetings(labId);
+      const meetings = await storage.getStandupMeetings(labId as string);
       res.json(meetings);
     } catch (error) {
       console.error("Error fetching standups:", error);
@@ -305,9 +348,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/standups', isAuthenticated, async (req: any, res) => {
+  app.post('/api/standups', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       const meetingData = { 
         ...req.body, 
         createdBy: userId,
@@ -324,10 +367,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Legacy endpoint compatibility
-  app.post('/api/standups/meetings', isAuthenticated, async (req: any, res) => {
+  app.put('/api/standups/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const updatedMeeting = await storage.updateStandupMeeting(id, req.body);
+      res.json(updatedMeeting);
+    } catch (error) {
+      handleError(res, error, "Failed to update standup");
+    }
+  });
+
+  app.delete('/api/standups/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      
+      // Verify meeting exists
+      const meeting = await storage.getStandupMeeting(id);
+      if (!meeting) {
+        return handleNotFound(res, "Standup meeting");
+      }
+      
+      // Authorization check - only creator or admin can delete
+      if (meeting.createdBy !== userId) {
+        return handleUnauthorized(res, "Unauthorized to delete this meeting");
+      }
+      
+      // Delete associated action items first
+      const actionItems = await storage.getActionItemsByMeetingId(id);
+      for (const item of actionItems) {
+        await storage.deleteActionItem(item.id);
+      }
+      
+      // Delete the meeting
+      await storage.deleteStandupMeeting(id);
+      
+      // Audit log
+      console.log(`Standup meeting ${id} deleted by user ${userId} at ${new Date().toISOString()}`);
+      
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error, "Failed to delete standup meeting");
+    }
+  });
+
+  // Legacy endpoint compatibility
+  app.post('/api/standups/meetings', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
       const meetingData = { 
         ...req.body, 
         createdBy: userId,
@@ -345,13 +432,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get meeting email preview
-  app.get('/api/standups/meeting-email/:meetingId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/standups/meeting-email/:meetingId', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { meetingId } = req.params;
       const { MeetingRecorderService } = await import('./meetingRecorder');
       const meetingService = new MeetingRecorderService();
       
-      const { meeting, actionItems } = await meetingService.getMeetingDetails(meetingId);
+      const { meeting, actionItems } = await meetingService.getMeetingDetails(meetingId as string);
       if (!meeting) {
         return res.status(404).json({ error: "Meeting not found" });
       }
@@ -374,7 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Legacy endpoint compatibility  
-  app.get('/api/standups/meeting-email/', isAuthenticated, async (req: any, res) => {
+  app.get('/api/standups/meeting-email/', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { meetingId } = req.query;
       if (!meetingId) {
@@ -384,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { MeetingRecorderService } = await import('./meetingRecorder');
       const meetingService = new MeetingRecorderService();
       
-      const { meeting, actionItems } = await meetingService.getMeetingDetails(meetingId);
+      const { meeting, actionItems } = await meetingService.getMeetingDetails(meetingId as string);
       if (!meeting) {
         return res.status(404).json({ error: "Meeting not found" });
       }
@@ -407,9 +494,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send meeting summary email
-  app.post('/api/standups/:meetingId/send-email', isAuthenticated, async (req: any, res) => {
+  app.post('/api/standups/:meetingId/send-email', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       const { meetingId } = req.params;
       const { recipients, labName = "Your Lab" } = req.body;
 
@@ -445,20 +532,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Legacy endpoint compatibility for send email
   // DELETE standup meeting endpoint
-  app.delete('/api/standups/meetings/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/standups/meetings/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       
       // Verify meeting exists
       const meeting = await storage.getStandupMeeting(id);
       if (!meeting) {
-        return res.status(404).json({ error: "Standup meeting not found" });
+        return handleNotFound(res, "Standup meeting");
       }
       
       // Authorization check - only creator or admin can delete
       if (meeting.createdBy !== userId) {
-        return res.status(403).json({ error: "Unauthorized to delete this meeting" });
+        return handleUnauthorized(res, "Unauthorized to delete this meeting");
       }
       
       // Hard delete - remove associated action items first
@@ -475,12 +562,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting standup meeting:", error);
-      res.status(500).json({ message: "Failed to delete standup meeting", error: error instanceof Error ? error.message : 'Unknown error' });
+      handleError(res, error, "Failed to delete standup meeting");
     }
   });
 
-  app.get('/api/standups/send-email', isAuthenticated, async (req: any, res) => {
+  app.get('/api/standups/send-email', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { meetingId, recipients, labName = "Your Lab" } = req.query;
 
@@ -503,7 +589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { MeetingRecorderService } = await import('./meetingRecorder');
       const meetingService = new MeetingRecorderService();
       
-      const result = await meetingService.sendMeetingSummary(meetingId, recipientList, labName);
+      const result = await meetingService.sendMeetingSummary(meetingId as string, recipientList, labName as string);
       
       if (result.success) {
         res.json({
@@ -547,7 +633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Test email delivery endpoint
-  app.post('/api/test-email', isAuthenticated, async (req: any, res) => {
+  app.post('/api/test-email', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { recipients, testMessage = "This is a test email from LabSync" } = req.body;
 
@@ -603,7 +689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Team Members routes
-  app.get('/api/team-members', isAuthenticated, async (req: any, res) => {
+  app.get('/api/team-members', isAuthenticated, async (req: Request, res: Response) => {
     try {
       console.log('🔍 API: Fetching team members...');
       const teamMembers = await storage.getTeamMembers();
@@ -616,9 +702,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create team member
-  app.post('/api/team-members', isAuthenticated, async (req: any, res) => {
+  app.post('/api/team-members', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       console.log('➕ API: Creating new team member...');
       
       // Create user with provided data
@@ -658,7 +744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update team member
-  app.put('/api/team-members/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/team-members/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       console.log(`✏️ API: Updating team member ${id}...`);
@@ -679,10 +765,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete team member
-  app.delete('/api/team-members/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/team-members/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       
       console.log(`🗑️ API: Deleting team member ${id}...`);
       
@@ -699,13 +785,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Lab Members routes (lab-specific)
-  app.get('/api/lab-members', isAuthenticated, async (req: any, res) => {
+  app.get('/api/lab-members', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { labId } = req.query;
       
       if (labId) {
         console.log(`🔍 API: Fetching members for lab ${labId}...`);
-        const labMembers = await storage.getLabMembers(labId);
+        const labMembers = await storage.getLabMembers(labId as string);
         console.log(`✅ API: Returning ${labMembers.length} members for lab`);
         res.json(labMembers);
       } else {
@@ -725,10 +811,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ================================
 
   // STUDIES CRUD
-  app.get('/api/studies', isAuthenticated, async (req: any, res) => {
+  app.get('/api/studies', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { labId } = req.query;
-      const studies = labId ? await storage.getStudiesByLab(labId) : await storage.getAllStudies();
+      const studies = labId ? await storage.getStudiesByLab(labId as string) : await storage.getAllStudies();
       res.json(studies);
     } catch (error) {
       console.error("Error fetching studies:", error);
@@ -736,11 +822,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/studies', isAuthenticated, async (req: any, res) => {
+  app.post('/api/studies', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const studyData = {
         ...req.body,
-        createdBy: req.user.claims.sub,
+        createdBy: req.user!.id,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -752,7 +838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/studies/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/studies/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const updatedStudy = await storage.updateStudy(id, req.body);
@@ -763,7 +849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/studies/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/studies/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { force } = req.query;
@@ -773,18 +859,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activeTasks = tasks.filter(task => task.isActive);
       
       if (activeTasks.length > 0 && !force) {
-        return res.status(409).json({ 
-          error: 'Cannot delete study with active tasks',
-          activeTasksCount: activeTasks.length,
-          hint: 'Add ?force=true to cascade delete tasks'
-        });
+        return handleConflict(res, `Cannot delete study with ${activeTasks.length} active tasks. Add ?force=true to cascade delete tasks`);
       }
       
       // Soft delete with cascade if force=true
       await storage.deleteStudy(id, Boolean(force));
       
       // Audit log
-      console.log(`Study ${id} deleted by user ${req.user.claims.sub} at ${new Date().toISOString()}`);
+      console.log(`Study ${id} deleted by user ${req.user!.id} at ${new Date().toISOString()}`);
       
       res.status(204).send();
     } catch (error) {
@@ -797,10 +879,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // BUCKETS CRUD
-  app.get('/api/buckets', isAuthenticated, async (req: any, res) => {
+  app.get('/api/buckets', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { labId } = req.query;
-      const buckets = labId ? await storage.getBucketsByLab(labId) : await storage.getAllBuckets();
+      const buckets = labId ? await storage.getBucketsByLab(labId as string) : await storage.getAllBuckets();
       res.json(buckets);
     } catch (error) {
       console.error("Error fetching buckets:", error);
@@ -808,11 +890,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/buckets', isAuthenticated, async (req: any, res) => {
+  app.post('/api/buckets', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const bucketData = {
         ...req.body,
-        createdBy: req.user.claims.sub,
+        createdBy: req.user!.id,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -824,7 +906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/buckets/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/buckets/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const updatedBucket = await storage.updateBucket(id, req.body);
@@ -835,21 +917,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/buckets/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/buckets/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       
       // Check for dependent studies before deletion
       const studies = await storage.getAllStudies();
       const bucketStudies = studies.filter(s => s.bucketId === id && s.isActive);
       
       if (bucketStudies.length > 0) {
-        return res.status(409).json({ 
-          error: 'Cannot delete bucket with active studies',
-          activeStudiesCount: bucketStudies.length,
-          hint: 'Move or delete studies first'
-        });
+        return handleConflict(res, `Cannot delete bucket with ${bucketStudies.length} active studies. Move or delete studies first`);
       }
       
       // Delete the bucket
@@ -872,10 +950,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // IDEAS CRUD
-  app.get('/api/ideas', isAuthenticated, async (req: any, res) => {
+  app.get('/api/ideas', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { labId } = req.query;
-      const ideas = labId ? await storage.getIdeasByLab(labId) : await storage.getAllIdeas();
+      const ideas = labId ? await storage.getIdeasByLab(labId as string) : await storage.getAllIdeas();
       res.json(ideas);
     } catch (error) {
       console.error("Error fetching ideas:", error);
@@ -883,11 +961,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ideas', isAuthenticated, async (req: any, res) => {
+  app.post('/api/ideas', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const ideaData = {
         ...req.body,
-        createdBy: req.user.claims.sub,
+        createdBy: req.user!.id,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -899,7 +977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/ideas/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/ideas/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const updatedIdea = await storage.updateIdea(id, req.body);
@@ -910,7 +988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/ideas/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/ideas/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       await storage.deleteIdea(id);
@@ -922,11 +1000,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // TASKS CRUD
-  app.get('/api/tasks', isAuthenticated, async (req: any, res) => {
+  app.get('/api/tasks', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { labId, studyId } = req.query;
-      const tasks = labId ? await storage.getTasksByLab(labId) : 
-                    studyId ? await storage.getTasksByStudy(studyId) :
+      const tasks = labId ? await storage.getTasksByLab(labId as string) : 
+                    studyId ? await storage.getTasksByStudy(studyId as string) :
                     await storage.getAllTasks();
       res.json(tasks);
     } catch (error) {
@@ -935,11 +1013,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/tasks', isAuthenticated, async (req: any, res) => {
+  app.post('/api/tasks', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const taskData = {
         ...req.body,
-        createdBy: req.user.claims.sub,
+        createdBy: req.user!.id,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -964,7 +1042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/tasks/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const updatedTask = await storage.updateTask(id, req.body);
@@ -975,7 +1053,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/tasks/:id/move', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/tasks/:id/move', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { newStatus, newPosition, newStudyId } = req.body;
@@ -987,16 +1065,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/tasks/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       
       // Verify task exists and check permissions
       const tasks = await storage.getAllTasks();
       const task = tasks.find(t => t.id === id);
       if (!task) {
-        return res.status(404).json({ error: "Task not found" });
+        return handleNotFound(res, "Task");
       }
       
       // Delete the task (hard delete for now, can be changed to soft delete)
@@ -1013,11 +1091,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // LABS CRUD (Complete the missing endpoints)
-  app.post('/api/labs', isAuthenticated, async (req: any, res) => {
+  app.post('/api/labs', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const labData = {
         ...req.body,
-        createdBy: req.user.claims.sub,
+        createdBy: req.user!.id,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -1029,7 +1107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/labs/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/labs/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const updatedLab = await storage.updateLab(id, req.body);
@@ -1040,16 +1118,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/labs/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/labs/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { force } = req.query;
       
       // Validate no active dependencies exist
       const [studies, buckets, members] = await Promise.all([
-        storage.getStudiesByLab(id),
-        storage.getBucketsByLab(id),
-        storage.getLabMembers(id)
+        storage.getStudiesByLab(id as string),
+        storage.getBucketsByLab(id as string),
+        storage.getLabMembers(id as string)
       ]);
       
       const activeStudies = studies.filter(s => s.isActive);
@@ -1071,7 +1149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteLab(id, Boolean(force));
       
       // Audit log
-      console.log(`Lab ${id} deleted by user ${req.user.claims.sub} at ${new Date().toISOString()}`);
+      console.log(`Lab ${id} deleted by user ${req.user!.id} at ${new Date().toISOString()}`);
       
       res.status(204).send();
     } catch (error) {
@@ -1084,11 +1162,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ATTACHMENTS for file management
-  app.post('/api/attachments', isAuthenticated, async (req: any, res) => {
+  app.post('/api/attachments', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const attachmentData = {
         ...req.body,
-        createdBy: req.user.claims.sub,
+        createdBy: req.user!.id,
         createdAt: new Date(),
       };
       const attachment = await storage.createAttachment(attachmentData);
@@ -1099,14 +1177,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/attachments/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/attachments/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       await storage.deleteAttachment(id);
-      res.json({ message: "Attachment deleted successfully" });
+      res.status(204).send();
     } catch (error) {
-      console.error("Error deleting attachment:", error);
-      res.status(500).json({ message: "Failed to delete attachment", error: error.message });
+      handleError(res, error, "Failed to delete attachment");
+    }
+  });
+
+  // ACTION ITEMS CRUD
+  app.get('/api/action-items', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { assigneeId, meetingId } = req.query as { assigneeId?: string; meetingId?: string };
+      const actionItems = await storage.getActionItems(assigneeId, meetingId);
+      res.json(actionItems);
+    } catch (error) {
+      handleError(res, error, "Failed to fetch action items");
+    }
+  });
+
+  app.post('/api/action-items', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const actionItemData = {
+        ...req.body,
+        createdBy: req.user!.id,
+        createdAt: new Date(),
+      };
+      const actionItem = await storage.createActionItem(actionItemData);
+      res.status(201).json(actionItem);
+    } catch (error) {
+      handleError(res, error, "Failed to create action item");
+    }
+  });
+
+  app.put('/api/action-items/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updatedActionItem = await storage.updateActionItem(id, req.body);
+      res.json(updatedActionItem);
+    } catch (error) {
+      handleError(res, error, "Failed to update action item");
+    }
+  });
+
+  app.delete('/api/action-items/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteActionItem(id);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error, "Failed to delete action item");
     }
   });
 
@@ -1127,6 +1249,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Direct email testing routes
   app.use('/api/email-test', (await import('./routes/email-test')).emailTestRoutes);
+  
+  // Admin user management routes
+  app.use('/api/admin', (await import('./routes/admin')).adminRoutes);
 
   const httpServer = createServer(app);
   return httpServer;

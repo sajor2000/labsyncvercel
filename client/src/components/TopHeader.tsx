@@ -207,13 +207,22 @@ export function TopHeader({ onMenuClick }: TopHeaderProps) {
               {user.firstName?.[0] || user.email?.[0]?.toUpperCase() || "U"}
             </div>
             <div className="hidden sm:block">
-              <p className="text-sm font-medium text-foreground">
-                {user.firstName && user.lastName 
-                  ? `${user.firstName} ${user.lastName}`
-                  : user.email
-                }
+              <div className="flex items-center space-x-2">
+                <p className="text-sm font-medium text-foreground">
+                  {user.firstName && user.lastName 
+                    ? `${user.firstName} ${user.lastName}`
+                    : user.email
+                  }
+                </p>
+                {user.role && (
+                  <span className="px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded-full border border-primary/20">
+                    {user.role.replace(/_/g, ' ')}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {user.institution || "Rush University Medical Center"}
               </p>
-              <p className="text-xs text-accent/80 font-medium">Making Science Easier</p>
             </div>
           </div>
         )}

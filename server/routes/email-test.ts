@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Resend } from 'resend';
-import { isAuthenticated } from '../replitAuth';
+import { isAuthenticated } from '../auth/localAuth';
 
 const router = Router();
 

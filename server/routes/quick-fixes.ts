@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { isAuthenticated } from '../replitAuth';
+import { isAuthenticated } from '../auth/localAuth';
 import { storage } from '../storage';
 
 const router = Router();
@@ -17,12 +17,12 @@ router.post('/add-user-to-team', isAuthenticated, async (req, res) => {
     }
     
     // Check if user already exists in team_members
-    const existingTeamMembers = await storage.getAllTeamMembers();
+    const existingTeamMembers = await storage.getTeamMembers();
     const userExists = existingTeamMembers.some(member => member.id === currentUserId);
     
     if (userExists) {
       // Update existing user
-      await storage.updateTeamMember(currentUserId, { email, name, labId });
+      await storage.updateTeamMember(currentUserId, { email, name, labId } as any);
       console.log(`✅ Updated existing team member: ${name} (${email})`);
     } else {
       // Add new team member

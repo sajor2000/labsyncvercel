@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { TeamMemberAvatarUpload } from "@/components/TeamMemberAvatarUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -25,31 +24,37 @@ import {
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertTeamMemberSchema, type TeamMember, type InsertTeamMember } from "@shared/schema";
+import { insertLabMemberSchema, type LabMember, type InsertLabMember, type Lab, type User } from "@shared/schema";
 import { z } from "zod";
 
 // Create form schema
-const createTeamMemberFormSchema = insertTeamMemberSchema;
-type CreateTeamMemberFormData = z.infer<typeof createTeamMemberFormSchema>;
+const createLabMemberFormSchema = insertLabMemberSchema.extend({
+  userEmail: z.string().email().optional(), // To find existing user by email
+  userName: z.string().optional(), // To create new user if needed
+});
+type CreateLabMemberFormData = z.infer<typeof createLabMemberFormSchema>;
 
-// Role options for team members  
+// Role options for lab members
 const roleOptions = [
-  { value: "Principal Investigator", label: "Principal Investigator" },
+  { value: "PRINCIPAL_INVESTIGATOR", label: "Principal Investigator" },
   { value: "CO_PRINCIPAL_INVESTIGATOR", label: "Co-Principal Investigator" },
-  { value: "Data Scientist", label: "Data Scientist" },
-  { value: "Data Analyst", label: "Data Analyst" },
-  { value: "Clinical Research Coordinator", label: "Clinical Research Coordinator" },
-  { value: "Regulatory Coordinator", label: "Regulatory Coordinator" },
-  { value: "Staff Coordinator", label: "Staff Coordinator" },
-  { value: "Fellow", label: "Fellow" },
-  { value: "Medical Student", label: "Medical Student" },
-  { value: "Volunteer Research Assistant", label: "Volunteer Research Assistant" },
-  { value: "Research Assistant", label: "Research Assistant" },
+  { value: "DATA_SCIENTIST", label: "Data Scientist" },
+  { value: "DATA_ANALYST", label: "Data Analyst" },
+  { value: "CLINICAL_RESEARCH_COORDINATOR", label: "Clinical Research Coordinator" },
+  { value: "REGULATORY_COORDINATOR", label: "Regulatory Coordinator" },
+  { value: "STAFF_COORDINATOR", label: "Staff Coordinator" },
+  { value: "LAB_ADMINISTRATOR", label: "Lab Administrator" },
+  { value: "FELLOW", label: "Fellow" },
+  { value: "MEDICAL_STUDENT", label: "Medical Student" },
+  { value: "RESEARCH_ASSISTANT", label: "Research Assistant" },
+  { value: "VOLUNTEER_RESEARCH_ASSISTANT", label: "Volunteer Research Assistant" },
+  { value: "EXTERNAL_COLLABORATOR", label: "External Collaborator" },
   // Legacy values for backward compatibility
   { value: "PI", label: "PI" },
-  { value: "Coordinator", label: "Coordinator" },
-  { value: "Lab Intern", label: "Lab Intern" },
-  { value: "Summer Intern", label: "Summer Intern" }
+  { value: "RESEARCH_COORDINATOR", label: "Research Coordinator" },
+  { value: "RESEARCHER", label: "Researcher" },
+  { value: "STUDENT", label: "Student" },
+  { value: "ADMIN", label: "Admin" }
 ];
 
 export default function TeamMembers() {
@@ -62,11 +67,11 @@ export default function TeamMembers() {
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [editingMember, setEditingMember] = useState<LabMember & { user?: User; lab?: Lab } | null>(null);
 
-  // Fetch ALL team members from ALL labs
-  const { data: allMembers = [], isLoading: membersLoading } = useQuery<TeamMember[]>({
-    queryKey: ['/api/team-members'], // Changed to fetch all team members
+  // Fetch lab members for current lab or all labs if user is admin
+  const { data: labMembers = [], isLoading: membersLoading } = useQuery<(LabMember & { user?: User; lab?: Lab })[]>({
+    queryKey: selectedLab ? ['/api/lab-members/lab', selectedLab.id] : ['/api/lab-members/current-user/labs'],
     enabled: isAuthenticated,
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -84,16 +89,24 @@ export default function TeamMembers() {
     },
   });
 
-  // Show all members - no filtering by lab
-  const labMembers = allMembers;
+  // Also fetch all labs for display purposes
+  const { data: allLabs = [] } = useQuery<Lab[]>({
+    queryKey: ['/api/labs'],
+    enabled: isAuthenticated,
+  });
 
   // Filter members based on search and filters
   const filteredMembers = labMembers.filter(member => {
-    const roleLabel = roleOptions.find(opt => opt.value === member.role)?.label || member.role;
-    const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const roleLabel = roleOptions.find(opt => opt.value === member.labRole)?.label || member.labRole || 'Unknown Role';
+    const userName = member.user?.name || 'Unknown User';
+    const userEmail = member.user?.email || '';
+    const labName = member.lab?.name || allLabs.find(lab => lab.id === member.labId)?.name || 'Unknown Lab';
+    
+    const matchesSearch = userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         labName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          roleLabel.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = !selectedRole || selectedRole === "ALL" || member.role === selectedRole;
+    const matchesRole = !selectedRole || selectedRole === "ALL" || member.labRole === selectedRole;
     const matchesStatus = !selectedStatus || selectedStatus === "ALL" || 
                          (selectedStatus === "ACTIVE" && member.isActive) ||
                          (selectedStatus === "INACTIVE" && !member.isActive);
@@ -101,49 +114,79 @@ export default function TeamMembers() {
   });
 
   // Create member form
-  const createMemberForm = useForm<CreateTeamMemberFormData>({
-    resolver: zodResolver(createTeamMemberFormSchema),
+  const createMemberForm = useForm<CreateLabMemberFormData>({
+    resolver: zodResolver(createLabMemberFormSchema),
     defaultValues: {
-      name: "",
-      initials: "",
-      email: "",
-      role: "PI" as const,
-      avatarUrl: "",
+      userId: "",
       labId: selectedLab?.id || "",
+      labRole: "RESEARCH_ASSISTANT" as const,
       isActive: true,
+      userEmail: "",
+      userName: "",
     },
   });
 
   // Edit member form
-  const editMemberForm = useForm<CreateTeamMemberFormData>({
-    resolver: zodResolver(createTeamMemberFormSchema),
+  const editMemberForm = useForm<CreateLabMemberFormData>({
+    resolver: zodResolver(createLabMemberFormSchema),
     defaultValues: {
-      name: "",
-      initials: "",
-      email: "",
-      role: "PI" as const,
-      avatarUrl: "",
+      userId: "",
       labId: selectedLab?.id || "",
+      labRole: "RESEARCH_ASSISTANT" as const,
       isActive: true,
+      userEmail: "",
+      userName: "",
     },
   });
 
   // Create member mutation
   const createMemberMutation = useMutation({
-    mutationFn: async (data: CreateTeamMemberFormData) => {
+    mutationFn: async (data: CreateLabMemberFormData) => {
+      // First, we need to find or create the user
+      let userId = data.userId;
+      
+      if (!userId && data.userEmail) {
+        // Try to find existing user by email
+        try {
+          const existingUser = await apiRequest('/api/users/by-email', 'POST', { email: data.userEmail }) as any;
+          userId = existingUser?.id;
+        } catch (error) {
+          // User doesn't exist, create new one if name provided
+          if (data.userName) {
+            const newUser = await apiRequest('/api/users', 'POST', {
+              email: data.userEmail,
+              name: data.userName,
+            }) as any;
+            userId = newUser?.id;
+          } else {
+            throw new Error('User not found and no name provided for creating new user');
+          }
+        }
+      }
+      
+      if (!userId) {
+        throw new Error('Unable to determine user ID');
+      }
+      
       const memberData = {
-        ...data,
+        userId,
         labId: selectedLab?.id || "",
+        labRole: data.labRole,
+        isActive: data.isActive,
+        // Include basic permissions for the role
+        canCreateProjects: data.labRole === 'PRINCIPAL_INVESTIGATOR' || data.labRole === 'CO_PRINCIPAL_INVESTIGATOR',
+        canAssignTasks: ['PRINCIPAL_INVESTIGATOR', 'CO_PRINCIPAL_INVESTIGATOR', 'LAB_ADMINISTRATOR'].includes(data.labRole || ''),
+        canManageMembers: data.labRole === 'PRINCIPAL_INVESTIGATOR' || data.labRole === 'CO_PRINCIPAL_INVESTIGATOR',
       };
-      return apiRequest('/api/team-members', 'POST', memberData);
+      return apiRequest('/api/lab-members', 'POST', memberData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/lab-members'] });
       setIsCreateDialogOpen(false);
       createMemberForm.reset();
       toast({
         title: "Success",
-        description: "Team member created successfully",
+        description: "Lab member added successfully",
       });
     },
     onError: (error) => {
@@ -158,9 +201,10 @@ export default function TeamMembers() {
         }, 500);
         return;
       }
+      console.error('Error adding lab member:', error);
       toast({
         title: "Error",
-        description: "Failed to create team member",
+        description: error instanceof Error ? error.message : "Failed to add lab member",
         variant: "destructive",
       });
     },
@@ -168,11 +212,15 @@ export default function TeamMembers() {
 
   // Toggle member status
   const toggleStatusMutation = useMutation({
-    mutationFn: async ({ memberId, isActive }: { memberId: string; isActive: boolean }) => {
-      return apiRequest(`/api/team-members/${memberId}`, 'PUT', { isActive });
+    mutationFn: async ({ userId, labId, isActive }: { userId: string; labId: string; isActive: boolean }) => {
+      return apiRequest(`/api/lab-members/${userId}/${labId}`, 'PUT', { isActive });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/lab-members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/lab-members/current-user/labs'] });
+      if (selectedLab) {
+        queryClient.invalidateQueries({ queryKey: ['/api/lab-members/lab', selectedLab.id] });
+      }
       toast({
         title: "Success",
         description: "Member status updated successfully",
@@ -200,12 +248,16 @@ export default function TeamMembers() {
 
   // Update member mutation
   const updateMemberMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<CreateTeamMemberFormData> }) => {
-      return apiRequest(`/api/team-members/${id}`, 'PUT', data);
+    mutationFn: async ({ userId, labId, data }: { userId: string; labId: string; data: Partial<CreateLabMemberFormData> }) => {
+      return apiRequest(`/api/lab-members/${userId}/${labId}`, 'PUT', data);
     },
     onSuccess: () => {
-      toast({ title: "Team member updated successfully" });
-      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
+      toast({ title: "Lab member updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/lab-members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/lab-members/current-user/labs'] });
+      if (selectedLab) {
+        queryClient.invalidateQueries({ queryKey: ['/api/lab-members/lab', selectedLab.id] });
+      }
       setIsEditDialogOpen(false);
       setEditingMember(null);
       editMemberForm.reset();
@@ -222,7 +274,7 @@ export default function TeamMembers() {
         }, 500);
         return;
       }
-      console.error("Error updating team member:", error);
+      console.error("Error updating lab member:", error);
       toast({ 
         title: "Error updating member", 
         description: "Please try again.", 
@@ -231,14 +283,18 @@ export default function TeamMembers() {
     },
   });
 
-  // Delete member mutation
-  const deleteMemberMutation = useMutation({
-    mutationFn: async (memberId: string) => {
-      return apiRequest('DELETE', `/api/team-members/${memberId}`);
+  // Remove member from lab mutation
+  const removeMemberMutation = useMutation({
+    mutationFn: async ({ userId, labId }: { userId: string; labId: string }) => {
+      return apiRequest(`/api/lab-members/${userId}/${labId}`, 'DELETE');
     },
     onSuccess: () => {
-      toast({ title: "Team member deleted successfully" });
-      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
+      toast({ title: "Member removed from lab successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/lab-members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/lab-members/current-user/labs'] });
+      if (selectedLab) {
+        queryClient.invalidateQueries({ queryKey: ['/api/lab-members/lab', selectedLab.id] });
+      }
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -252,41 +308,44 @@ export default function TeamMembers() {
         }, 500);
         return;
       }
-      console.error("Error deleting team member:", error);
+      console.error("Error removing lab member:", error);
       toast({ 
-        title: "Error deleting member", 
+        title: "Error removing member", 
         description: "Please try again.", 
         variant: "destructive" 
       });
     },
   });
 
-  const onSubmit = (data: CreateTeamMemberFormData) => {
+  const onSubmit = (data: CreateLabMemberFormData) => {
     createMemberMutation.mutate(data);
   };
 
-  const onEditSubmit = (data: CreateTeamMemberFormData) => {
+  const onEditSubmit = (data: CreateLabMemberFormData) => {
     if (editingMember) {
-      updateMemberMutation.mutate({ id: editingMember.id, data });
+      updateMemberMutation.mutate({ 
+        userId: editingMember.userId, 
+        labId: editingMember.labId, 
+        data 
+      });
     }
   };
 
-  const handleEdit = (member: TeamMember) => {
+  const handleEdit = (member: LabMember & { user?: User; lab?: Lab }) => {
     setEditingMember(member);
     editMemberForm.reset({
-      name: member.name,
-      initials: member.initials || "",
-      email: member.email || "",
-      role: member.role,
-      avatarUrl: member.avatarUrl || "",
+      userId: member.userId,
       labId: member.labId,
+      labRole: member.labRole,
       isActive: member.isActive,
+      userEmail: member.user?.email || "",
+      userName: member.user?.name || "",
     });
     setIsEditDialogOpen(true);
   };
 
-  const handleDelete = (memberId: string) => {
-    deleteMemberMutation.mutate(memberId);
+  const handleRemove = (userId: string, labId: string) => {
+    removeMemberMutation.mutate({ userId, labId });
   };
 
   if (isLoading || membersLoading) {
@@ -320,10 +379,12 @@ export default function TeamMembers() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Users className="h-6 w-6" />
-            Team Members
+            Lab Members
           </h1>
           <p className="text-muted-foreground">
-            Manage lab personnel and their assignments in {selectedLab.name}
+            {selectedLab 
+              ? `Manage lab members and their roles in ${selectedLab.name}` 
+              : "Manage lab members across all your labs"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -331,69 +392,60 @@ export default function TeamMembers() {
             <DialogTrigger asChild>
               <Button data-testid="button-create-member">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Team Member
+                Add Lab Member
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Add New Team Member</DialogTitle>
+                <DialogTitle>Add New Lab Member</DialogTitle>
                 <DialogDescription>
-                  Add a new team member to {selectedLab.name} lab.
+                  Add an existing user to {selectedLab.name} lab or invite a new user.
                 </DialogDescription>
               </DialogHeader>
               <Form {...createMemberForm}>
                 <form onSubmit={createMemberForm.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={createMemberForm.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Full Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} data-testid="input-member-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={createMemberForm.control}
-                      name="initials"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Initials</FormLabel>
-                          <FormControl>
-                            <Input {...field} value={field.value || ""} placeholder="e.g., JS" maxLength={10} data-testid="input-member-initials" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                   <FormField
                     control={createMemberForm.control}
-                    name="email"
+                    name="userEmail"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>User Email</FormLabel>
                         <FormControl>
-                          <Input type="email" {...field} value={field.value || ""} data-testid="input-member-email" />
+                          <Input type="email" {...field} value={field.value || ""} placeholder="Enter existing user's email" data-testid="input-member-email" />
                         </FormControl>
                         <FormMessage />
+                        <p className="text-sm text-muted-foreground">
+                          Enter the email of an existing user to add them to this lab.
+                        </p>
                       </FormItem>
                     )}
                   />
                   <FormField
                     control={createMemberForm.control}
-                    name="role"
+                    name="userName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Role</FormLabel>
+                        <FormLabel>User Name (if creating new user)</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} placeholder="Full name for new user" data-testid="input-member-name" />
+                        </FormControl>
+                        <FormMessage />
+                        <p className="text-sm text-muted-foreground">
+                          Only fill this if creating a new user account.
+                        </p>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={createMemberForm.control}
+                    name="labRole"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Lab Role</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger data-testid="select-member-role">
-                              <SelectValue placeholder="Select role" />
+                              <SelectValue placeholder="Select lab role" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -408,43 +460,9 @@ export default function TeamMembers() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={createMemberForm.control}
-                    name="avatarUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Avatar (PNG/JPG)</FormLabel>
-                        <FormControl>
-                          <div className="flex items-center gap-3">
-                            <TeamMemberAvatarUpload
-                              currentAvatarUrl={field.value || undefined}
-                              userName={createMemberForm.watch('name') || 'New Member'}
-                              size="lg"
-                              showUploadButton={true}
-                              className="flex-shrink-0"
-                              onAvatarChange={(avatarUrl) => field.onChange(avatarUrl)}
-                            />
-                            <div className="flex-1">
-                              <p className="text-sm text-muted-foreground">
-                                Upload a PNG or JPG image, or use initials as fallback
-                              </p>
-                              <Input 
-                                {...field} 
-                                value={field.value || ""} 
-                                placeholder="Or paste image URL..." 
-                                className="mt-2"
-                                data-testid="input-member-avatar" 
-                              />
-                            </div>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                   <DialogFooter>
                     <Button type="submit" disabled={createMemberMutation.isPending} data-testid="button-submit-member">
-                      {createMemberMutation.isPending ? "Creating..." : "Create Member"}
+                      {createMemberMutation.isPending ? "Adding..." : "Add to Lab"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -493,119 +511,130 @@ export default function TeamMembers() {
         </Select>
       </div>
 
-      {/* Team Members Grid */}
+      {/* Lab Members Grid */}
       {filteredMembers.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredMembers.map((member) => (
-            <Card key={member.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <TeamMemberAvatarUpload
-                      currentAvatarUrl={member.avatarUrl || undefined}
-                      userName={member.name}
-                      size="md"
-                      showUploadButton={false}
-                      className="flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg truncate">{member.name}</CardTitle>
-                      <div className="flex gap-2 mt-1">
-                        <Badge className="bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200">
-                          {member.labId === '069efa27-bbf8-4c27-8c1e-3800148e4985' ? 'RHEDAS' : 'RICCC'}
-                        </Badge>
-                        <Badge variant="secondary">
-                          {roleOptions.find(r => r.value === member.role)?.label || member.role}
-                        </Badge>
+          {filteredMembers.map((member) => {
+            const userName = member.user?.name || 'Unknown User';
+            const userEmail = member.user?.email || '';
+            const labName = member.lab?.name || allLabs.find(lab => lab.id === member.labId)?.name || 'Unknown Lab';
+            const roleLabel = roleOptions.find(r => r.value === member.labRole)?.label || member.labRole;
+            
+            return (
+              <Card key={`${member.userId}-${member.labId}`} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Users className="h-5 w-5 text-primary" />
                       </div>
-                      {member.department && (
-                        <p className="text-sm text-muted-foreground mt-1 truncate">
-                          {member.department}
-                        </p>
-                      )}
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-lg truncate">{userName}</CardTitle>
+                        <div className="flex gap-2 mt-1 flex-wrap">
+                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            {labName}
+                          </Badge>
+                          <Badge variant="secondary">
+                            {roleLabel}
+                          </Badge>
+                        </div>
+                        {member.joinedAt && (
+                          <p className="text-sm text-muted-foreground mt-1 truncate">
+                            Joined: {new Date(member.joinedAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    <Badge variant={member.isActive ? "default" : "secondary"}>
+                      {member.isActive ? "Active" : "Inactive"}
+                    </Badge>
                   </div>
-                  <Badge variant={member.isActive ? "default" : "secondary"}>
-                    {member.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {member.email && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="h-4 w-4" />
-                    <span className="truncate">{member.email}</span>
-                  </div>
-                )}
-                {member.initials && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="font-mono text-xs bg-muted px-2 py-1 rounded">
-                      {member.initials}
-                    </span>
-                  </div>
-                )}
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleStatusMutation.mutate({
-                      memberId: member.id,
-                      isActive: !member.isActive
-                    })}
-                    disabled={toggleStatusMutation.isPending}
-                    data-testid={`button-toggle-status-${member.id}`}
-                  >
-                    {member.isActive ? (
-                      <>
-                        <UserX className="h-4 w-4 mr-1" />
-                        Deactivate
-                      </>
-                    ) : (
-                      <>
-                        <UserCheck className="h-4 w-4 mr-1" />
-                        Activate
-                      </>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {userEmail && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Mail className="h-4 w-4" />
+                      <span className="truncate">{userEmail}</span>
+                    </div>
+                  )}
+                  
+                  {/* Show key permissions */}
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {member.canManageMembers && (
+                      <Badge variant="outline" className="text-xs">Can Manage Members</Badge>
                     )}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleEdit(member)}
-                    data-testid={`button-edit-${member.id}`}
-                  >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleDelete(member.id)}
-                    disabled={deleteMemberMutation.isPending}
-                    data-testid={`button-delete-${member.id}`}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    {member.canCreateProjects && (
+                      <Badge variant="outline" className="text-xs">Can Create Projects</Badge>
+                    )}
+                    {member.canAssignTasks && (
+                      <Badge variant="outline" className="text-xs">Can Assign Tasks</Badge>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleStatusMutation.mutate({
+                        userId: member.userId,
+                        labId: member.labId,
+                        isActive: !member.isActive
+                      })}
+                      disabled={toggleStatusMutation.isPending}
+                      data-testid={`button-toggle-status-${member.id}`}
+                    >
+                      {member.isActive ? (
+                        <>
+                          <UserX className="h-4 w-4 mr-1" />
+                          Deactivate
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck className="h-4 w-4 mr-1" />
+                          Activate
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleEdit(member)}
+                      data-testid={`button-edit-${member.id}`}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleRemove(member.userId, member.labId)}
+                      disabled={removeMemberMutation.isPending}
+                      data-testid={`button-remove-${member.id}`}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Remove
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <Card className="text-center py-12">
           <CardContent>
             <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground">No team members found</h3>
+            <h3 className="text-lg font-medium text-foreground">No lab members found</h3>
             <p className="text-muted-foreground mb-4">
               {searchTerm || selectedRole || selectedStatus 
                 ? "No members match your current filters." 
-                : "Get started by adding your first team member."}
+                : "Get started by adding your first lab member."}
             </p>
             {!searchTerm && !selectedRole && !selectedStatus && (
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Team Member
+                Add Lab Member
               </Button>
             )}
           </CardContent>
@@ -616,64 +645,30 @@ export default function TeamMembers() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit Team Member</DialogTitle>
+            <DialogTitle>Edit Lab Member</DialogTitle>
             <DialogDescription>
-              Update team member information for {selectedLab.name} lab.
+              Update lab member role and permissions for {selectedLab?.name} lab.
             </DialogDescription>
           </DialogHeader>
           <Form {...editMemberForm}>
             <form onSubmit={editMemberForm.handleSubmit(onEditSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={editMemberForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-edit-member-name" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editMemberForm.control}
-                  name="initials"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Initials</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ""} placeholder="e.g., JS" maxLength={10} data-testid="input-edit-member-initials" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div className="space-y-4">
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium">User: {editingMember?.user?.name || 'Unknown User'}</p>
+                  <p className="text-sm text-muted-foreground">{editingMember?.user?.email}</p>
+                  <p className="text-sm text-muted-foreground">Lab: {editingMember?.lab?.name || selectedLab?.name}</p>
+                </div>
               </div>
               <FormField
                 control={editMemberForm.control}
-                name="email"
+                name="labRole"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value || ""} type="email" data-testid="input-edit-member-email" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editMemberForm.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role</FormLabel>
+                    <FormLabel>Lab Role</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger data-testid="select-edit-member-role">
-                          <SelectValue placeholder="Select role" />
+                          <SelectValue placeholder="Select lab role" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -688,43 +683,9 @@ export default function TeamMembers() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={editMemberForm.control}
-                name="avatarUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Avatar (PNG/JPG)</FormLabel>
-                    <FormControl>
-                      <div className="flex items-center gap-3">
-                        <TeamMemberAvatarUpload
-                          currentAvatarUrl={field.value || undefined}
-                          userName={editMemberForm.watch('name') || 'Team Member'}
-                          size="lg"
-                          showUploadButton={true}
-                          className="flex-shrink-0"
-                          onAvatarChange={(avatarUrl) => field.onChange(avatarUrl)}
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm text-muted-foreground">
-                            Upload a PNG or JPG image, or use initials as fallback
-                          </p>
-                          <Input 
-                            {...field} 
-                            value={field.value || ""} 
-                            placeholder="Or paste image URL..." 
-                            className="mt-2"
-                            data-testid="input-edit-member-avatar" 
-                          />
-                        </div>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <DialogFooter>
                 <Button type="submit" disabled={updateMemberMutation.isPending} data-testid="button-submit-edit-member">
-                  {updateMemberMutation.isPending ? "Updating..." : "Update Member"}
+                  {updateMemberMutation.isPending ? "Updating..." : "Update Lab Member"}
                 </Button>
               </DialogFooter>
             </form>

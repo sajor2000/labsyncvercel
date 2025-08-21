@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { neon } from '@neondatabase/serverless';
+import { logger } from './utils/logger';
 
 const resend = new Resend(process.env.RESEND_API_KEY2);
 const sql = neon(process.env.DATABASE_URL!);
@@ -22,7 +23,7 @@ export class EmailReminderService {
    */
   async sendTaskReminders(): Promise<void> {
     try {
-      console.log('🔍 Checking for tasks requiring reminders...');
+      logger.info('Checking for tasks requiring reminders');
       
       // Get tasks due in exactly 24 hours (1 day before due date)
       const upcomingTasks = await this.getTasksDueInOneDay();
@@ -38,9 +39,9 @@ export class EmailReminderService {
         }
       }
       
-      console.log(`📧 Sent ${allTasks.length} task reminder emails`);
+      logger.info('Task reminder emails sent', { count: allTasks.length });
     } catch (error) {
-      console.error('❌ Error sending task reminders:', error);
+      logger.error('Error sending task reminders', { error: error.message });
     }
   }
 
@@ -194,7 +195,7 @@ export class EmailReminderService {
       id: row.id,
       title: row.title,
       description: row.description || '',
-      dueDate: row.due_date ? new Date(row.due_date) : null,
+      dueDate: row.due_date ? new Date(row.due_date) : new Date(),
       priority: row.priority || 'MEDIUM',
       studyTitle: row.study_title,
       assigneeName: row.assignee_name,

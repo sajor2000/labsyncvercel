@@ -306,7 +306,7 @@ Return both HTML summary and JSON structure.`;
         text: plainTextContent,
         tags: [
           { name: 'category', value: 'meeting-summary' },
-          { name: 'lab', value: labName.toLowerCase().replace(/\s+/g, '-') }
+          { name: 'lab', value: labName.toLowerCase().replace(/[^a-z0-9\-_]/g, '-').replace(/-+/g, '-') }
         ]
       });
 

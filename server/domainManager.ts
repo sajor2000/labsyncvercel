@@ -12,13 +12,13 @@ export class DomainManager {
       return {
         success: true,
         domains: domains.data || [],
-        count: domains.data?.length || 0
+        count: Array.isArray(domains.data) ? domains.data.length : 0
       };
     } catch (error) {
       console.error('❌ Failed to list domains:', error);
       return {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         domains: [],
         count: 0
       };
@@ -40,11 +40,12 @@ export class DomainManager {
         message: `Domain ${domainName} added successfully. You'll need to verify it in your Resend dashboard.`
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`❌ Failed to add domain ${domainName}:`, error);
       return {
         success: false,
-        error: error.message,
-        message: `Failed to add domain ${domainName}: ${error.message}`
+        error: errorMessage,
+        message: `Failed to add domain ${domainName}: ${errorMessage}`
       };
     }
   }
@@ -64,11 +65,12 @@ export class DomainManager {
         message: 'Domain verification initiated. Check your Resend dashboard for DNS setup instructions.'
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`❌ Failed to verify domain ${domainId}:`, error);
       return {
         success: false,
-        error: error.message,
-        message: `Failed to verify domain: ${error.message}`
+        error: errorMessage,
+        message: `Failed to verify domain: ${errorMessage}`
       };
     }
   }
@@ -87,7 +89,7 @@ export class DomainManager {
       console.error(`❌ Failed to get domain details for ${domainId}:`, error);
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
@@ -118,18 +120,19 @@ export class DomainManager {
         `
       });
 
-      console.log(`✅ Test email sent successfully. ID: ${result.id}`);
+      console.log(`✅ Test email sent successfully. ID: ${result.data?.id}`);
       return {
         success: true,
-        emailId: result.id,
+        emailId: result.data?.id,
         message: 'Test email sent successfully!'
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('❌ Failed to send test email:', error);
       return {
         success: false,
-        error: error.message,
-        message: `Failed to send test email: ${error.message}`
+        error: errorMessage,
+        message: `Failed to send test email: ${errorMessage}`
       };
     }
   }
@@ -147,7 +150,7 @@ export class DomainManager {
       domains: domains.domains,
       recommendation: domains.count === 0 
         ? 'Add and verify a domain to enable email sending'
-        : domains.domains.some(d => d.status === 'verified') 
+        : Array.isArray(domains.domains) && domains.domains.some((d: any) => d.status === 'verified') 
           ? 'Email system ready to send'
           : 'Complete domain verification to enable email sending'
     };

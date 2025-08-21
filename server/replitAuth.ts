@@ -7,9 +7,13 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { getReplitConfig, getReplitSessionConfig, getReplitTrustedProxies } from "./utils/replitConfig";
+import { logger } from "./utils/logger";
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+// Check if we're in a Replit environment or if REPLIT_DOMAINS is provided
+const config = getReplitConfig();
+if (config.isReplit && !process.env.REPLIT_DOMAINS) {
+  throw new Error("Environment variable REPLIT_DOMAINS not provided for Replit deployment");
 }
 
 const getOidcConfig = memoize(
@@ -23,6 +27,7 @@ const getOidcConfig = memoize(
 );
 
 export function getSession() {
+  const config = getReplitConfig();
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
@@ -31,17 +36,13 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+  
+  // Use Replit-optimized session configuration
+  const replitSessionConfig = getReplitSessionConfig();
+  
   return session({
-    secret: process.env.SESSION_SECRET!,
+    ...replitSessionConfig,
     store: sessionStore,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: sessionTtl,
-    },
   });
 }
 
@@ -91,12 +92,23 @@ async function upsertUser(
 }
 
 export async function setupAuth(app: Express) {
-  app.set("trust proxy", 1);
+  const config = getReplitConfig();
+  const trustedProxies = getReplitTrustedProxies();
+  
+  // Configure proxy trust based on Replit deployment
+  if (trustedProxies !== false) {
+    app.set("trust proxy", trustedProxies);
+    logger.info('Proxy trust configured for Replit', { proxies: trustedProxies });
+  } else {
+    app.set("trust proxy", 1);
+    logger.info('Standard proxy trust configured');
+  }
+  
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
 
-  const config = await getOidcConfig();
+  const oidcConfig = await getOidcConfig();
 
   const verify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
@@ -106,7 +118,7 @@ export async function setupAuth(app: Express) {
       const user = {};
       updateUserSession(user, tokens);
       await upsertUser(tokens.claims());
-      verified(null, user);
+      verified(null, user as any);
     } catch (error) {
       // User not authorized - show friendly error
       console.error("Authentication failed:", error);
@@ -114,22 +126,26 @@ export async function setupAuth(app: Express) {
     }
   };
 
-  // Get domains and add localhost for development
-  const domains = process.env.REPLIT_DOMAINS!.split(",");
+  // Get domains using Replit configuration
+  const domains: string[] = [];
   
-  // Add localhost support for development - ensure proper formatting
-  if (process.env.NODE_ENV === "development" || !process.env.REPLIT_DOMAINS.includes('replit')) {
+  if (config.isReplit && process.env.REPLIT_DOMAINS) {
+    domains.push(...process.env.REPLIT_DOMAINS.split(","));
+  }
+  
+  // Add localhost support for development
+  if (config.isDevelopment || !config.isReplit) {
     domains.push("127.0.0.1:5000", "localhost:5000");
   }
   
-  console.log("Configured auth domains:", domains);
+  logger.info("Configured auth domains", { domains, isReplit: config.isReplit, isDevelopment: config.isDevelopment });
 
   for (const domain of domains) {
     const protocol = domain.includes('127.0.0.1') || domain.includes('localhost') ? 'http' : 'https';
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
-        config,
+        config: oidcConfig,
         scope: "openid email profile offline_access",
         callbackURL: `${protocol}://${domain}/api/callback`,
       },
@@ -143,7 +159,7 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/login", (req, res, next) => {
     const authDomain = req.get('host') || req.hostname;
-    console.log(`Login attempt from domain: ${authDomain}`);
+    logger.info('Login attempt', { domain: authDomain, isReplit: config.isReplit });
     
     passport.authenticate(`replitauth:${authDomain}`, {
       prompt: "login consent",
@@ -153,24 +169,23 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/callback", (req, res, next) => {
     const authDomain = req.get('host') || req.hostname;
-    console.log(`Callback from domain: ${authDomain}`);
+    logger.info('Auth callback', { domain: authDomain, isReplit: config.isReplit });
     
     passport.authenticate(`replitauth:${authDomain}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/login-error",
       failureMessage: true,
-    }, (err, user, info) => {
+    }, (err: any, user: any, info: any) => {
       if (err || !user) {
-        console.error('Authentication callback error:', err || info);
-        // Redirect to error page instead of looping back to login
+        logger.error('Authentication callback error', { error: err || info, domain: authDomain });
         return res.redirect('/login-error');
       }
       req.logIn(user, (loginErr) => {
         if (loginErr) {
-          console.error('Login error:', loginErr);
+          logger.error('Login error', { error: loginErr, domain: authDomain });
           return res.redirect('/login-error');
         }
-        // Successful login - redirect to home
+        logger.info('Successful authentication', { domain: authDomain, isReplit: config.isReplit });
         return res.redirect('/');
       });
     })(req, res, next);

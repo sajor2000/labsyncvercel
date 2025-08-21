@@ -336,6 +336,14 @@ export const users = pgTable("users", {
   lastActive: timestamp("last_active"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  
+  // Authentication fields
+  passwordHash: varchar("password_hash"), // bcrypt hashed password
+  emailVerified: boolean("email_verified").default(false),
+  passwordResetToken: varchar("password_reset_token"), 
+  passwordResetExpires: timestamp("password_reset_expires"),
+  tempPassword: boolean("temp_password").default(false), // Requires password change on first login
+  lastLogin: timestamp("last_login"),
 }, (table) => ({
   emailIndex: index("users_email_idx").on(table.email),
   roleIndex: index("users_role_idx").on(table.role),

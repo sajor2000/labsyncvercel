@@ -172,6 +172,14 @@ export interface IStorage {
   createTeamMember(member: InsertTeamMember): Promise<TeamMember>;
   updateTeamMember(id: string, updates: Partial<InsertTeamMember>): Promise<TeamMember>;
   deleteTeamMember(id: string): Promise<void>;
+  
+  // Multi-lab membership operations
+  getLabMemberships(): Promise<LabMember[]>;
+  getLabMembershipsByUser(userId: string): Promise<LabMember[]>;
+  getLabMembershipsByLab(labId: string): Promise<LabMember[]>;
+  addUserToLab(userId: string, labId: string, labRole: string, permissions?: Partial<InsertLabMember>): Promise<LabMember>;
+  removeUserFromLab(userId: string, labId: string): Promise<void>;
+  updateLabMembership(userId: string, labId: string, updates: Partial<InsertLabMember>): Promise<LabMember>;
 
   // Enhanced CRUD operations
   softDeleteStudy(id: string): Promise<Study>;
@@ -496,6 +504,24 @@ export class DatabaseStorage implements IStorage {
     return updatedUser;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    return user;
+  }
+
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.passwordResetToken, token))
+      .limit(1);
+    return user;
+  }
+
   async findTeamMemberByEmailOrName(email: string, firstName?: string, lastName?: string): Promise<User | undefined> {
     // Special handling for Mia's multiple Replit accounts
     if (email && email.toLowerCase().includes('mia')) {
@@ -639,7 +665,7 @@ export class DatabaseStorage implements IStorage {
       const relatedStudies = await db.select().from(studies).where(eq(studies.labId, id));
       for (const study of relatedStudies) {
         await db.update(studies)
-          .set({ isActive: false, deletedAt: new Date() })
+          .set({ isActive: false, updatedAt: new Date() })
           .where(eq(studies.id, study.id));
       }
       
@@ -850,7 +876,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTasksByLab(labId: string): Promise<Task[]> {
-    return await db.select().from(tasks)
+    return await db.select({
+      id: tasks.id,
+      title: tasks.title,
+      description: tasks.description,
+      status: tasks.status,
+      priority: tasks.priority,
+      assigneeId: tasks.assigneeId,
+      studyId: tasks.studyId,
+      parentTaskId: tasks.parentTaskId,
+      position: tasks.position,
+      isActive: tasks.isActive,
+      createdAt: tasks.createdAt,
+      updatedAt: tasks.updatedAt,
+      dueDate: tasks.dueDate,
+      estimatedHours: tasks.estimatedHours,
+      actualHours: tasks.actualHours,
+      tags: tasks.tags,
+      completedAt: tasks.completedAt,
+      completedById: tasks.completedById,
+      lastReminderSent: tasks.lastReminderSent,
+      createdBy: tasks.createdBy,
+    }).from(tasks)
       .innerJoin(studies, eq(tasks.studyId, studies.id))
       .where(and(eq(studies.labId, labId), eq(tasks.isActive, true)))
       .orderBy(desc(tasks.createdAt));
@@ -1381,47 +1428,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Get members for a specific lab
-  async getLabMembers(labId: string): Promise<any[]> {
-    try {
-      const members = await db
-        .select({
-          id: users.id,
-          name: sql`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-          role: users.role,
-          title: users.title,
-          department: users.department,
-          phone: users.phone,
-          avatar: users.avatar,
-          profileImageUrl: users.profileImageUrl,
-          capacity: users.capacity,
-          expertise: users.expertise,
-          skills: users.skills,
-          labId: labMembers.labId,
-          labRole: labMembers.labRole,
-          isAdmin: labMembers.isAdmin,
-          isActive: users.isActive
-        })
-        .from(users)
-        .innerJoin(labMembers, eq(users.id, labMembers.userId))
-        .where(and(
-          eq(users.isActive, true),
-          eq(labMembers.labId, labId),
-          eq(labMembers.isActive, true)
-        ))
-        .orderBy(asc(users.firstName), asc(users.lastName));
-
-      console.log(`✅ getLabMembers: Retrieved ${members.length} members for lab ${labId}`);
-      return members;
-    } catch (error) {
-      console.error('❌ getLabMembers error:', error);
-      throw error;
-    }
-  }
-
   async getTeamMembersByLab(labId: string): Promise<TeamMember[]> {
     return await db
       .select()
@@ -1589,15 +1595,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(ideas.createdAt));
   }
 
-  // Attachment operations
-  async createAttachment(attachment: any): Promise<any> {
-    const [newAttachment] = await db.insert(attachments).values(attachment).returning();
-    return newAttachment;
-  }
-
-  async deleteAttachment(id: string): Promise<void> {
-    await db.delete(attachments).where(eq(attachments.id, id));
-  }
+  // Attachment operations removed - using better typed version later in file
 
   // Standup Meeting DELETE operations
   async deleteStandupMeeting(id: string): Promise<void> {
@@ -3240,6 +3238,133 @@ export class DatabaseStorage implements IStorage {
       .where(lte(workflowSteps.expiresAt, new Date()));
     
     return result.rowCount || 0;
+  }
+
+  // Multi-lab membership operations
+  async getLabMemberships(): Promise<LabMember[]> {
+    return await db
+      .select({
+        id: labMembers.id,
+        userId: labMembers.userId,
+        labId: labMembers.labId,
+        labRole: labMembers.labRole,
+        isAdmin: labMembers.isAdmin,
+        isSuperAdmin: labMembers.isSuperAdmin,
+        canManageMembers: labMembers.canManageMembers,
+        canManageLabSettings: labMembers.canManageLabSettings,
+        canCreateProjects: labMembers.canCreateProjects,
+        canViewAnalytics: labMembers.canViewAnalytics,
+        canManageDeadlines: labMembers.canManageDeadlines,
+        // User details
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        avatar: users.avatar,
+        profileImageUrl: users.profileImageUrl,
+        // Lab details  
+        labName: labs.name,
+        labDescription: labs.description,
+      })
+      .from(labMembers)
+      .leftJoin(users, eq(labMembers.userId, users.id))
+      .leftJoin(labs, eq(labMembers.labId, labs.id))
+      .orderBy(asc(users.firstName), asc(users.lastName));
+  }
+
+  async getLabMembershipsByUser(userId: string): Promise<LabMember[]> {
+    return await db
+      .select({
+        id: labMembers.id,
+        userId: labMembers.userId,
+        labId: labMembers.labId,
+        labRole: labMembers.labRole,
+        isAdmin: labMembers.isAdmin,
+        isSuperAdmin: labMembers.isSuperAdmin,
+        canManageMembers: labMembers.canManageMembers,
+        canManageLabSettings: labMembers.canManageLabSettings,
+        canCreateProjects: labMembers.canCreateProjects,
+        canViewAnalytics: labMembers.canViewAnalytics,
+        canManageDeadlines: labMembers.canManageDeadlines,
+        // Lab details
+        labName: labs.name,
+        labDescription: labs.description,
+      })
+      .from(labMembers)
+      .leftJoin(labs, eq(labMembers.labId, labs.id))
+      .where(eq(labMembers.userId, userId))
+      .orderBy(asc(labs.name));
+  }
+
+  async getLabMembershipsByLab(labId: string): Promise<LabMember[]> {
+    return await db
+      .select({
+        id: labMembers.id,
+        userId: labMembers.userId,
+        labId: labMembers.labId,
+        labRole: labMembers.labRole,
+        isAdmin: labMembers.isAdmin,
+        isSuperAdmin: labMembers.isSuperAdmin,
+        canManageMembers: labMembers.canManageMembers,
+        canManageLabSettings: labMembers.canManageLabSettings,
+        canCreateProjects: labMembers.canCreateProjects,
+        canViewAnalytics: labMembers.canViewAnalytics,
+        canManageDeadlines: labMembers.canManageDeadlines,
+        // User details
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        avatar: users.avatar,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(labMembers)
+      .leftJoin(users, eq(labMembers.userId, users.id))
+      .where(eq(labMembers.labId, labId))
+      .orderBy(asc(users.firstName), asc(users.lastName));
+  }
+
+  async addUserToLab(userId: string, labId: string, labRole: string, permissions: Partial<InsertLabMember> = {}): Promise<LabMember> {
+    // Check if membership already exists
+    const existing = await db
+      .select()
+      .from(labMembers)
+      .where(and(eq(labMembers.userId, userId), eq(labMembers.labId, labId)));
+
+    if (existing.length > 0) {
+      throw new Error('User is already a member of this lab');
+    }
+
+    // Create new lab membership
+    const [newMembership] = await db
+      .insert(labMembers)
+      .values({
+        userId,
+        labId,
+        labRole: labRole as any,
+        ...permissions,
+      })
+      .returning();
+
+    return newMembership;
+  }
+
+  async removeUserFromLab(userId: string, labId: string): Promise<void> {
+    await db
+      .delete(labMembers)
+      .where(and(eq(labMembers.userId, userId), eq(labMembers.labId, labId)));
+  }
+
+  async updateLabMembership(userId: string, labId: string, updates: Partial<InsertLabMember>): Promise<LabMember> {
+    const [updatedMembership] = await db
+      .update(labMembers)
+      .set(updates)
+      .where(and(eq(labMembers.userId, userId), eq(labMembers.labId, labId)))
+      .returning();
+
+    if (!updatedMembership) {
+      throw new Error('Lab membership not found');
+    }
+
+    return updatedMembership;
   }
 
 }

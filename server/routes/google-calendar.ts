@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { GoogleCalendarService } from "../googleCalendarService";
-import { isAuthenticated } from "../replitAuth";
+import { isAuthenticated } from "../auth/localAuth";
 import { db } from "../db";
 import { calendarEvents, labs, tasks, studies, insertCalendarEventSchema } from "@shared/schema";
 import { eq, and, or } from "drizzle-orm";

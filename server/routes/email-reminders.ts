@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { emailReminderService } from '../emailReminders';
-import { isAuthenticated } from '../replitAuth';
+import { isAuthenticated } from '../auth/localAuth';
 
 const router = Router();
 
@@ -85,8 +85,6 @@ router.get('/preferences', isAuthenticated, async (req, res) => {
       overdueAlerts: true,
       reminderTime: '09:00', // 9 AM
       digestDay: 'monday',
-      taskCreationNotifications: true,
-      dueDateReminders: true,
       taskCreationNotifications: true,
       dueDateReminders: true
     });
