@@ -61,8 +61,9 @@ export class EmailReminderService {
       const subject = `📋 New Task Assigned: ${taskData.title}`;
       const htmlContent = this.generateTaskCreationHTML(taskData);
       
+      const fromEmail = process.env.FROM_EMAIL || 'noreply@labsync.app';
       await resend.emails.send({
-        from: 'LabSync <jcrojas@clif-icu.org>',
+        from: `LabSync <${fromEmail}>`,
         to: [taskData.assigneeEmail],
         subject,
         html: htmlContent,
@@ -218,8 +219,9 @@ export class EmailReminderService {
     const htmlContent = this.generateTaskReminderHTML(task, isOverdue, daysUntilDue);
 
     try {
+      const fromEmail = process.env.FROM_EMAIL || 'noreply@labsync.app';
       await resend.emails.send({
-        from: 'LabSync <jcrojas@clif-icu.org>',
+        from: `LabSync <${fromEmail}>`,
         to: [task.assigneeEmail!],
         subject,
         html: htmlContent,
@@ -736,8 +738,9 @@ export class EmailReminderService {
 
       const htmlContent = this.generateWeeklyDigestHTML(upcomingTasks);
       
+      const fromEmail = process.env.FROM_EMAIL || 'noreply@labsync.app';
       await resend.emails.send({
-        from: 'LabSync <jcrojas@clif-icu.org>',
+        from: `LabSync <${fromEmail}>`,
         to: [userEmail],
         subject: `📋 Weekly Task Digest - ${upcomingTasks.length} upcoming tasks`,
         html: htmlContent,
