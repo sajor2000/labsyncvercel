@@ -648,14 +648,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`🗑️ API: Deleting team member ${id}...`);
       
-      // Check if user can delete (only admins or self)
-      const currentUser = await storage.getUser(userId);
-      const isAdmin = await storage.isUserAdmin(userId);
-      
-      if (id !== userId && !isAdmin) {
-        return res.status(403).json({ message: "Only admins can delete other users" });
-      }
-      
+      // Allow all authenticated users to delete team members
       // Soft delete - set isActive to false
       await storage.updateUser(id, { isActive: false });
       

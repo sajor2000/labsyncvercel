@@ -68,7 +68,7 @@ Navigation Cleanup: Removed redundant "Task Board" page since Task Management al
 - **Code Quality**: All TypeScript compilation errors resolved (August 2025) - fixed enum mismatches, Drizzle query construction issues, authentication configuration, validation workflow bugs, and foreign key constraint handling. All 7/7 workflow validation steps now passing.
 
 ### Security Features
-- **Authorization**: All DELETE endpoints secured with RBAC, ownership validation, and admin override system.
+- **Authorization**: All CRUD endpoints require authentication. DELETE operations allow any authenticated user to remove team members.
 - **Audit Logging**: Comprehensive audit trail for all CRUD operations and security events.
 - **RBAC**: Enhanced role-based access control with permission templates, granular resource permissions, and cross-lab access control.
 
