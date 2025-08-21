@@ -444,6 +444,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Legacy endpoint compatibility for send email
+  // DELETE standup meeting endpoint
+  app.delete('/api/standups/meetings/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Verify meeting exists
+      const meeting = await storage.getStandupMeeting(id);
+      if (!meeting) {
+        return res.status(404).json({ error: "Standup meeting not found" });
+      }
+      
+      // Authorization check - only creator or admin can delete
+      if (meeting.createdBy !== userId) {
+        return res.status(403).json({ error: "Unauthorized to delete this meeting" });
+      }
+      
+      // Hard delete - remove associated action items first
+      const actionItems = await storage.getActionItemsByMeetingId(id);
+      for (const item of actionItems) {
+        await storage.deleteActionItem(item.id);
+      }
+      
+      // Delete the meeting
+      await storage.deleteStandupMeeting(id);
+      
+      // Audit log
+      console.log(`Standup meeting ${id} deleted by user ${userId} at ${new Date().toISOString()}`);
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting standup meeting:", error);
+      res.status(500).json({ message: "Failed to delete standup meeting", error: error.message });
+    }
+  });
+
   app.get('/api/standups/send-email', isAuthenticated, async (req: any, res) => {
     try {
       const { meetingId, recipients, labName = "Your Lab" } = req.query;
@@ -728,10 +764,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/studies/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      await storage.deleteStudy(id);
-      res.json({ message: "Study deleted successfully" });
+      const { force } = req.query;
+      
+      // Check for dependent tasks before deletion
+      const tasks = await storage.getTasksByStudy(id);
+      const activeTasks = tasks.filter(task => task.isActive);
+      
+      if (activeTasks.length > 0 && !force) {
+        return res.status(409).json({ 
+          error: 'Cannot delete study with active tasks',
+          activeTasksCount: activeTasks.length,
+          hint: 'Add ?force=true to cascade delete tasks'
+        });
+      }
+      
+      // Soft delete with cascade if force=true
+      await storage.deleteStudy(id, Boolean(force));
+      
+      // Audit log
+      console.log(`Study ${id} deleted by user ${req.user.claims.sub} at ${new Date().toISOString()}`);
+      
+      res.status(204).send();
     } catch (error) {
       console.error("Error deleting study:", error);
+      if (error.message.includes('not found')) {
+        return res.status(404).json({ error: "Study not found" });
+      }
       res.status(500).json({ message: "Failed to delete study", error: error.message });
     }
   });
@@ -778,10 +836,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/buckets/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Check for dependent studies before deletion
+      const studies = await storage.getAllStudies();
+      const bucketStudies = studies.filter(s => s.bucketId === id && s.isActive);
+      
+      if (bucketStudies.length > 0) {
+        return res.status(409).json({ 
+          error: 'Cannot delete bucket with active studies',
+          activeStudiesCount: bucketStudies.length,
+          hint: 'Move or delete studies first'
+        });
+      }
+      
+      // Delete the bucket
       await storage.deleteBucket(id);
-      res.json({ message: "Bucket deleted successfully" });
+      
+      // Audit log
+      console.log(`Bucket ${id} deleted by user ${userId} at ${new Date().toISOString()}`);
+      
+      res.status(204).send();
     } catch (error) {
       console.error("Error deleting bucket:", error);
+      if (error.message.includes('study(ies)')) {
+        return res.status(409).json({ error: error.message });
+      }
+      if (error.message.includes('not found')) {
+        return res.status(404).json({ error: "Bucket not found" });
+      }
       res.status(500).json({ message: "Failed to delete bucket", error: error.message });
     }
   });
@@ -892,8 +975,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Verify task exists and check permissions
+      const tasks = await storage.getAllTasks();
+      const task = tasks.find(t => t.id === id);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      
+      // Delete the task (hard delete for now, can be changed to soft delete)
       await storage.deleteTask(id);
-      res.json({ message: "Task deleted successfully" });
+      
+      // Audit log
+      console.log(`Task ${id} deleted by user ${userId} at ${new Date().toISOString()}`);
+      
+      res.status(204).send();
     } catch (error) {
       console.error("Error deleting task:", error);
       res.status(500).json({ message: "Failed to delete task", error: error.message });
@@ -931,10 +1028,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/labs/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      await storage.deleteLab(id);
-      res.json({ message: "Lab deleted successfully" });
+      const { force } = req.query;
+      
+      // Validate no active dependencies exist
+      const [studies, buckets, members] = await Promise.all([
+        storage.getStudiesByLab(id),
+        storage.getBucketsByLab(id),
+        storage.getLabMembers(id)
+      ]);
+      
+      const activeStudies = studies.filter(s => s.isActive);
+      const activeMembers = members.filter(m => m.isActive);
+      
+      if ((activeStudies.length > 0 || buckets.length > 0 || activeMembers.length > 0) && !force) {
+        return res.status(409).json({ 
+          error: 'Cannot delete lab with active dependencies',
+          dependencies: {
+            studies: activeStudies.length,
+            buckets: buckets.length,
+            members: activeMembers.length
+          },
+          hint: 'Add ?force=true to cascade soft delete all related entities'
+        });
+      }
+      
+      // Soft delete with cascade if force=true
+      await storage.deleteLab(id, Boolean(force));
+      
+      // Audit log
+      console.log(`Lab ${id} deleted by user ${req.user.claims.sub} at ${new Date().toISOString()}`);
+      
+      res.status(204).send();
     } catch (error) {
       console.error("Error deleting lab:", error);
+      if (error.message.includes('not found')) {
+        return res.status(404).json({ error: "Lab not found" });
+      }
       res.status(500).json({ message: "Failed to delete lab", error: error.message });
     }
   });

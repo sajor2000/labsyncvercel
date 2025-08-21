@@ -634,11 +634,25 @@ export class DatabaseStorage implements IStorage {
     return updatedLab;
   }
 
-  async deleteLab(id: string): Promise<void> {
-    await db.delete(labs).where(eq(labs.id, id));
-  }
-
-  async deleteLab(id: string): Promise<void> {
+  async deleteLab(id: string, cascade: boolean = false): Promise<void> {
+    if (cascade) {
+      // Soft delete related entities first
+      const studies = await db.select().from(studies).where(eq(studies.labId, id));
+      for (const study of studies) {
+        await db.update(studies)
+          .set({ isActive: false, deletedAt: new Date() })
+          .where(eq(studies.id, study.id));
+      }
+      
+      // Soft delete lab members
+      await db.update(labMembers)
+        .set({ isActive: false, leftAt: new Date() })
+        .where(eq(labMembers.labId, id));
+      
+      // Delete buckets (they don't have soft delete)
+      await db.delete(buckets).where(eq(buckets.labId, id));
+    }
+    
     await db.delete(labs).where(eq(labs.id, id));
   }
 
@@ -1584,6 +1598,15 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAttachment(id: string): Promise<void> {
     await db.delete(attachments).where(eq(attachments.id, id));
+  }
+
+  // Standup Meeting DELETE operations
+  async deleteStandupMeeting(id: string): Promise<void> {
+    await db.delete(standupMeetings).where(eq(standupMeetings.id, id));
+  }
+
+  async deleteActionItem(id: string): Promise<void> {
+    await db.delete(standupActionItems).where(eq(standupActionItems.id, id));
   }
 
   // Deadlines operations
