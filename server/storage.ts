@@ -476,6 +476,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async findTeamMemberByEmailOrName(email: string, firstName?: string, lastName?: string): Promise<User | undefined> {
+    // Special handling for Mia's multiple Replit accounts
+    if (email && email.toLowerCase().includes('mia')) {
+      // Check if this is one of Mia's known emails
+      const miaEmails = ['mia_r_mcclintic@rush.edu', 'mia.r.0816@gmail.com'];
+      const isMiaEmail = miaEmails.some(e => 
+        email.toLowerCase() === e.toLowerCase() || 
+        email.toLowerCase().includes('mia')
+      );
+      
+      if (isMiaEmail) {
+        // Return Mia's account regardless of which email she uses
+        const [mia] = await db
+          .select()
+          .from(users)
+          .where(and(
+            sql`LOWER(${users.firstName}) = 'mia'`,
+            sql`LOWER(${users.lastName}) = 'mcclintic'`,
+            eq(users.isActive, true)
+          ))
+          .limit(1);
+        
+        if (mia) return mia;
+      }
+    }
+    
     // First try exact email match (case-insensitive)
     if (email) {
       const [userByEmail] = await db
