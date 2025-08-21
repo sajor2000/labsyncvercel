@@ -1122,6 +1122,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Quick fixes for data issues
   app.use('/api/fix', (await import('./routes/quick-fixes')).quickFixRoutes);
+  
+  // Direct email testing routes
+  app.use('/api/email-test', (await import('./routes/email-test')).emailTestRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
