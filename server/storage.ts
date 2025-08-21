@@ -1194,6 +1194,47 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Get members for a specific lab
+  async getLabMembers(labId: string): Promise<any[]> {
+    try {
+      const members = await db
+        .select({
+          id: users.id,
+          name: sql`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          role: users.role,
+          title: users.title,
+          department: users.department,
+          phone: users.phone,
+          avatar: users.avatar,
+          profileImageUrl: users.profileImageUrl,
+          capacity: users.capacity,
+          expertise: users.expertise,
+          skills: users.skills,
+          labId: labMembers.labId,
+          labRole: labMembers.labRole,
+          isAdmin: labMembers.isAdmin,
+          isActive: users.isActive
+        })
+        .from(users)
+        .innerJoin(labMembers, eq(users.id, labMembers.userId))
+        .where(and(
+          eq(users.isActive, true),
+          eq(labMembers.labId, labId),
+          eq(labMembers.isActive, true)
+        ))
+        .orderBy(asc(users.firstName), asc(users.lastName));
+
+      console.log(`✅ getLabMembers: Retrieved ${members.length} members for lab ${labId}`);
+      return members;
+    } catch (error) {
+      console.error('❌ getLabMembers error:', error);
+      throw error;
+    }
+  }
+
   async getTeamMembersByLab(labId: string): Promise<TeamMember[]> {
     return await db
       .select()

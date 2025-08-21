@@ -570,13 +570,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Lab Members routes (for backward compatibility)
+  // Lab Members routes (lab-specific)
   app.get('/api/lab-members', isAuthenticated, async (req: any, res) => {
     try {
-      console.log('🔍 API: Fetching lab members (redirecting to team members)...');
-      const teamMembers = await storage.getTeamMembers();
-      console.log(`✅ API: Returning ${teamMembers.length} team members via lab-members endpoint`);
-      res.json(teamMembers);
+      const { labId } = req.query;
+      
+      if (labId) {
+        console.log(`🔍 API: Fetching members for lab ${labId}...`);
+        const labMembers = await storage.getLabMembers(labId);
+        console.log(`✅ API: Returning ${labMembers.length} members for lab`);
+        res.json(labMembers);
+      } else {
+        console.log('🔍 API: Fetching all team members...');
+        const teamMembers = await storage.getTeamMembers();
+        console.log(`✅ API: Returning ${teamMembers.length} team members`);
+        res.json(teamMembers);
+      }
     } catch (error) {
       console.error("❌ API: Error fetching lab members:", error);
       res.status(500).json({ message: "Failed to fetch lab members", error: error.message });
