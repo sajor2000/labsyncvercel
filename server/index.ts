@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { automationScheduler } from "./automationScheduler";
+import { emailReminderService } from "./emailReminders";
 
 const app = express();
 app.use(express.json());
@@ -72,5 +73,16 @@ app.use((req, res, next) => {
     // Start the automation scheduler for Phase 5 automation features
     automationScheduler.start();
     log('🤖 Automation scheduler started - Phase 5 automation features are now active');
+    
+    // Schedule daily email reminder checks (run every 2 hours)
+    setInterval(async () => {
+      try {
+        await emailReminderService.sendTaskReminders();
+      } catch (error) {
+        console.error('❌ Error in scheduled email reminders:', error);
+      }
+    }, 2 * 60 * 60 * 1000); // Every 2 hours
+    
+    log('📧 Email reminder service initialized - checking every 2 hours');
   });
 })();

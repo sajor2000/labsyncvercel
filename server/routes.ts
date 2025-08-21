@@ -560,6 +560,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Calendar integration routes
   app.use('/api/google-calendar', googleCalendarRoutes);
   
+  // Email reminder routes  
+  app.use('/api/email-reminders', (await import('./routes/email-reminders')).emailReminderRoutes);
+  
   // Existing routes would go here...
   // (Other existing API routes for labs, studies, tasks, etc.)
 

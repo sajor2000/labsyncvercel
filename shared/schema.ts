@@ -452,6 +452,7 @@ export const tasks = pgTable("tasks", {
   completedById: varchar("completed_by_id").references(() => users.id),
   isActive: boolean("is_active").default(true),
   dueDate: timestamp("due_date"),
+  lastReminderSent: timestamp("last_reminder_sent"),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { TaskReminderSettings } from "@/components/TaskReminderSettings";
 
 interface UserSettings {
   notifications: {
@@ -374,6 +375,9 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Email Reminders Section */}
+      <TaskReminderSettings />
 
       {/* Privacy & Security */}
       <Card>
