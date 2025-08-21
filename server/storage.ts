@@ -1158,34 +1158,40 @@ export class DatabaseStorage implements IStorage {
 
   // Team member operations
   async getTeamMembers(): Promise<any[]> {
-    // Get all active users, whether they're assigned to labs or not
-    const members = await db
-      .select({
-        id: users.id,
-        name: sql`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        email: users.email,
-        role: users.role,
-        title: users.title,
-        department: users.department,
-        phone: users.phone,
-        avatar: users.avatar,
-        profileImageUrl: users.profileImageUrl,
-        capacity: users.capacity,
-        expertise: users.expertise,
-        skills: users.skills,
-        labId: labMembers.labId,
-        labRole: labMembers.labRole,
-        isAdmin: labMembers.isAdmin,
-        isActive: users.isActive
-      })
-      .from(users)
-      .leftJoin(labMembers, eq(users.id, labMembers.userId))
-      .where(eq(users.isActive, true))
-      .orderBy(asc(users.firstName), asc(users.lastName));
+    try {
+      // Get all active users, whether they're assigned to labs or not
+      const members = await db
+        .select({
+          id: users.id,
+          name: sql`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          role: users.role,
+          title: users.title,
+          department: users.department,
+          phone: users.phone,
+          avatar: users.avatar,
+          profileImageUrl: users.profileImageUrl,
+          capacity: users.capacity,
+          expertise: users.expertise,
+          skills: users.skills,
+          labId: labMembers.labId,
+          labRole: labMembers.labRole,
+          isAdmin: labMembers.isAdmin,
+          isActive: users.isActive
+        })
+        .from(users)
+        .leftJoin(labMembers, eq(users.id, labMembers.userId))
+        .where(eq(users.isActive, true))
+        .orderBy(asc(users.firstName), asc(users.lastName));
 
-    return members;
+      console.log(`✅ getTeamMembers: Retrieved ${members.length} team members`);
+      return members;
+    } catch (error) {
+      console.error('❌ getTeamMembers error:', error);
+      throw error;
+    }
   }
 
   async getTeamMembersByLab(labId: string): Promise<TeamMember[]> {
