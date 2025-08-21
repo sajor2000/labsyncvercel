@@ -5,9 +5,13 @@ import { isAuthenticated } from '../replitAuth';
 const router = Router();
 
 // Manual trigger for email reminders (admin only)
-router.post('/send-reminders', async (req, res) => {
+router.post('/send-reminders', isAuthenticated, async (req, res) => {
   try {
-    // Allow any authenticated user to trigger reminders in development
+    // Check if user has admin privileges
+    const userRole = (req as any).user?.role;
+    if (!userRole || !['ADMIN', 'PRINCIPAL_INVESTIGATOR', 'CO_PRINCIPAL_INVESTIGATOR'].includes(userRole)) {
+      return res.status(403).json({ error: 'Admin privileges required' });
+    }
 
     await emailReminderService.sendTaskReminders();
     res.json({ 
@@ -24,10 +28,14 @@ router.post('/send-reminders', async (req, res) => {
 });
 
 // Send weekly digest to a specific user
-router.post('/send-weekly-digest', async (req, res) => {
+router.post('/send-weekly-digest', isAuthenticated, async (req, res) => {
   try {
-    const userId = 'authenticated-user';
-    const userEmail = 'user@lab.com';
+    const userId = (req as any).user?.claims?.sub;
+    const userEmail = (req as any).user?.email;
+    
+    if (!userId || !userEmail) {
+      return res.status(400).json({ error: 'User information not available' });
+    }
 
     await emailReminderService.sendWeeklyTaskDigest(userEmail, userId);
     res.json({ 
@@ -44,7 +52,7 @@ router.post('/send-weekly-digest', async (req, res) => {
 });
 
 // Get reminder preferences for a user
-router.get('/preferences', async (req, res) => {
+router.get('/preferences', isAuthenticated, async (req, res) => {
   try {
     // For now, return default preferences
     // In the future, these could be stored per user
@@ -62,7 +70,7 @@ router.get('/preferences', async (req, res) => {
 });
 
 // Update reminder preferences for a user
-router.put('/preferences', async (req, res) => {
+router.put('/preferences', isAuthenticated, async (req, res) => {
   try {
     const { dailyReminders, weeklyDigest, overdueAlerts, reminderTime, digestDay } = req.body;
     

@@ -166,18 +166,30 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  // Authentication temporarily disabled for development
-  // Mock user object for compatibility with existing code
-  (req as any).user = {
-    claims: { sub: 'dev-user-1' },
-    email: 'dev@labsync.local',
-    role: 'ADMIN',
-    name: 'Development User',
-    expires_at: Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
-  };
-  
-  // Mock isAuthenticated function
-  (req as any).isAuthenticated = () => true;
-  
-  return next();
+  const user = req.user as any;
+
+  if (!req.isAuthenticated() || !user.expires_at) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (now <= user.expires_at) {
+    return next();
+  }
+
+  const refreshToken = user.refresh_token;
+  if (!refreshToken) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const config = await getOidcConfig();
+    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
+    updateUserSession(user, tokenResponse);
+    return next();
+  } catch (error) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
 };
