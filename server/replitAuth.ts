@@ -149,8 +149,23 @@ export async function setupAuth(app: Express) {
   app.get("/api/callback", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+      failureRedirect: "/login-error",
     })(req, res, next);
+  });
+
+  // Add error page to break login loop
+  app.get("/login-error", (req, res) => {
+    res.status(403).send(`
+      <html>
+        <head><title>Access Denied</title></head>
+        <body style="font-family: Arial, sans-serif; text-align: center; margin: 50px;">
+          <h1>Access Denied</h1>
+          <p>You must be a registered team member to access LabSync.</p>
+          <p>Please contact your lab administrator (J.C. Rojas) to be added to the system.</p>
+          <p><a href="/">← Back to Home</a></p>
+        </body>
+      </html>
+    `);
   });
 
   app.get("/api/logout", (req, res) => {

@@ -440,7 +440,7 @@ export class DatabaseStorage implements IStorage {
       const cleanFirst = firstName.trim();
       const cleanLast = lastName.trim();
 
-      // Try exact name match first (case-insensitive)
+      // Try exact name match first (case-insensitive) - use correct column names
       const [userByName] = await db
         .select()
         .from(users)
