@@ -1116,6 +1116,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Domain management routes
   app.use('/api/domains', (await import('./routes/domains')).domainRoutes);
+  
+  // User profile management routes
+  app.use('/api/user', (await import('./routes/user-profile')).userProfileRoutes);
+  
+  // Quick fixes for data issues
+  app.use('/api/fix', (await import('./routes/quick-fixes')).quickFixRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
