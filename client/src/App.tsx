@@ -11,6 +11,7 @@ import Landing from "@/pages/Landing";
 import Studies from "@/pages/Studies";
 import RegistrationRequest from "@/pages/RegistrationRequest";
 import SearchResults from "@/pages/SearchResults";
+import { LoginPage } from "@/components/LoginPage";
 
 import TaskManagement from "@/pages/TaskManagement";
 import StudyManagement from "@/pages/StudyManagement";
@@ -40,10 +41,14 @@ function Router() {
 
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
+      {isLoading ? (
+        <Route path="*" component={() => <div className="flex items-center justify-center min-h-screen">Loading...</div>} />
+      ) : !isAuthenticated ? (
         <>
           <Route path="/" component={Landing} />
+          <Route path="/login" component={LoginPage} />
           <Route path="/register" component={RegistrationRequest} />
+          <Route path="*" component={Landing} />
         </>
       ) : (
         <LabProvider>

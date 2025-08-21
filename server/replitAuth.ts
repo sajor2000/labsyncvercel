@@ -158,19 +158,79 @@ export async function setupAuth(app: Express) {
     passport.authenticate(`replitauth:${authDomain}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/login-error",
+      failureMessage: true,
+    }, (err, user, info) => {
+      if (err || !user) {
+        console.error('Authentication callback error:', err || info);
+        // Redirect to error page instead of looping back to login
+        return res.redirect('/login-error');
+      }
+      req.logIn(user, (loginErr) => {
+        if (loginErr) {
+          console.error('Login error:', loginErr);
+          return res.redirect('/login-error');
+        }
+        // Successful login - redirect to home
+        return res.redirect('/');
+      });
     })(req, res, next);
   });
 
   // Add error page to break login loop
   app.get("/login-error", (req, res) => {
+    // Clear any existing session to prevent loops
+    req.session.destroy((err) => {
+      if (err) console.error('Session destroy error:', err);
+    });
+    
     res.status(403).send(`
       <html>
-        <head><title>Access Denied</title></head>
-        <body style="font-family: Arial, sans-serif; text-align: center; margin: 50px;">
-          <h1>Access Denied</h1>
-          <p>You must be a registered team member to access LabSync.</p>
-          <p>Please contact your lab administrator (J.C. Rojas) to be added to the system.</p>
-          <p><a href="/">← Back to Home</a></p>
+        <head>
+          <title>Access Denied</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              text-align: center;
+              margin: 50px;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .container {
+              background: rgba(255, 255, 255, 0.95);
+              color: #333;
+              padding: 40px;
+              border-radius: 10px;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+              max-width: 500px;
+            }
+            h1 { color: #764ba2; }
+            p { margin: 20px 0; line-height: 1.6; }
+            .admin { font-weight: bold; color: #667eea; }
+            a {
+              display: inline-block;
+              margin-top: 20px;
+              padding: 12px 30px;
+              background: #667eea;
+              color: white;
+              text-decoration: none;
+              border-radius: 5px;
+              transition: background 0.3s;
+            }
+            a:hover { background: #764ba2; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>🔒 Access Denied</h1>
+            <p>You must be a registered team member to access LabSync.</p>
+            <p>If you believe you should have access, please contact your lab administrator:</p>
+            <p class="admin">Dr. J.C. Rojas (juan_rojas@rush.edu)</p>
+            <a href="/">Try Again</a>
+          </div>
         </body>
       </html>
     `);
@@ -191,28 +251,37 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  // Check if user is authenticated
+  if (!req.isAuthenticated() || !user) {
+    console.log('User not authenticated, returning 401');
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
-    return next();
-  }
+  // Check if token is expired
+  if (user.expires_at) {
+    const now = Math.floor(Date.now() / 1000);
+    if (now <= user.expires_at) {
+      return next(); // Token still valid
+    }
 
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
+    // Try to refresh token
+    const refreshToken = user.refresh_token;
+    if (refreshToken) {
+      try {
+        const config = await getOidcConfig();
+        const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
+        updateUserSession(user, tokenResponse);
+        return next();
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        req.session.destroy((err) => {
+          if (err) console.error('Session destroy error:', err);
+        });
+        return res.status(401).json({ message: "Unauthorized - Please login again" });
+      }
+    }
   }
-
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+  
+  // No expiration info, proceed (session-based auth)
+  return next();
 };
