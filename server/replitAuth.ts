@@ -117,10 +117,12 @@ export async function setupAuth(app: Express) {
   // Get domains and add localhost for development
   const domains = process.env.REPLIT_DOMAINS!.split(",");
   
-  // Add localhost support for development
-  if (process.env.NODE_ENV === "development") {
-    domains.push("127.0.0.1:5000", "localhost:5000", "127.0.0.1", "localhost");
+  // Add localhost support for development - ensure proper formatting
+  if (process.env.NODE_ENV === "development" || !process.env.REPLIT_DOMAINS.includes('replit')) {
+    domains.push("127.0.0.1:5000", "localhost:5000");
   }
+  
+  console.log("Configured auth domains:", domains);
 
   for (const domain of domains) {
     const protocol = domain.includes('127.0.0.1') || domain.includes('localhost') ? 'http' : 'https';
@@ -140,14 +142,20 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    const authDomain = req.get('host') || req.hostname;
+    console.log(`Login attempt from domain: ${authDomain}`);
+    
+    passport.authenticate(`replitauth:${authDomain}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    const authDomain = req.get('host') || req.hostname;
+    console.log(`Callback from domain: ${authDomain}`);
+    
+    passport.authenticate(`replitauth:${authDomain}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/login-error",
     })(req, res, next);

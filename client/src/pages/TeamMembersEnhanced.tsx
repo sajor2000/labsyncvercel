@@ -369,8 +369,10 @@ export default function TeamMembersEnhanced() {
     setIsEditDialogOpen(true);
   };
 
-  // Filter members
-  const filteredMembers = allMembers.filter((member) => {
+  // Filter members and remove duplicates by ID
+  const uniqueMembers = Array.from(new Map(allMembers.map(member => [member.id, member])).values());
+  
+  const filteredMembers = uniqueMembers.filter((member) => {
     const matchesSearch = 
       member.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -393,9 +395,10 @@ export default function TeamMembersEnhanced() {
     return <div className="p-8">Please log in to view team members.</div>;
   }
 
-  if (!selectedLab) {
-    return <div className="p-8">Please select a lab to view team members.</div>;
-  }
+  // No longer require selectedLab since we're showing all team members
+  // if (!selectedLab) {
+  //   return <div className="p-8">Please select a lab to view team members.</div>;
+  // }
 
   return (
     <div className="container mx-auto p-6 space-y-6" data-testid="team-members-page">
@@ -404,7 +407,7 @@ export default function TeamMembersEnhanced() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Users className="h-8 w-8 text-purple-600" />
-            {selectedLab.shortName || selectedLab.name} Team
+            {selectedLab ? (selectedLab.shortName || selectedLab.name) : 'All'} Team Members
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             Manage team members and their roles across research projects
@@ -424,7 +427,7 @@ export default function TeamMembersEnhanced() {
             <DialogHeader>
               <DialogTitle>Add New Team Member</DialogTitle>
               <DialogDescription>
-                Add a new member to {selectedLab.shortName || selectedLab.name}
+                Add a new member to {selectedLab ? (selectedLab.shortName || selectedLab.name) : 'the team'}
               </DialogDescription>
             </DialogHeader>
             <Form {...createForm}>
@@ -697,7 +700,7 @@ export default function TeamMembersEnhanced() {
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               {searchTerm || selectedRole || selectedStatus
                 ? "No members match your current filters."
-                : `Get started by adding your first team member to ${selectedLab.shortName || selectedLab.name}.`}
+                : `Get started by adding your first team member to ${selectedLab ? (selectedLab.shortName || selectedLab.name) : 'the team'}.`}
             </p>
             {!searchTerm && !selectedRole && !selectedStatus && (
               <Button 
