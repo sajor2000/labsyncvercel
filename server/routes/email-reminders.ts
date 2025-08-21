@@ -51,6 +51,29 @@ router.post('/send-weekly-digest', isAuthenticated, async (req, res) => {
   }
 });
 
+// Test task creation notification
+router.post('/test-creation-notification', isAuthenticated, async (req, res) => {
+  try {
+    const { taskId } = req.body;
+    
+    if (!taskId) {
+      return res.status(400).json({ error: 'Task ID is required' });
+    }
+    
+    await emailReminderService.sendTaskCreationNotification(taskId);
+    res.json({ 
+      success: true, 
+      message: 'Task creation notification sent successfully' 
+    });
+  } catch (error) {
+    console.error('Error sending test creation notification:', error);
+    res.status(500).json({ 
+      error: 'Failed to send creation notification',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Get reminder preferences for a user
 router.get('/preferences', isAuthenticated, async (req, res) => {
   try {
@@ -61,7 +84,11 @@ router.get('/preferences', isAuthenticated, async (req, res) => {
       weeklyDigest: true,
       overdueAlerts: true,
       reminderTime: '09:00', // 9 AM
-      digestDay: 'monday'
+      digestDay: 'monday',
+      taskCreationNotifications: true,
+      dueDateReminders: true,
+      taskCreationNotifications: true,
+      dueDateReminders: true
     });
   } catch (error) {
     console.error('Error getting reminder preferences:', error);

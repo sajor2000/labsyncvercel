@@ -79,7 +79,7 @@ Navigation Cleanup: Removed redundant "Task Board" page since Task Management al
 - **Complete CRUD Operations**: Full Create, Read, Update, Delete matrix across all entities with professional-grade DELETE operations featuring dependency checking, soft delete for data integrity, cascade options, and comprehensive audit logging.
 - **Professional DELETE Endpoints**: Studies and Labs use soft delete with dependency validation (409 conflicts), Standup Meetings use hard delete with cascade cleanup, all operations return proper HTTP status codes (204 No Content on success, 404/403/409 for errors) and maintain audit trails.
 - **Microsoft Planner-Style Email Notifications**: Professional task assignment notifications via Resend API with rich HTML content.
-- **Automated Task Reminder Emails**: Beautiful HTML email reminders for upcoming and overdue tasks with configurable frequency, weekly digest support, and comprehensive user preference management.
+- **Automated Task Reminder Emails**: Beautiful HTML email reminders with dual triggers - immediate notification on task creation and 1-day-before-due-date reminders, plus overdue task alerts with configurable frequency, weekly digest support, and comprehensive user preference management.
 - **Persistent Recording**: Global recording context for uninterrupted recording across navigation with a floating indicator.
 - **Google Slides Integration**: Embedded presentation functionality in standup recordings with smart URL parsing and session persistence.
 - **Team Member Role Management**: Robust role persistence with lab-specific roles and automatic admin flag assignment for Co-PIs.

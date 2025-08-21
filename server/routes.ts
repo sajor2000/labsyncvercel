@@ -942,6 +942,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedAt: new Date(),
       };
       const task = await storage.createTask(taskData);
+      
+      // Send immediate task creation notification if assignee exists
+      if (task.assigneeId) {
+        try {
+          const { emailReminderService } = await import('./emailReminders');
+          await emailReminderService.sendTaskCreationNotification(task.id);
+          console.log(`📧 Task creation notification triggered for task ${task.id}`);
+        } catch (emailError) {
+          console.error('Failed to send task creation notification:', emailError);
+          // Don't fail the task creation if email fails
+        }
+      }
+      
       res.status(201).json(task);
     } catch (error) {
       console.error("Error creating task:", error);
