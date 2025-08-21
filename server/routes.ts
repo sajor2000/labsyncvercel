@@ -557,16 +557,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Import Resend directly to test
       const { Resend } = await import('resend');
-      const resend = new Resend(process.env.RESEND_API_KEY);
+      const resend = new Resend(process.env.RESEND_API_KEY2);
       
       console.log('Testing email with:', {
-        hasApiKey: !!process.env.RESEND_API_KEY,
-        apiKeyLength: process.env.RESEND_API_KEY?.length,
+        hasApiKey: !!process.env.RESEND_API_KEY2,
+        apiKeyLength: process.env.RESEND_API_KEY2?.length,
         recipients: recipients
       });
 
+      const fromEmail = (process.env.FROM_EMAIL || 'noreply@labsync.app').trim();
+      
       const response = await resend.emails.send({
-        from: "onboarding@resend.dev", // Use Resend's default domain for testing
+        from: `LabSync <${fromEmail}>`,
         to: recipients,
         subject: "LabSync Email Test",
         html: `<h2>Email Test</h2><p>${testMessage}</p><p>Sent from LabSync at ${new Date().toISOString()}</p>`,

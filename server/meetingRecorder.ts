@@ -13,7 +13,7 @@ export class MeetingRecorderService {
     this.openai = new OpenAI({
       apiKey: openaiKey || process.env.OPENAI_API_KEY,
     });
-    this.resend = new Resend(resendKey || process.env.RESEND_API_KEY);
+    this.resend = new Resend(resendKey || process.env.RESEND_API_KEY2);
   }
 
   /**
@@ -288,16 +288,18 @@ Return both HTML summary and JSON structure.`;
       const plainTextContent = this.generatePlainTextEmail(meeting, actionItems, meetingDate, labName);
 
       console.log('Attempting to send meeting summary email:', {
-        hasApiKey: !!process.env.RESEND_API_KEY,
-        apiKeyLength: process.env.RESEND_API_KEY?.length,
+        hasApiKey: !!process.env.RESEND_API_KEY2,
+        apiKeyLength: process.env.RESEND_API_KEY2?.length,
         recipientCount: recipients.length,
         recipients: recipients,
         meetingId: meetingId,
         labName: labName
       });
 
+      const fromEmail = (process.env.FROM_EMAIL || 'noreply@labsync.app').trim();
+      
       const response = await this.resend.emails.send({
-        from: "onboarding@resend.dev", // Use Resend's default domain temporarily
+        from: `LabSync <${fromEmail}>`,
         to: recipients,
         subject: `${labName} Standup Meeting Summary - ${meetingDate}`,
         html: htmlContent,

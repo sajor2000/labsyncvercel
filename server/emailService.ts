@@ -259,9 +259,11 @@ ${taskUrl ? 'View task: ' + taskUrl : ''}
 This notification was sent from LabSync - ${labName}
     `.trim();
 
+    const fromEmail = (process.env.FROM_EMAIL || 'noreply@labsync.app').trim();
+    
     try {
       await resend.emails.send({
-        from: 'LabSync Tasks <notifications@labsync.clif-icu.org>',
+        from: `LabSync <${fromEmail}>`,
         to: assigneeEmail,
         subject: `Task assigned: ${taskTitle}`,
         html: htmlContent,

@@ -77,7 +77,7 @@ async function testOpenAI() {
 async function testResend() {
   console.log(`\n${colors.yellow}📧 Step 3: Testing Resend Email Service...${colors.reset}`);
   
-  const resend = new Resend(process.env.RESEND_API_KEY!);
+  const resend = new Resend(process.env.RESEND_API_KEY2!);
 
   try {
     // Test API connection without sending email
