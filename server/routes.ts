@@ -557,6 +557,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team Members routes
+  app.get('/api/team-members', isAuthenticated, async (req: any, res) => {
+    try {
+      const teamMembers = await storage.getTeamMembers();
+      res.json(teamMembers);
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+      res.status(500).json({ message: "Failed to fetch team members" });
+    }
+  });
+
   // Google Calendar integration routes
   app.use('/api/google-calendar', googleCalendarRoutes);
   

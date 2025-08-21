@@ -1158,7 +1158,7 @@ export class DatabaseStorage implements IStorage {
 
   // Team member operations
   async getTeamMembers(): Promise<any[]> {
-    // Get all users who are lab members
+    // Get all active users, whether they're assigned to labs or not
     const members = await db
       .select({
         id: users.id,
@@ -1178,11 +1178,11 @@ export class DatabaseStorage implements IStorage {
         labId: labMembers.labId,
         labRole: labMembers.labRole,
         isAdmin: labMembers.isAdmin,
-        isActive: labMembers.isActive
+        isActive: users.isActive
       })
       .from(users)
-      .innerJoin(labMembers, eq(users.id, labMembers.userId))
-      .where(eq(labMembers.isActive, true))
+      .leftJoin(labMembers, eq(users.id, labMembers.userId))
+      .where(eq(users.isActive, true))
       .orderBy(asc(users.firstName), asc(users.lastName));
 
     return members;
