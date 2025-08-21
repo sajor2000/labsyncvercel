@@ -62,7 +62,7 @@ export class EmailReminderService {
       const htmlContent = this.generateTaskCreationHTML(taskData);
       
       await resend.emails.send({
-        from: 'LabSync <noreply@labsync.app>',
+        from: 'LabSync <jcrojas@clif-icu.org>',
         to: [taskData.assigneeEmail],
         subject,
         html: htmlContent,
@@ -219,7 +219,7 @@ export class EmailReminderService {
 
     try {
       await resend.emails.send({
-        from: 'LabSync <noreply@labsync.app>',
+        from: 'LabSync <jcrojas@clif-icu.org>',
         to: [task.assigneeEmail!],
         subject,
         html: htmlContent,
@@ -737,7 +737,7 @@ export class EmailReminderService {
       const htmlContent = this.generateWeeklyDigestHTML(upcomingTasks);
       
       await resend.emails.send({
-        from: 'LabSync <noreply@labsync.app>',
+        from: 'LabSync <jcrojas@clif-icu.org>',
         to: [userEmail],
         subject: `📋 Weekly Task Digest - ${upcomingTasks.length} upcoming tasks`,
         html: htmlContent,

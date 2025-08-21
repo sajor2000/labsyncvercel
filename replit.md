@@ -106,4 +106,4 @@ Navigation Cleanup: Removed redundant "Task Board" page since Task Management al
 
 ### Active Integrations
 - **AI Services**: OpenAI GPT-4o-mini
-- **Email System**: Resend API
+- **Email System**: Resend API with clif-icu.org domain (jcrojas@clif-icu.org from address)
