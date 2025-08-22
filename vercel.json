@@ -4,23 +4,6 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "regions": ["iad1"],
-  "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
-    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
-    "OPENAI_API_KEY": "@openai_api_key",
-    "OPENAI_ORG_ID": "@openai_org_id",
-    "GOOGLE_CALENDAR_API_KEY": "@google_calendar_api_key",
-    "GOOGLE_CLIENT_ID": "@google_client_id",
-    "GOOGLE_CLIENT_SECRET": "@google_client_secret",
-    "GOOGLE_CALENDAR_ID": "@google_calendar_id",
-    "RESEND_API_KEY2": "@resend_api_key",
-    "FROM_EMAIL": "@from_email",
-    "UPSTASH_REDIS_REST_URL": "@upstash_redis_url",
-    "UPSTASH_REDIS_REST_TOKEN": "@upstash_redis_token",
-    "NEXT_PUBLIC_SENTRY_DSN": "@sentry_dsn",
-    "NEXT_PUBLIC_SENTRY_ENVIRONMENT": "@sentry_environment"
-  },
   "functions": {
     "app/api/ai/transcribe/route.ts": {
       "maxDuration": 60,
