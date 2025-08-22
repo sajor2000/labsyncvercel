@@ -1,0 +1,38 @@
+# Supabase configuration for LabFlow
+
+project_id = "your-project-id"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://your-vercel-domain.vercel.app"]
+jwt_expiry = 3600
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+# External OAuth providers (add as needed)
+# [auth.external.google]
+# enabled = true
+# client_id = "your-google-client-id"
+# secret = "your-google-client-secret"
+
+[db]
+port = 54322
+major_version = 15
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[analytics]
+enabled = false
