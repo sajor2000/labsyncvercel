@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -69,22 +69,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
 
+    const eventData = event as { lab_id: string; [key: string]: any }
+
     // Check permission to sync event
     const { data: labMember } = await supabase
       .from('lab_members')
       .select('id, can_manage_calendar')
       .eq('user_id', user.id)
-      .eq('lab_id', event.lab_id)
+      .eq('lab_id', eventData.lab_id)
       .single()
 
-    if (!labMember || !labMember.can_manage_calendar) {
+    const memberData = labMember as { id: string; can_manage_calendar: boolean } | null
+    if (!memberData || !memberData.can_manage_calendar) {
       return NextResponse.json({ 
         error: 'Insufficient permissions to sync calendar events' 
       }, { status: 403 })
     }
 
     // Sync event to Google Calendar
-    const googleEventId = await googleCalendarService.syncEventToGoogle(event)
+    const googleEventId = await googleCalendarService.syncEventToGoogle(eventData as any)
 
     if (!googleEventId) {
       return NextResponse.json({ 
@@ -93,8 +96,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Update event with Google Calendar ID
-    const { error: updateError } = await supabase
-      .from('calendar_events')
+    const { error: updateError } = await (supabase
+      .from('calendar_events') as any)
       .update({
         google_calendar_id: googleEventId,
         google_calendar_url: `https://calendar.google.com/calendar/u/0/r/eventedit/${googleEventId}`,

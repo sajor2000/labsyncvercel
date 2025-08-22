@@ -43,7 +43,7 @@ const createRateLimiter = (config: { requests: number; window: string }) => {
   if (redis) {
     return new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(config.requests, config.window),
+      limiter: Ratelimit.slidingWindow(config.requests, config.window as any),
       analytics: true,
       prefix: 'labflow',
     })

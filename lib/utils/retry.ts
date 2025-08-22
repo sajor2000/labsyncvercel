@@ -159,7 +159,7 @@ export async function withRetry<T>(
       }
 
       const delay = calculateDelay(attempt, opts)
-      console.warn(`Attempt ${attempt} failed, retrying in ${delay}ms:`, error?.message || error)
+      console.warn(`Attempt ${attempt} failed, retrying in ${delay}ms:`, (error as any)?.message || error)
       
       await sleep(delay)
     }

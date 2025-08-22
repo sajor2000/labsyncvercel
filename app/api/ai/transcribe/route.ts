@@ -3,29 +3,18 @@ import { AIService } from '@/lib/ai/openai-client'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkAILimit } from '@/lib/rate-limit/rate-limiter'
 import { ValidationError, AuthenticationError, normalizeError, isApiError } from '@/lib/errors/api-errors'
-import { SentryService, sentryLogger } from '@/lib/monitoring/sentry-service'
 import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(request: NextRequest) {
   const correlationId = uuidv4()
   
-  return await SentryService.instrumentAsync(
-    'AI Transcription API',
-    async () => {
-      sentryLogger.info('Starting AI transcription request', {
-        correlationId,
-        userAgent: request.headers.get('user-agent'),
-      })
-
-      // Add breadcrumb for debugging
-      SentryService.addBreadcrumb(
-        'AI transcription started',
-        'ai.transcription',
-        { correlationId }
-      )
+  console.log('Starting AI transcription request', {
+    correlationId,
+    userAgent: request.headers.get('user-agent'),
+  })
   
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -65,30 +54,16 @@ export async function POST(request: NextRequest) {
 
     const aiService = new AIService()
     
-    // Instrument the AI transcription call
-    const result = await SentryService.instrumentAI(
-      'transcription',
-      () => aiService.transcribeAudio(file, correlationId),
-      {
-        model: 'whisper-1',
-        inputSize: file.size,
-        correlationId,
-        data: {
-          fileType: file.type,
-          fileName: file.name,
-        }
-      }
-    )
+    // Call AI transcription
+    const result = await aiService.transcribeAudio(file, correlationId)
 
     // Optional: Store transcription result in database
     const meetingId = formData.get('meetingId') as string
     if (meetingId) {
-      const { error: dbError } = await supabase
-        .from('meetings')
+      const { error: dbError } = await (supabase
+        .from('standup_meetings') as any)
         .update({
           transcript: result.transcript,
-          transcription_confidence: result.confidence,
-          processing_time_ms: result.processingTimeMs,
           updated_at: new Date().toISOString()
         })
         .eq('id', meetingId)
@@ -100,7 +75,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    sentryLogger.info('AI transcription completed successfully', {
+    console.log('AI transcription completed successfully', {
       correlationId,
       duration: result.processingTimeMs,
       confidence: result.confidence,
@@ -113,20 +88,10 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: any) {
-    sentryLogger.error('Transcription API error occurred', {
+    console.error('Transcription API error occurred', {
       correlationId,
       error: error.message,
       stack: error.stack,
-    })
-
-    // Capture error in Sentry with context
-    SentryService.captureException(error, {
-      tags: {
-        apiEndpoint: '/api/ai/transcribe',
-        operation: 'transcription',
-      },
-      correlationId,
-      level: 'error',
     })
     
     const apiError = isApiError(error) ? error : normalizeError(error, correlationId)
@@ -139,19 +104,4 @@ export async function POST(request: NextRequest) {
       }
     })
   }
-    },
-    {
-      op: 'http.server',
-      description: 'AI transcription API endpoint',
-      data: {
-        endpoint: '/api/ai/transcribe',
-        method: 'POST',
-        correlationId,
-      },
-      tags: {
-        api: 'ai',
-        operation: 'transcription',
-      }
-    }
-  )
 }

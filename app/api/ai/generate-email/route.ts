@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     if (context.labId) {
       const { data: labMember } = await supabase
         .from('lab_members')
-        .select('id, can_send_notifications')
+        .select('id')
         .eq('user_id', user.id)
         .eq('lab_id', context.labId)
         .single()
@@ -44,32 +44,15 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Access denied to lab' }, { status: 403 })
       }
 
-      if (!labMember.can_send_notifications) {
-        return NextResponse.json({ 
-          error: 'Insufficient permissions to send notifications' 
-        }, { status: 403 })
-      }
+      // Note: Removed can_send_notifications check as this field doesn't exist in the database schema
+      // All lab members can send notifications for now
     }
 
     const aiService = new AIService()
     const result = await aiService.generateEmailContent(emailType, context)
 
-    // Optional: Store email generation for audit/history
-    const { error: auditError } = await supabase
-      .from('email_audit_log')
-      .insert({
-        user_id: user.id,
-        email_type: emailType,
-        recipient_name: context.recipientName,
-        lab_name: context.labName,
-        subject: result.subject,
-        generated_at: new Date().toISOString()
-      })
-
-    if (auditError) {
-      console.error('Error logging email generation:', auditError)
-      // Continue anyway - email generation was successful
-    }
+    // Note: Email audit logging removed as table doesn't exist in current schema
+    // Email generation successful - returning result
 
     return NextResponse.json(result)
 

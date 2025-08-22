@@ -4,7 +4,7 @@ import {
   Calendar, 
   Users, 
   ClipboardList, 
-  Flask, 
+  Beaker, 
   Bell, 
   TrendingUp,
   Mic,
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 
 export default async function DashboardPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   
@@ -36,10 +36,11 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
 
   // Fetch recent meetings
+  const labIds = userLabs?.map((l: any) => l.labs?.id).filter(Boolean) || []
   const { data: recentMeetings } = await supabase
     .from('standup_meetings')
     .select('id, title, date, ai_processing_status')
-    .in('lab_id', userLabs?.map(l => l.labs.id) || [])
+    .in('lab_id', labIds)
     .order('date', { ascending: false })
     .limit(5)
 
@@ -75,7 +76,7 @@ export default async function DashboardPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="p-3 bg-blue-100 rounded-full">
-                <Flask className="w-6 h-6 text-blue-600" />
+                <Beaker className="w-6 h-6 text-blue-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Labs</p>
@@ -165,7 +166,7 @@ export default async function DashboardPage() {
             <div className="p-6">
               {recentMeetings && recentMeetings.length > 0 ? (
                 <ul className="space-y-3">
-                  {recentMeetings.map((meeting) => (
+                  {recentMeetings.map((meeting: any) => (
                     <li key={meeting.id} className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-900">{meeting.title}</p>
@@ -199,7 +200,7 @@ export default async function DashboardPage() {
             <div className="p-6">
               {pendingTasks && pendingTasks.length > 0 ? (
                 <ul className="space-y-3">
-                  {pendingTasks.map((task) => (
+                  {pendingTasks?.map((task: any) => (
                     <li key={task.id} className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-900">{task.title}</p>
@@ -235,7 +236,7 @@ export default async function DashboardPage() {
             <div className="p-6">
               {userLabs && userLabs.length > 0 ? (
                 <ul className="space-y-3">
-                  {userLabs.map((membership) => (
+                  {userLabs?.map((membership: any) => (
                     <li key={membership.id} className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-900">{membership.labs.name}</p>

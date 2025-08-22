@@ -3,8 +3,6 @@
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, RefreshCw, MessageSquare } from 'lucide-react'
-import { SentryService, sentryLogger } from '@/lib/monitoring/sentry-service'
-import * as Sentry from '@sentry/nextjs'
 
 interface ErrorProps {
   error: Error & { digest?: string }
@@ -13,37 +11,13 @@ interface ErrorProps {
 
 export default function Error({ error, reset }: ErrorProps) {
   useEffect(() => {
-    // Log the error to Sentry and console
-    sentryLogger.error('Application Error Boundary Triggered', {
-      errorMessage: error.message,
-      errorStack: error.stack,
-      digest: error.digest,
-    })
-
-    // Capture the error in Sentry with additional context
-    SentryService.captureException(error, {
-      tags: {
-        errorBoundary: 'app-level',
-        hasDigest: !!error.digest,
-      },
-      extra: {
-        digest: error.digest,
-        componentStack: error.stack,
-      },
-      level: 'error',
-    })
+    // Log the error to console
+    console.error('Application Error:', error)
   }, [error])
 
   const handleFeedback = () => {
-    // Open Sentry user feedback dialog
-    const eventId = Sentry.lastEventId()
-    if (eventId) {
-      Sentry.showReportDialog({ eventId })
-    } else {
-      // Fallback: capture a new event and show dialog
-      const eventId = Sentry.captureMessage('User feedback requested from error boundary')
-      Sentry.showReportDialog({ eventId })
-    }
+    // Simple mailto feedback
+    window.location.href = `mailto:support@labflow.com?subject=Error Report&body=Error ID: ${error.digest || 'unknown'}`
   }
 
   return (

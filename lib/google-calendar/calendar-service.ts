@@ -1,8 +1,8 @@
 import { google } from 'googleapis'
-import { Database } from '@/lib/supabase/database.types'
-import { googleConfig } from '@/lib/config/api-keys'
-import { retryGoogleCalendar } from '@/lib/utils/retry'
-import { mapGoogleCalendarError } from '@/lib/errors/api-errors'
+import { Database } from '../supabase/database.types'
+import { googleConfig } from '../config/api-keys'
+import { retryGoogleCalendar } from '../utils/retry'
+import { mapGoogleCalendarError } from '../errors/api-errors'
 
 // Google Calendar configuration
 const GOOGLE_CALENDAR_ID = googleConfig.calendarId
@@ -16,11 +16,12 @@ const GOOGLE_CALENDAR_COLORS = {
   'CONFERENCE': '9', // Blue for conferences
   'TRAINING': '5', // Yellow for training
   'MEETING': '1', // Lavender for meetings
+  'DEADLINE': '10', // Basil green for deadlines
   'OTHER': '4' // Flamingo pink for misc events
 } as const
 
 type CalendarEvent = Database['public']['Tables']['calendar_events']['Row']
-type EventType = Database['public']['Enums']['event_type']
+type EventType = 'MEETING' | 'DEADLINE' | 'TRAINING' | 'CONFERENCE' | 'HOLIDAY' | 'PTO' | 'CLINICAL_SERVICE' | 'OTHER' // Define event types
 type GoogleEvent = any
 
 /**

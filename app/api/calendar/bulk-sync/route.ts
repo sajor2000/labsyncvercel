@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
       .eq('lab_id', labId)
       .single()
 
-    if (!labMember || !labMember.can_manage_calendar) {
+    const memberData = labMember as { id: string; can_manage_calendar: boolean } | null
+    if (!memberData || !memberData.can_manage_calendar) {
       return NextResponse.json({ 
         error: 'Insufficient permissions to manage calendar' 
       }, { status: 403 })
@@ -50,7 +51,8 @@ export async function POST(request: NextRequest) {
       .not('google_calendar_id', 'is', null)
 
     if (existingEvents) {
-      existingEvents.forEach(event => {
+      const events = existingEvents as { google_calendar_id: string | null }[]
+      events.forEach(event => {
         if (event.google_calendar_id) {
           existingGoogleIds.add(event.google_calendar_id)
         }
@@ -75,8 +77,8 @@ export async function POST(request: NextRequest) {
     // Batch insert new events
     let insertedCount = 0
     if (eventsToInsert.length > 0) {
-      const { data: insertedEvents, error: insertError } = await supabase
-        .from('calendar_events')
+      const { data: insertedEvents, error: insertError } = await (supabase
+        .from('calendar_events') as any)
         .insert(eventsToInsert)
         .select()
 
@@ -101,12 +103,13 @@ export async function POST(request: NextRequest) {
 
     let syncedToGoogle = 0
     if (labFlowEvents) {
-      for (const event of labFlowEvents) {
+      const events = labFlowEvents as any[]
+      for (const event of events) {
         const googleEventId = await googleCalendarService.syncEventToGoogle(event)
         
         if (googleEventId) {
-          await supabase
-            .from('calendar_events')
+          await (supabase
+            .from('calendar_events') as any)
             .update({
               google_calendar_id: googleEventId,
               google_calendar_url: `https://calendar.google.com/calendar/u/0/r/eventedit/${googleEventId}`,

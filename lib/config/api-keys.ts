@@ -17,6 +17,8 @@ interface ApiConfig {
   }
   google: {
     apiKey?: string
+    clientId?: string
+    clientSecret?: string
     serviceAccountPath?: string
     calendarId: string
     timezone: string
@@ -29,10 +31,6 @@ interface ApiConfig {
   redis?: {
     url: string
     token?: string
-  }
-  sentry?: {
-    dsn: string
-    environment: string
   }
 }
 
@@ -65,8 +63,8 @@ export const apiConfig: ApiConfig = {
   openai: {
     apiKey: requireEnv('OPENAI_API_KEY'),
     organization: optionalEnv('OPENAI_ORG_ID'),
-    maxRetries: parseInt(optionalEnv('OPENAI_MAX_RETRIES', '3')),
-    timeoutMs: parseInt(optionalEnv('OPENAI_TIMEOUT_MS', '120000')) // 2 minutes
+    maxRetries: parseInt(optionalEnv('OPENAI_MAX_RETRIES') || '3'),
+    timeoutMs: parseInt(optionalEnv('OPENAI_TIMEOUT_MS') || '120000') // 2 minutes
   },
   google: {
     apiKey: optionalEnv('GOOGLE_CALENDAR_API_KEY'),
@@ -85,10 +83,6 @@ export const apiConfig: ApiConfig = {
     url: requireEnv('UPSTASH_REDIS_REST_URL'),
     token: optionalEnv('UPSTASH_REDIS_REST_TOKEN')
   } : undefined,
-  sentry: optionalEnv('NEXT_PUBLIC_SENTRY_DSN') ? {
-    dsn: requireEnv('NEXT_PUBLIC_SENTRY_DSN'),
-    environment: requireEnv('NEXT_PUBLIC_SENTRY_ENVIRONMENT', 'production')
-  } : undefined
 }
 
 // Validate critical configurations on startup
@@ -130,7 +124,6 @@ export const openaiConfig = apiConfig.openai
 export const googleConfig = apiConfig.google
 export const resendConfig = apiConfig.resend
 export const redisConfig = apiConfig.redis
-export const sentryConfig = apiConfig.sentry
 
 // Utility to get config safely
 export function getConfig(): ApiConfig {

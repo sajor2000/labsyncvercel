@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
-import { openaiConfig } from '@/lib/config/api-keys'
-import { retryOpenAI } from '@/lib/utils/retry'
-import { mapOpenAIError, ExternalApiError } from '@/lib/errors/api-errors'
+import { openaiConfig } from '../config/api-keys'
+import { retryOpenAI } from '../utils/retry'
+import { mapOpenAIError, ExternalApiError } from '../errors/api-errors'
 
 // Initialize OpenAI client with proper configuration
 export const openai = new OpenAI({

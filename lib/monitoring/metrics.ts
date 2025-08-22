@@ -133,19 +133,32 @@ export function reportWebVitals(metric: {
   id: string
   name: string
   value: number
-  label: string
+  delta?: number
+  rating?: 'good' | 'needs-improvement' | 'poor'
+  navigationType?: string
 }) {
   // Log to console in development
   if (process.env.NODE_ENV === 'development') {
-    console.log('Web Vital:', metric)
+    const rating = metric.rating ? ` (${metric.rating})` : ''
+    console.log(`[Web Vital] ${metric.name}: ${Math.round(metric.value)}ms${rating}`)
   }
 
   // Send to analytics service in production
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-    // Example: Send to Google Analytics, Vercel Analytics, or custom endpoint
-    // gtag('event', metric.name, {
-    //   custom_parameter_1: metric.value,
-    //   custom_parameter_2: metric.id,
-    // })
+    // Vercel Analytics handles this automatically via @vercel/analytics
+    // Additional custom tracking can be added here if needed
+    
+    // Report poor performance to monitoring
+    if (metric.rating === 'poor' && window.Sentry) {
+      window.Sentry.captureMessage(`Poor ${metric.name} performance`, {
+        level: 'warning',
+        extra: {
+          metric: metric.name,
+          value: metric.value,
+          rating: metric.rating,
+          url: window.location.href,
+        },
+      })
+    }
   }
 }

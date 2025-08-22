@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { useState } from 'react'
 import { Toaster } from 'react-hot-toast'
-import { SentryUserProvider } from '@/components/auth/SentryUserProvider'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -31,30 +30,28 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SentryUserProvider>
-        {children}
-        <Toaster 
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
+      {children}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
             style: {
-              background: '#363636',
-              color: '#fff',
+              background: '#10b981',
             },
-            success: {
-              style: {
-                background: '#10b981',
-              },
+          },
+          error: {
+            style: {
+              background: '#ef4444',
             },
-            error: {
-              style: {
-                background: '#ef4444',
-              },
-            },
-          }}
-        />
-        <ReactQueryDevtools initialIsOpen={false} />
-      </SentryUserProvider>
+          },
+        }}
+      />
+      <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   )
 }

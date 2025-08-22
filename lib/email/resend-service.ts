@@ -5,9 +5,9 @@
 
 import { Resend } from 'resend'
 import { render } from '@react-email/render'
-import { resendConfig } from '@/lib/config/api-keys'
-import { retryResend } from '@/lib/utils/retry'
-import { mapResendError, ExternalApiError } from '@/lib/errors/api-errors'
+import { resendConfig } from '../config/api-keys'
+import { retryResend } from '../utils/retry'
+import { mapResendError, ExternalApiError } from '../errors/api-errors'
 
 // Import email templates
 import TaskAssignmentEmail from './templates/TaskAssignmentEmail'
@@ -265,7 +265,7 @@ class ResendEmailService {
       }
 
       const response = await retryResend(async () => {
-        return await resend.emails.send(emailData)
+        return await resend.emails.send(emailData as any)
       })
 
       if (response.error) {

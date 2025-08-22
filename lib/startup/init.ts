@@ -3,7 +3,7 @@
  * Validates configurations and sets up monitoring
  */
 
-import { validateConfig } from '@/lib/config/api-keys'
+import { validateConfig } from '../config/api-keys'
 
 export async function initializeApplication(): Promise<void> {
   console.log('🚀 Initializing LabFlow application...')
@@ -12,7 +12,6 @@ export async function initializeApplication(): Promise<void> {
     // Validate all API configurations
     validateConfig()
     
-    // TODO: Initialize Sentry monitoring
     // TODO: Initialize OTEL tracing
     // TODO: Warm up Redis connection
     // TODO: Validate database connectivity

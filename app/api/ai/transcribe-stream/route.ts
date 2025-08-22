@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   const correlationId = uuidv4()
   
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { ArrowRight, Calendar, Users, Mic, Brain, Mail } from 'lucide-react'
 
 export default async function HomePage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   
   const { data: { user } } = await supabase.auth.getUser()
   

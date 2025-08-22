@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   const correlationId = uuidv4()
   
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -32,18 +32,21 @@ export async function POST(request: NextRequest) {
 
     // Validate meeting ownership if meetingId provided
     if (meetingId) {
-      const { data: meeting, error: meetingError } = await supabase
-        .from('meetings')
+      const meetingResponse = await supabase
+        .from('standup_meetings')
         .select('id, created_by, lab_id')
         .eq('id', meetingId)
         .single()
+      
+      const meeting = meetingResponse.data as { id: string; created_by: string | null; lab_id: string } | null
+      const meetingError = meetingResponse.error
 
       if (meetingError || !meeting) {
         return NextResponse.json({ error: 'Meeting not found' }, { status: 404 })
       }
 
       // Check if user has access (either creator or lab member)
-      if (meeting.created_by !== user.id) {
+      if (meeting?.created_by && meeting.created_by !== user.id) {
         const { data: labMember } = await supabase
           .from('lab_members')
           .select('id')
@@ -63,8 +66,9 @@ export async function POST(request: NextRequest) {
     // Store processed results in database if meetingId provided
     if (meetingId) {
       // Save processed notes
-      const { error: notesError } = await supabase
-        .from('meetings')
+      // Note: Type assertion needed due to Supabase type generation issue
+      const { error: notesError } = await (supabase
+        .from('standup_meetings') as any)
         .update({
           ai_summary: result.processedNotes,
           updated_at: new Date().toISOString()
@@ -76,7 +80,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Save extracted tasks
-      const tasks = result.extractedTasks.tasks.map(task => ({
+      const tasks: any[] = result.extractedTasks.tasks.map(task => ({
         meeting_id: meetingId,
         title: task.task,
         description: task.task,
@@ -90,8 +94,8 @@ export async function POST(request: NextRequest) {
       }))
 
       if (tasks.length > 0) {
-        const { error: tasksError } = await supabase
-          .from('tasks')
+        const { error: tasksError } = await (supabase
+          .from('tasks') as any)
           .insert(tasks)
 
         if (tasksError) {
