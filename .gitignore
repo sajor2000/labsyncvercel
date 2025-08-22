@@ -151,3 +151,6 @@ vite.config.ts.*
 # Archive files
 *.tar.gz
 *.zip
+
+# Deployment guides with secrets (keep local only)
+VERCEL-DEPLOYMENT.md
