@@ -1,6 +1,8 @@
 # LabFlow - Medical Research Lab Management System
 
-LabFlow is a comprehensive medical research lab management system designed to streamline research workflows for laboratories. It provides study lifecycle management, AI-powered standup meetings, real-time collaboration, and task tracking.
+**LabSync** is a production-ready medical research lab management system with professional Slack-style dark mode design. Features AI-powered meeting transcription, intelligent task management, and seamless team collaboration.
+
+✅ **GitHub-Vercel Integration Active** - Automatic deployments on every push to main branch.
 
 ## 🚀 Features
 
