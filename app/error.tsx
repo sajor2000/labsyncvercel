@@ -1,75 +1,51 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, RefreshCw, MessageSquare } from 'lucide-react'
 
-interface ErrorProps {
+export default function Error({
+  error,
+  reset,
+}: {
   error: Error & { digest?: string }
   reset: () => void
-}
-
-export default function Error({ error, reset }: ErrorProps) {
+}) {
   useEffect(() => {
-    // Log the error to console
-    console.error('Application Error:', error)
+    // Log the error to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Application error:', error)
+    }
   }, [error])
 
-  const handleFeedback = () => {
-    // Simple mailto feedback
-    window.location.href = `mailto:support@labflow.com?subject=Error Report&body=Error ID: ${error.digest || 'unknown'}`
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="max-w-md w-full mx-auto p-6 text-center">
-        <div className="mb-6">
-          <AlertTriangle className="h-16 w-16 text-destructive mx-auto mb-4" />
-          <h1 className="text-2xl font-semibold text-foreground mb-2">
-            Something went wrong
-          </h1>
-          <p className="text-muted-foreground mb-4">
-            We apologize for the inconvenience. An error occurred while processing your request.
-          </p>
-          {error.digest && (
-            <p className="text-sm text-muted-foreground font-mono bg-muted p-2 rounded">
-              Error ID: {error.digest}
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+      <div className="mx-auto max-w-md text-center">
+        <div className="mb-8">
+          <h1 className="text-9xl font-bold text-destructive">500</h1>
+        </div>
+        <h2 className="mb-4 text-3xl font-semibold tracking-tight">
+          Something went wrong
+        </h2>
+        <p className="mb-8 text-muted-foreground">
+          An unexpected error occurred. We've been notified and are working to fix it.
+        </p>
+        {process.env.NODE_ENV === 'development' && error.message && (
+          <div className="mb-8 rounded-lg bg-muted p-4 text-left">
+            <p className="font-mono text-sm text-muted-foreground">
+              {error.message}
             </p>
-          )}
-        </div>
-        
-        <div className="space-y-3">
-          <Button 
-            onClick={reset}
-            className="w-full"
-            variant="default"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Try again
+          </div>
+        )}
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
+          <Button onClick={reset}>
+            Try Again
           </Button>
-          
-          <Button 
-            onClick={() => window.location.href = '/dashboard'}
-            variant="outline"
-            className="w-full"
-          >
-            Return to Dashboard
+          <Button asChild variant="outline">
+            <Link href="/dashboard">
+              Go to Dashboard
+            </Link>
           </Button>
-
-          <Button
-            onClick={handleFeedback}
-            variant="ghost"
-            className="w-full mt-2"
-          >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Send Feedback
-          </Button>
-        </div>
-
-        <div className="mt-8 text-sm text-muted-foreground">
-          <p>
-            If this problem persists, you can send feedback above or contact support with the error ID.
-          </p>
         </div>
       </div>
     </div>

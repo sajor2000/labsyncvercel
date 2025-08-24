@@ -2,77 +2,169 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Slack-Inspired Dark Theme - Default */
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  /* Slack-inspired color palette */
+  --background: #1A1D29;
+  --foreground: #FFFFFF;
+  
+  --card: #232529;
+  --card-foreground: #FFFFFF;
+  
+  --popover: #2D3748;
+  --popover-foreground: #FFFFFF;
+  
+  --primary: #4A9EFF;
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: #374151;
+  --secondary-foreground: #E5E7EB;
+  
+  --muted: #374151;
+  --muted-foreground: #9CA3AF;
+  
+  --accent: #4A9EFF;
+  --accent-foreground: #FFFFFF;
+  
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  
+  --success: #22C55E;
+  --success-foreground: #FFFFFF;
+  
+  --warning: #F59E0B;
+  --warning-foreground: #FFFFFF;
+  
+  --info: #4A9EFF;
+  --info-foreground: #FFFFFF;
+  
+  --border: #374151;
+  --input: #2D3748;
+  --ring: #4A9EFF;
+  
+  /* Chart colors - Slack-inspired */
+  --chart-1: #4A9EFF;
+  --chart-2: #22C55E;
+  --chart-3: #F59E0B;
+  --chart-4: #EF4444;
+  --chart-5: #8B5CF6;
+  
+  /* Sidebar colors - Slack-style */
+  --sidebar-background: #1A1D29;
+  --sidebar-foreground: #E5E7EB;
+  --sidebar-primary: #4A9EFF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #374151;
+  --sidebar-accent-foreground: #E5E7EB;
+  --sidebar-border: #374151;
+  --sidebar-ring: #4A9EFF;
+  
+  --radius: 0.5rem;
+  
+  /* Legacy variables for compatibility */
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 26, 29, 41;
+  --background-end-rgb: 26, 29, 41;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+/* Force dark mode - no light theme */
+html {
+  @apply h-full;
+  color-scheme: dark;
 }
 
 body {
+  @apply h-full bg-background text-foreground;
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background: rgb(var(--background-start-rgb));
 }
 
+/* Custom utilities for Slack-style components */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Slack-style focus ring */
+  .focus-slack {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
+  }
+  
+  /* Slack-style hover effects */
+  .hover-slack {
+    @apply hover:bg-accent hover:bg-opacity-10 transition-colors duration-150;
+  }
+  
+  /* Slack-style card */
+  .card-slack {
+    @apply bg-card border border-border rounded-lg shadow-sm;
+  }
+  
+  /* Slack-style button variants */
+  .btn-slack-primary {
+    @apply bg-primary text-primary-foreground hover:brightness-90 focus-slack px-4 py-2 rounded-md font-medium transition-colors;
+  }
+  
+  .btn-slack-secondary {
+    @apply bg-secondary text-secondary-foreground hover:brightness-110 focus-slack px-4 py-2 rounded-md font-medium transition-colors;
+  }
+  
+  /* Slack-style input */
+  .input-slack {
+    @apply bg-input border border-border text-foreground placeholder:text-muted-foreground focus-slack px-3 py-2 rounded-md;
+  }
+  
+  /* Slack-style sidebar item */
+  .sidebar-item {
+    @apply flex items-center px-3 py-2 text-sm font-medium rounded-md hover-slack focus-slack;
+  }
+  
+  .sidebar-item-active {
+    @apply bg-primary text-primary-foreground;
+  }
 }
 
-/* Medical Research Lab Specific Styles */
-.lab-card {
-  @apply bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow;
+/* Slack-style scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.priority-urgent {
-  @apply bg-red-100 border-red-300 text-red-800;
+::-webkit-scrollbar-track {
+  background: var(--muted);
 }
 
-.priority-high {
-  @apply bg-orange-100 border-orange-300 text-orange-800;
+::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 4px;
 }
 
-.priority-medium {
-  @apply bg-yellow-100 border-yellow-300 text-yellow-800;
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
-.priority-low {
-  @apply bg-green-100 border-green-300 text-green-800;
+/* Ensure consistent dark theme for all elements */
+* {
+  border-color: var(--border);
 }
 
-.permission-badge {
-  @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+/* Override any light theme elements */
+.bg-white {
+  @apply bg-card;
 }
 
-.role-badge {
-  @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800;
+.text-black {
+  @apply text-foreground;
 }
 
-.meeting-status-live {
-  @apply bg-red-500 text-white animate-pulse;
+.bg-gray-50 {
+  @apply bg-muted;
 }
 
-.meeting-status-scheduled {
-  @apply bg-blue-500 text-white;
+.text-gray-900 {
+  @apply text-foreground;
 }
 
-.meeting-status-completed {
-  @apply bg-green-500 text-white;
-}
-
-.ai-processing {
-  @apply animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full;
+.text-gray-600 {
+  @apply text-muted-foreground;
 }

@@ -137,6 +137,115 @@ Multi-tier rate limiting using Upstash Redis:
 - **Auth Pages**: Signin/signup with Google OAuth integration
 - **API Routes**: RESTful endpoints for all data operations
 
+## UI/UX Spec: Multi‑Lab Toggle and Navigation
+
+The app must support seamless switching between multiple labs with a consistent, modern, dark-mode friendly UI. Do not hardcode marketing copy; use data-driven labels from the database. Follow these requirements:
+
+- **Lab Switcher (Top Bar)**
+  - Place a compact lab switcher in the top navigation next to the global search input.
+  - Use a searchable combobox with the current lab name and badge/status indicator.
+  - Keyboard support: `Cmd/Ctrl + K` opens global search; `L` inside search focuses lab filter; arrow keys navigate options; `Enter` selects.
+  - Persist the last selected lab per user in local storage AND server profile so the choice syncs across devices.
+
+- **Labs Directory View**
+  - Grid of lab cards (2–3 columns responsive) with: name, short description, KPI chips (studies, buckets, members), created date, and quick actions (View, Buckets).
+  - Each card uses subtle elevation, rounded corners, and iconography; hover state increases shadow and outlines the primary accent.
+  - Provide a “Search labs…” input above the grid with debounce and empty-state messaging.
+
+- **Sidebar Context**
+  - Left sidebar shows the active lab near the top with a small logo/avatar and online indicator.
+  - Sidebar sections remain constant across labs (Overview, Labs, Buckets, Studies, Tasks, Ideas, Deadlines, Files, Settings) but filter data by the active lab.
+  - The “Labs” item navigates to the directory view described above.
+
+- **Dashboard Overview (Per‑Lab)**
+  - Cards for Research Labs count, Active Studies, Project Buckets, Task Progress.
+  - Right rail widget for task status breakdown (In Progress, Completed, Urgent, etc.).
+  - Recent Studies list with status pills; actions to view all.
+
+- **Responsiveness & Theming**
+  - Dark theme by default; support light theme via `next-themes`.
+  - 3 breakpoints minimum: mobile (single column), tablet (two columns), desktop (three columns where applicable).
+
+- **State & Persistence**
+  - Selected lab affects routing and data queries. All list/detail pages must filter by active lab unless explicitly “All labs”.
+  - If a user loses access to a lab, gracefully fall back to the next available lab or the Labs directory.
+
+- **Empty & Loading States**
+  - Provide skeleton loaders for cards and lists.
+  - Clear empty states with CTA buttons (e.g., “Create Study”, “Invite Members”).
+
+- **Accessibility**
+  - All interactive elements must be keyboard accessible with visible focus.
+  - Use ARIA roles for combobox, menu, and listbox components.
+
+- **Performance**
+  - Lazy-load lab-specific widgets; cache recent lab lists; prefetch dashboard data on switch.
+
+- **Content & Internationalization**
+  - Do not hardcode copy; all labels should be driven by data or i18n resources.
+  - Support truncation with tooltips for long lab names.
+
+- **QA Scenarios**
+  - User with 2+ labs can switch without page reload flicker.
+  - User with 1 lab sees switcher but disabled dropdown.
+  - No labs: directory shows empty state with “Create Lab”.
+  - Access revoked mid-session gracefully redirects.
+
+Implementation hint: use shadcn/ui `Command` for the searchable switcher, `DropdownMenu` for quick actions, and persistent store (localStorage + server profile) for the active lab. All routes under `app/dashboard/*` should read active lab from a single source of truth.
+
+### Detailed UI Structure (from reference screenshots)
+
+- **Top Bar**
+  - Left: compact brand mark (24–28px) and product wordmark.
+  - Center: global search input (rounded-2xl, subtle inner shadow). Placeholder: “Search studies, tasks, ideas, deadlines…”. Prefix icon: search. Suffix: a small segmented lab switcher showing the active lab name as a pill (e.g., “RHDAS”) with a chevron; clicking opens the lab combobox.
+  - Right: theme toggle, notifications (with red unread dot counter), user avatar with name/subtitle in the account dropdown.
+
+- **Sidebar**
+  - Top section shows the active lab name with a green status dot and mini lab logo. Clicking the lab name opens the same lab switcher.
+  - Navigation items (order): Overview, Labs, Buckets, Studies, Study Board, Stacked by Bucket, Task Management, Ideas Board, Deadlines, File Management, Calendar, Calendar Setup, Analytics.
+  - Lower section: Profile, Settings, Email Notifications, Sign out.
+  - Active item style: filled/brand tint on the left with bold label; hover: subtle background tint.
+  - Collapsible behavior on narrow viewports; icons persist with tooltips.
+
+- **Labs Directory Cards**
+  - Card layout: rounded-xl (~16px), 1px border on dark surfaces (alpha), soft shadow. Internal padding ~20–24px, 2–3 column grid responsive.
+  - Header: lab name (semibold), actions gear icon (for lab settings) on the top-right.
+  - Body: single-paragraph description (2–3 lines, clamp). KPI row with 3 chips: Studies (beaker icon), Buckets (folder icon), Members (users icon). Each chip shows a numeric count.
+  - Footer: two ghost buttons “View” and “Buckets”; created date aligned along the bottom edge in muted text.
+  - Hover: elevate shadow + 1px brand border alpha; active/focus rings are visible.
+
+- **Dashboard Overview (per-lab)**
+  - Title + subtitle describing the lab at the top.
+  - Primary action buttons on the right: “Schedule” (secondary/outline) and “+ New Project” (primary/filled).
+  - KPI cards row: Research Labs, Active Studies, Project Buckets, Task Progress. Each card has an icon, bold number, label, and subtle description.
+  - Recent Studies panel with a “View All” button; each study shows title and status pill (e.g., Planning, In Progress).
+
+- **Right Rail (Task Overview)**
+  - Vertical card with segment list: In Progress (amber), Completed (green), Urgent (red). Each shows a numeric badge; include an overall progress percentage and small progress bar.
+
+- **Interactions & Motion**
+  - Micro-interactions on hover for cards and buttons (elevation, subtle scale 1.01, color accent).
+  - Combobox opens with fade/slide; list items highlight on arrow-key navigation; Enter selects.
+  - Skeleton loaders for KPI cards and lists.
+
+- **Visual Language**
+  - Dark theme baseline: near-black surfaces (#0F172A–#0B1220 range), cards slightly lighter, borders low alpha.
+  - Primary and accent hues follow Tailwind tokens; keep contrast ratios AA.
+  - Typography: Inter; weights 500–700 for headings; buttons use 600–700.
+  - Iconography: lucide-react with consistent sizes (16/18/20/24) and stroke width.
+
+- **Data & Routing Rules**
+  - All list/data queries must include the active lab ID filter.
+  - URLs should reflect lab context where appropriate (e.g., `/dashboard?lab=<id>` or in state); soft navigation when switching labs.
+
+- **Error & Empty States**
+  - Directory: If no labs, show CTA “Create Lab”. If search misses, show “No labs found” with clear-reset.
+  - Dashboard: If no studies, show CTA “New Project”.
+
+- **Non-functional Requirements**
+  - Performance: keep first-contentful paint smooth on lab switch; prefetch dashboard on combobox highlight.
+  - Accessibility: all interactive elements tabbable; ARIA roles for combobox/listbox; visible focus rings.
+
 ## Development Guidelines
 
 ### Environment Configuration
@@ -145,7 +254,6 @@ Required environment variables are validated via `validate-config.cjs`. Key vari
 - OpenAI: `OPENAI_API_KEY`
 - Upstash Redis: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
 - Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALENDAR_API_KEY`
-- Monitoring: `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`
 - Email: `RESEND_API_KEY2`, `FROM_EMAIL`
 
 ### Database Schema Updates

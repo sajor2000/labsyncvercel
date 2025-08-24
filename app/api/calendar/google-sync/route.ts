@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/utils/supabase/server'
 import { googleCalendarService } from '@/lib/google-calendar/calendar-service'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -74,13 +74,13 @@ export async function POST(request: NextRequest) {
     // Check permission to sync event
     const { data: labMember } = await supabase
       .from('lab_members')
-      .select('id, can_manage_calendar')
+      .select('id, can_schedule_meetings, is_admin')
       .eq('user_id', user.id)
       .eq('lab_id', eventData.lab_id)
-      .single()
+      .eq('is_active', true)
+      .single() as { data: { id: string; can_schedule_meetings: boolean; is_admin: boolean } | null }
 
-    const memberData = labMember as { id: string; can_manage_calendar: boolean } | null
-    if (!memberData || !memberData.can_manage_calendar) {
+    if (!labMember || (!labMember.can_schedule_meetings && !labMember.is_admin)) {
       return NextResponse.json({ 
         error: 'Insufficient permissions to sync calendar events' 
       }, { status: 403 })

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/utils/supabase/server'
 import { AIService } from '@/lib/ai/openai-client'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkAILimit } from '@/lib/rate-limit/rate-limiter'

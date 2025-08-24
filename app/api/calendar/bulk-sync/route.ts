@@ -1,9 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/utils/supabase/server'
 import { googleCalendarService } from '@/lib/google-calendar/calendar-service'
 import { NextRequest, NextResponse } from 'next/server'
+import { BulkCalendarSyncSchema, validateBody } from '@/lib/validation/schemas'
+import { rateLimit } from '@/lib/rate-limit/rate-limiter'
 
 export async function POST(request: NextRequest) {
   try {
+    await rateLimit('api', 10)
+    
     const supabase = await createClient()
     
     // Check authentication
@@ -12,22 +16,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { startDate, endDate, labId } = await request.json()
-
-    if (!labId) {
-      return NextResponse.json({ error: 'Lab ID is required' }, { status: 400 })
-    }
+    // Validate request body
+    const requestBody = await request.json()
+    const { startDate, endDate, labId } = validateBody(BulkCalendarSyncSchema)(requestBody)
 
     // Check permission to sync calendar
     const { data: labMember } = await supabase
       .from('lab_members')
-      .select('id, can_manage_calendar')
+      .select('id, can_schedule_meetings, is_admin')
       .eq('user_id', user.id)
       .eq('lab_id', labId)
-      .single()
+      .eq('is_active', true)
+      .single() as { data: { id: string; can_schedule_meetings: boolean; is_admin: boolean } | null }
 
-    const memberData = labMember as { id: string; can_manage_calendar: boolean } | null
-    if (!memberData || !memberData.can_manage_calendar) {
+    if (!labMember || (!labMember.can_schedule_meetings && !labMember.is_admin)) {
       return NextResponse.json({ 
         error: 'Insufficient permissions to manage calendar' 
       }, { status: 403 })
@@ -46,15 +48,15 @@ export async function POST(request: NextRequest) {
     // Get existing Google Calendar IDs to avoid duplicates
     const { data: existingEvents } = await supabase
       .from('calendar_events')
-      .select('google_calendar_id')
+      .select('external_calendar_id')
       .eq('lab_id', labId)
-      .not('google_calendar_id', 'is', null)
+      .not('external_calendar_id', 'is', null)
 
     if (existingEvents) {
-      const events = existingEvents as { google_calendar_id: string | null }[]
+      const events = existingEvents as { external_calendar_id: string | null }[]
       events.forEach(event => {
-        if (event.google_calendar_id) {
-          existingGoogleIds.add(event.google_calendar_id)
+        if (event.external_calendar_id) {
+          existingGoogleIds.add(event.external_calendar_id)
         }
       })
     }
@@ -65,9 +67,19 @@ export async function POST(request: NextRequest) {
       
       if (labFlowEvent && !existingGoogleIds.has(googleEvent.id)) {
         eventsToInsert.push({
-          ...labFlowEvent,
+          title: labFlowEvent.title!,
+          description: labFlowEvent.description,
+          event_type: labFlowEvent.event_type || 'OTHER',
+          start_date: labFlowEvent.start_date!,
+          end_date: labFlowEvent.end_date!,
+          all_day: labFlowEvent.all_day,
+          location: labFlowEvent.location,
           lab_id: labId,
           created_by: user.id,
+          external_calendar_id: googleEvent.id,
+          external_event_id: googleEvent.htmlLink || googleEvent.id,
+          external_provider: 'google',
+          metadata: labFlowEvent.metadata,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })

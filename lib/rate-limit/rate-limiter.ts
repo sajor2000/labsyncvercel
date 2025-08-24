@@ -52,7 +52,7 @@ const createRateLimiter = (config: { requests: number; window: string }) => {
   // Fallback to in-memory for development
   return new Ratelimit({
     redis: new Map() as any, // Use Map as fallback
-    limiter: Ratelimit.slidingWindow(config.requests, config.window),
+    limiter: Ratelimit.slidingWindow(config.requests, `${config.window}s` as any),
     analytics: false,
     prefix: 'labflow',
   })
@@ -237,4 +237,23 @@ export async function getRedisHealth(): Promise<{ connected: boolean; latency?: 
     console.error('Redis health check failed:', error)
     return { connected: false }
   }
+}
+
+/**
+ * Simple rate limit wrapper for common operations
+ */
+export async function rateLimit(
+  operation: keyof typeof rateLimiters | string,
+  limit?: number,
+  identifier?: string
+): Promise<void> {
+  // For backwards compatibility, use a generic identifier if not provided
+  const id = identifier || 'anonymous'
+  
+  if (operation in rateLimiters) {
+    return checkRateLimit(id, operation as keyof typeof rateLimiters)
+  }
+  
+  // Default to API rate limiting for unknown operations
+  return checkAPILimit(id)
 }

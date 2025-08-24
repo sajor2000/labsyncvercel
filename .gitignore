@@ -154,3 +154,4 @@ vite.config.ts.*
 
 # Deployment guides with secrets (keep local only)
 VERCEL-DEPLOYMENT.md
+.vercel

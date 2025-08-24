@@ -1,7 +1,7 @@
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
@@ -11,34 +11,34 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
   title: {
-    default: 'LabFlow - Medical Research Lab Management System',
-    template: '%s | LabFlow'
+    default: 'Lab Sync - Making Science Easier',
+    template: '%s | Lab Sync'
   },
-  description: 'Streamline your medical research lab operations with AI-powered meeting transcription, task management, team collaboration, and study tracking. Built for research teams.',
+  description: 'Lab Sync - Making Science Easier. Simple, efficient lab management with AI-powered meeting transcription, task tracking, and team collaboration for research labs.',
   keywords: ['medical research', 'lab management', 'AI transcription', 'task management', 'research collaboration', 'study tracking'],
   authors: [{ name: 'LabFlow Team' }],
-  creator: 'LabFlow Team',
-  metadataBase: new URL('https://labflow.vercel.app'),
+  creator: 'Lab Sync Team',
+  metadataBase: new URL('https://labsync.vercel.app'),
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://labflow.vercel.app',
-    title: 'LabFlow - Medical Research Lab Management System',
-    description: 'Streamline your medical research lab operations with AI-powered features.',
-    siteName: 'LabFlow',
+    url: 'https://labsync.vercel.app',
+    title: 'Lab Sync - Making Science Easier',
+    description: 'Simple, efficient lab management for research teams.',
+    siteName: 'Lab Sync',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'LabFlow - Medical Research Lab Management System',
+        alt: 'Lab Sync - Making Science Easier',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'LabFlow - Medical Research Lab Management',
-    description: 'AI-powered lab management for research teams',
+    title: 'Lab Sync - Making Science Easier',
+    description: 'Simple lab management for research teams',
     images: ['/og-image.png'],
   },
   robots: {
@@ -60,8 +60,8 @@ export default async function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
         <Providers>
           <div id="root">
             {children}

@@ -1,80 +1,137 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getRedisHealth } from '@/lib/rate-limit/rate-limiter'
+import { NextResponse } from 'next/server'
+import { createClient } from '@/utils/supabase/server'
+import { Redis } from '@upstash/redis'
 
-export async function GET(request: NextRequest) {
-  const checks = {
-    timestamp: new Date().toISOString(),
-    status: 'healthy' as 'healthy' | 'unhealthy',
-    services: {
-      redis: { status: 'unknown' as 'connected' | 'disconnected' | 'unknown', latency: undefined as number | undefined },
-      database: { status: 'not_checked' }, // We'll skip database check for now
-    },
-    environment: {
-      nodeEnv: process.env.NODE_ENV,
-      nextjsVersion: process.env.npm_package_version,
-      platform: process.platform,
-    }
+export const dynamic = 'force-dynamic'
+
+interface HealthCheck {
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  timestamp: string
+  services: {
+    database: ServiceStatus
+    redis: ServiceStatus
+    api: ServiceStatus
   }
-
-  // Check Redis/Upstash connection
-  try {
-    const redisHealth = await getRedisHealth()
-    checks.services.redis.status = redisHealth.connected ? 'connected' : 'disconnected'
-    checks.services.redis.latency = redisHealth.latency
-    
-    if (!redisHealth.connected) {
-      checks.status = 'unhealthy'
-    }
-  } catch (error) {
-    checks.services.redis.status = 'disconnected'
-    checks.status = 'unhealthy'
-    console.error('Redis health check failed:', error)
-  }
-
-  const statusCode = checks.status === 'healthy' ? 200 : 503
-
-  return NextResponse.json(checks, { 
-    status: statusCode,
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-    }
-  })
+  version: string
+  environment: string
 }
 
-// Test endpoint for intentional errors (development only)
-export async function POST(request: NextRequest) {
-  if (process.env.NODE_ENV !== 'development') {
-    return NextResponse.json({ error: 'Not available in production' }, { status: 404 })
-  }
+interface ServiceStatus {
+  status: 'up' | 'down'
+  responseTime?: number
+  error?: string
+}
 
+async function checkDatabase(): Promise<ServiceStatus> {
+  const start = Date.now()
   try {
-    const { errorType } = await request.json()
-
-    switch (errorType) {
-      case 'test_error':
-        throw new Error('Test error for debugging')
-      
-      case 'test_rate_limit':
-        // This will trigger rate limiting
-        const { checkRateLimit } = await import('@/lib/rate-limit/rate-limiter')
-        await checkRateLimit('test-client', 'strict')
-        return NextResponse.json({ message: 'Rate limit check passed' })
-      
-      default:
-        return NextResponse.json({ 
-          availableTests: ['test_error', 'test_rate_limit'],
-          usage: 'POST /api/health with { "errorType": "test_error" }'
-        })
+    const supabase = await createClient()
+    
+    // Simple query to verify database connection
+    const { error } = await supabase
+      .from('labs')
+      .select('id')
+      .limit(1)
+      .single()
+    
+    // No data is fine, connection error is not
+    if (error && error.code !== 'PGRST116') {
+      throw error
+    }
+    
+    return {
+      status: 'up',
+      responseTime: Date.now() - start
     }
   } catch (error) {
-    console.error('Test error:', error)
+    return {
+      status: 'down',
+      responseTime: Date.now() - start,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+async function checkRedis(): Promise<ServiceStatus> {
+  const start = Date.now()
+  try {
+    if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+      return {
+        status: 'down',
+        error: 'Redis not configured'
+      }
+    }
     
-    return NextResponse.json({
-      message: 'Test error triggered successfully',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      debugInfo: 'Error logged to console'
-    }, { status: 500 })
+    const redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    })
+    
+    // Simple ping to verify connection
+    await redis.ping()
+    
+    return {
+      status: 'up',
+      responseTime: Date.now() - start
+    }
+  } catch (error) {
+    return {
+      status: 'down',
+      responseTime: Date.now() - start,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+export async function GET() {
+  try {
+    const [dbStatus, redisStatus] = await Promise.all([
+      checkDatabase(),
+      checkRedis()
+    ])
+    
+    const allServicesUp = 
+      dbStatus.status === 'up' && 
+      redisStatus.status === 'up'
+    
+    const anyServiceDown = 
+      dbStatus.status === 'down' || 
+      redisStatus.status === 'down'
+    
+    const health: HealthCheck = {
+      status: anyServiceDown ? 'unhealthy' : allServicesUp ? 'healthy' : 'degraded',
+      timestamp: new Date().toISOString(),
+      services: {
+        database: dbStatus,
+        redis: redisStatus,
+        api: { status: 'up' }
+      },
+      version: process.env.npm_package_version || '1.0.0',
+      environment: process.env.NODE_ENV || 'development'
+    }
+    
+    return NextResponse.json(health, {
+      status: health.status === 'healthy' ? 200 : 503,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'X-Health-Status': health.status
+      }
+    })
+  } catch (error) {
+    return NextResponse.json(
+      {
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        services: {
+          database: { status: 'down' },
+          redis: { status: 'down' },
+          api: { status: 'down' }
+        },
+        error: error instanceof Error ? error.message : 'Health check failed',
+        version: process.env.npm_package_version || '1.0.0',
+        environment: process.env.NODE_ENV || 'development'
+      },
+      { status: 503 }
+    )
   }
 }

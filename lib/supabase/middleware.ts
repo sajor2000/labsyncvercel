@@ -59,6 +59,10 @@ export async function updateSession(request: NextRequest) {
   // Refresh session if expired - required for Server Components
   const { data: { user }, error } = await supabase.auth.getUser()
 
+  if (user) {
+    console.log('🔐 User authenticated:', user.email)
+  }
+
   return { response, user, error, supabase }
 }
 
@@ -84,8 +88,40 @@ export function isProtectedRoute(pathname: string): boolean {
 }
 
 export function isAuthRoute(pathname: string): boolean {
-  const authRoutes = ['/auth/signin', '/auth/signup', '/auth/callback']
+  const authRoutes = [
+    '/auth/signin',
+    '/auth/signup',
+    '/auth/callback',
+    '/auth/reset-password',
+    '/auth/update-password',
+    '/auth/verify-email',
+    '/auth/forgot-password'
+  ]
   return authRoutes.some(route => pathname.startsWith(route))
+}
+
+export function requiresLabMembership(pathname: string): boolean {
+  // Routes that require lab membership (exclude join-lab page)
+  const labRequiredRoutes = [
+    '/dashboard/studies',
+    '/dashboard/tasks',
+    '/dashboard/team',
+    '/dashboard/buckets',
+    '/dashboard/ideas',
+    '/dashboard/analytics',
+    '/dashboard/files',
+    '/dashboard/calendar',
+    '/dashboard/standups',
+    '/api/labs/',
+    '/api/studies/',
+    '/api/tasks/',
+  ]
+  
+  return labRequiredRoutes.some(route => pathname.startsWith(route))
+}
+
+export function isJoinLabRoute(pathname: string): boolean {
+  return pathname === '/dashboard/join-lab'
 }
 
 export function createAuthRedirect(request: NextRequest): NextResponse {
@@ -96,4 +132,8 @@ export function createAuthRedirect(request: NextRequest): NextResponse {
 
 export function createDashboardRedirect(request: NextRequest): NextResponse {
   return NextResponse.redirect(new URL('/dashboard', request.url))
+}
+
+export function createJoinLabRedirect(request: NextRequest): NextResponse {
+  return NextResponse.redirect(new URL('/dashboard/join-lab', request.url))
 }

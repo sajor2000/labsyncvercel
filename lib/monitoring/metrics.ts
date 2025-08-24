@@ -31,7 +31,7 @@ class MetricsCollector {
     this.events.push({
       name: 'db_query_duration',
       value: duration,
-      tags: { operation, table },
+      tags: { operation, table: table || 'unknown' },
       timestamp: Date.now(),
     })
   }

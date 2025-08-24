@@ -10,18 +10,18 @@ const CALENDAR_TIMEZONE = googleConfig.timezone
 
 // Google Calendar color IDs mapping to our event types
 const GOOGLE_CALENDAR_COLORS = {
-  'PTO': '7', // Peacock blue for PTO
-  'CLINICAL_SERVICE': '2', // Sage green for clinical service
-  'HOLIDAY': '11', // Red for holidays
-  'CONFERENCE': '9', // Blue for conferences
-  'TRAINING': '5', // Yellow for training
-  'MEETING': '1', // Lavender for meetings
-  'DEADLINE': '10', // Basil green for deadlines
-  'OTHER': '4' // Flamingo pink for misc events
+  'pto': '7', // Peacock blue for PTO
+  'clinic': '2', // Sage green for clinical service
+  'holiday': '11', // Red for holidays
+  'conference': '9', // Blue for conferences
+  'training': '5', // Yellow for training
+  'meeting': '1', // Lavender for meetings
+  'deadline': '10', // Basil green for deadlines
+  'other': '4' // Flamingo pink for misc events
 } as const
 
 type CalendarEvent = Database['public']['Tables']['calendar_events']['Row']
-type EventType = 'MEETING' | 'DEADLINE' | 'TRAINING' | 'CONFERENCE' | 'HOLIDAY' | 'PTO' | 'CLINICAL_SERVICE' | 'OTHER' // Define event types
+import type { EventType } from '@/lib/supabase/database.types' // Use the database EventType definition
 type GoogleEvent = any
 
 /**
@@ -157,8 +157,9 @@ export class GoogleCalendarService {
       end_date: new Date(endDate).toISOString(),
       all_day: !googleEvent.start?.dateTime,
       location: googleEvent.location || null,
-      google_calendar_id: googleEvent.id,
-      google_calendar_url: googleEvent.htmlLink,
+      external_calendar_id: googleEvent.id,
+      external_event_id: googleEvent.htmlLink,
+      external_provider: 'google' as const,
       metadata: {
         sourceType: 'google_calendar',
         googleEvent: {
@@ -177,14 +178,14 @@ export class GoogleCalendarService {
   private parseEventType(title: string, description: string): EventType {
     const content = `${title} ${description}`.toLowerCase()
     
-    if (content.includes('pto') || content.includes('vacation') || content.includes('time off')) return 'PTO'
-    if (content.includes('clinical') || content.includes('clinic')) return 'CLINICAL_SERVICE'
-    if (content.includes('meeting') || content.includes('standup')) return 'MEETING'
-    if (content.includes('conference') || content.includes('presentation')) return 'CONFERENCE'
-    if (content.includes('training') || content.includes('education')) return 'TRAINING'
-    if (content.includes('holiday')) return 'HOLIDAY'
+    if (content.includes('pto') || content.includes('vacation') || content.includes('time off')) return 'pto'
+    if (content.includes('clinical') || content.includes('clinic')) return 'clinic'
+    if (content.includes('meeting') || content.includes('standup')) return 'meeting'
+    if (content.includes('conference') || content.includes('presentation')) return 'conference'
+    if (content.includes('training') || content.includes('education')) return 'training'
+    if (content.includes('holiday')) return 'holiday'
     
-    return 'OTHER'
+    return 'other'
   }
 
   /**
@@ -235,7 +236,7 @@ export class GoogleCalendarService {
       }
 
       // Add reminders for important events
-      if (metadata?.taskPriority === 'HIGH' || labFlowEvent.event_type === 'MEETING') {
+      if (metadata?.taskPriority === 'HIGH' || labFlowEvent.event_type === 'meeting') {
         googleEvent.reminders = {
           useDefault: false,
           overrides: [
@@ -294,18 +295,19 @@ export class GoogleCalendarService {
   /**
    * Get category icon for event types
    */
-  private getCategoryIcon(eventType: EventType): string {
+  private getCategoryIcon(eventType: EventType | null): string {
     const iconMap: Record<EventType, string> = {
-      'MEETING': '🤝',
-      'CLINICAL_SERVICE': '🏥',
-      'PTO': '🏖️',
-      'TRAINING': '📚',
-      'CONFERENCE': '🎤',
-      'HOLIDAY': '🎉',
-      'OTHER': '📌'
+      'meeting': '🤝',
+      'deadline': '⏰',
+      'clinic': '🏥',
+      'pto': '🏖️',
+      'training': '📚',
+      'conference': '🎤',
+      'holiday': '🎉',
+      'other': '📌'
     }
     
-    return iconMap[eventType] || '📌'
+    return eventType ? iconMap[eventType] || '📌' : '📌'
   }
 
   /**
@@ -343,18 +345,19 @@ export class GoogleCalendarService {
   /**
    * Get default location for event types
    */
-  private getDefaultLocation(eventType: EventType): string {
+  private getDefaultLocation(eventType: EventType | null): string {
     const locationMap: Record<EventType, string> = {
-      'MEETING': 'Conference Room TBD',
-      'CLINICAL_SERVICE': 'Rush University Medical Center',
-      'TRAINING': 'Education Center',
-      'CONFERENCE': 'Location TBD',
-      'PTO': '',
-      'HOLIDAY': '',
-      'OTHER': ''
+      'meeting': 'Conference Room TBD',
+      'deadline': '',
+      'clinic': 'Rush University Medical Center',
+      'training': 'Education Center',
+      'conference': 'Location TBD',
+      'pto': '',
+      'holiday': '',
+      'other': ''
     }
     
-    return locationMap[eventType] || ''
+    return eventType ? locationMap[eventType] || '' : ''
   }
 
   /**
@@ -461,25 +464,26 @@ export class GoogleCalendarService {
   /**
    * Format event type for display
    */
-  private formatEventType(eventType: EventType): string {
+  private formatEventType(eventType: EventType | null): string {
     const typeMap: Record<EventType, string> = {
-      'MEETING': '🤝 Meeting',
-      'CLINICAL_SERVICE': '🏥 Clinical Service',
-      'PTO': '🏖️ Time Off',
-      'TRAINING': '📚 Training',
-      'CONFERENCE': '🎤 Conference',
-      'HOLIDAY': '🎉 Holiday',
-      'OTHER': '📌 Other'
+      'meeting': '🤝 Meeting',
+      'deadline': '⏰ Deadline',
+      'clinic': '🏥 Clinical Service',
+      'pto': '🏖️ Time Off',
+      'training': '📚 Training',
+      'conference': '🎤 Conference',
+      'holiday': '🎉 Holiday',
+      'other': '📌 Other'
     }
     
-    return typeMap[eventType] || `📌 ${eventType}`
+    return eventType ? typeMap[eventType] || `📌 ${eventType}` : '📌 Unknown'
   }
 
   /**
    * Get Google Calendar color ID for event type
    */
-  private getGoogleColorId(eventType: EventType): string {
-    return GOOGLE_CALENDAR_COLORS[eventType] || GOOGLE_CALENDAR_COLORS.OTHER
+  private getGoogleColorId(eventType: EventType | null): string {
+    return eventType ? GOOGLE_CALENDAR_COLORS[eventType] || GOOGLE_CALENDAR_COLORS.other : GOOGLE_CALENDAR_COLORS.other
   }
 }
 

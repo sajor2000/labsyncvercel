@@ -2,8 +2,10 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { ThemeProvider } from 'next-themes'
 import { useState } from 'react'
 import { Toaster } from 'react-hot-toast'
+import { AuthProvider } from '@/lib/contexts/auth-context'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -30,28 +32,41 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="dark"
+        forcedTheme="dark"
+        enableSystem={false}
+        disableTransitionOnChange
+      >
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
             style: {
-              background: '#10b981',
+              background: 'hsl(var(--card))',
+              color: 'hsl(var(--foreground))',
+              border: '1px solid hsl(var(--border))',
             },
-          },
-          error: {
-            style: {
-              background: '#ef4444',
+            success: {
+              style: {
+                background: 'hsl(var(--success))',
+                color: 'hsl(var(--success-foreground))',
+              },
             },
-          },
-        }}
-      />
-      <ReactQueryDevtools initialIsOpen={false} />
+            error: {
+              style: {
+                background: 'hsl(var(--destructive))',
+                color: 'hsl(var(--destructive-foreground))',
+              },
+            },
+          }}
+        />
+        <ReactQueryDevtools initialIsOpen={false} />
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }
