@@ -1,4 +1,4 @@
-import { signUp } from '../signin/actions'
+import { signup } from '../signin/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -60,7 +60,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
           )}
 
           {/* MCP Server Action Form */}
-          <form action={signUp} className="space-y-6">
+          <form action={signup} className="space-y-6">
             {/* First Name Field */}
             <div>
               <Label htmlFor="firstName" className="block text-sm font-medium text-muted-foreground mb-2">

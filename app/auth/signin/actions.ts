@@ -1,10 +1,14 @@
-import { createClient } from '@/utils/supabase/server'
-import { redirect } from 'next/navigation'
+'use server'
+
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/utils/supabase/server'
 
-export async function signIn(formData: FormData) {
-  'use server'
+// MCP Exact Pattern: Simple login action
+export async function login(formData: FormData) {
+  const supabase = await createClient()
 
+  // Basic validation
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
@@ -12,43 +16,54 @@ export async function signIn(formData: FormData) {
     redirect('/auth/signin?error=missing_credentials')
   }
 
-  const supabase = await createClient()
+  console.log('🔑 [MCP] Attempting login for:', email)
 
-  console.log('🔑 Attempting signin for:', email)
+  // MCP Pattern: Simple auth call
   const { data, error } = await supabase.auth.signInWithPassword({
     email: email.trim(),
     password: password.trim(),
   })
 
+  console.log('🔑 [MCP] Auth response:', { 
+    hasUser: !!data?.user, 
+    hasSession: !!data?.session,
+    hasError: !!error,
+    errorMessage: error?.message 
+  })
+
   if (error) {
-    console.error('❌ Signin error:', error.message)
+    console.error('❌ [MCP] Auth error:', error)
     
-    // Handle specific error cases
+    // Handle specific common errors
     if (error.message.includes('Invalid login credentials')) {
       redirect('/auth/signin?error=invalid_credentials')
-    } else if (error.message.includes('Email not confirmed')) {
-      redirect('/auth/signin?error=email_not_confirmed')
-    } else if (error.message.includes('Too many requests')) {
-      redirect('/auth/signin?error=too_many_requests')
-    } else {
-      redirect('/auth/signin?error=authentication_failed')
     }
+    if (error.message.includes('Email not confirmed')) {
+      redirect('/auth/signin?error=email_not_confirmed')
+    }
+    if (error.message.includes('Too many requests')) {
+      redirect('/auth/signin?error=too_many_requests')
+    }
+    
+    // Generic error
+    redirect('/auth/signin?error=login_failed')
   }
 
-  if (!data.user) {
-    console.error('❌ No user data returned from signin')
-    redirect('/auth/signin?error=no_user_data')
+  if (!data?.user) {
+    console.error('❌ [MCP] No user returned')
+    redirect('/auth/signin?error=no_user_returned')
   }
 
-  console.log('✅ Server-side signin successful for:', data.user.email)
-  
-  // MCP Best Practice: revalidate path before redirect
+  console.log('✅ [MCP] Login successful for:', data.user.email)
+
+  // MCP Pattern: Revalidate then redirect
   revalidatePath('/', 'layout')
   redirect('/dashboard')
 }
 
-export async function signUp(formData: FormData) {
-  'use server'
+// MCP Exact Pattern: Simple signup action  
+export async function signup(formData: FormData) {
+  const supabase = await createClient()
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string
@@ -59,7 +74,7 @@ export async function signUp(formData: FormData) {
     redirect('/auth/signup?error=missing_fields')
   }
 
-  const supabase = await createClient()
+  console.log('📝 [MCP] Attempting signup for:', email)
 
   const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
@@ -70,55 +85,57 @@ export async function signUp(formData: FormData) {
         last_name: lastName.trim(),
         full_name: `${firstName.trim()} ${lastName.trim()}`,
       },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://labsync-production.vercel.app'}/auth/callback`
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://labsync-rush.vercel.app'}/auth/callback`
     },
   })
 
+  console.log('📝 [MCP] Signup response:', { 
+    hasUser: !!data?.user, 
+    hasSession: !!data?.session,
+    hasError: !!error,
+    errorMessage: error?.message 
+  })
+
   if (error) {
-    console.error('Signup error:', error)
-    // MCP Pattern: Simple error redirect
+    console.error('❌ [MCP] Signup error:', error)
     redirect('/auth/signup?error=signup_failed')
   }
 
-  console.log('✅ Server-side signup successful for:', email)
-  
-  // MCP Best Practice: revalidate path before redirect
+  console.log('✅ [MCP] Signup successful for:', email)
+
+  // Handle email confirmation scenario
+  if (data?.user && !data?.session) {
+    console.log('📧 [MCP] Email confirmation required')
+    revalidatePath('/', 'layout')
+    redirect('/auth/signin?message=check_email')
+  }
+
   revalidatePath('/', 'layout')
   redirect('/auth/signin?message=signup_success')
 }
 
+// Simple password reset
 export async function requestPasswordReset(formData: FormData) {
-  'use server'
-  
   const supabase = await createClient()
+  
   const email = formData.get('email') as string
   
   if (!email) {
     redirect('/auth/forgot-password?error=missing_email')
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    redirect('/auth/forgot-password?error=invalid_email')
+  console.log('🔄 [MCP] Requesting password reset for:', email)
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://labsync-rush.vercel.app'}/auth/update-password`
+  })
+
+  if (error) {
+    console.error('❌ [MCP] Password reset error:', error)
+    redirect('/auth/forgot-password?error=reset_failed')
   }
 
-  try {
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://labsync-production.vercel.app'}/auth/update-password`
-    })
-
-    if (error) {
-      console.error('MCP Password reset error:', error)
-      redirect('/auth/forgot-password?error=reset_failed')
-    }
-
-    console.log('✅ MCP Password reset email sent to:', email)
-    
-    // MCP Best Practice: revalidate path before redirect
-    revalidatePath('/', 'layout')
-    redirect('/auth/forgot-password?message=reset_sent&email=' + encodeURIComponent(email))
-
-  } catch (error: any) {
-    console.error('MCP Password reset exception:', error)
-    redirect('/auth/forgot-password?error=server_error')
-  }
+  console.log('✅ [MCP] Password reset email sent')
+  revalidatePath('/', 'layout')
+  redirect('/auth/forgot-password?message=reset_sent&email=' + encodeURIComponent(email))
 }

@@ -1,4 +1,4 @@
-import { signIn } from './actions'
+import { login } from './actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -72,7 +72,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           )}
 
           {/* Sign In Form using Server Action */}
-          <form action={signIn} className="space-y-6">
+          <form action={login} className="space-y-6">
             {/* Hidden redirect field */}
             {redirect && (
               <input type="hidden" name="redirect" value={redirect} />
