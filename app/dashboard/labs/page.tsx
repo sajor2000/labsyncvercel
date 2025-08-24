@@ -16,7 +16,7 @@ export default async function LabsPage() {
     .from('lab_members')
     .select(`
       id,
-      lab_role,
+      role,
       created_at,
       labs!inner (
         id,
@@ -56,9 +56,9 @@ export default async function LabsPage() {
       
       return {
         ...lab,
-        role: membership.lab_role,
+        role: membership.role,
         studyCount: studyCount || 0,
-        bucketCount: 3, // Placeholder - implement bucket counting when table exists
+        bucketCount: buckets?.length || 0,
         memberCount: memberCount || 0,
       }
     })

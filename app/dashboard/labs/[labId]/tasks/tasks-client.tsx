@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CheckCircle2, Clock, AlertTriangle, Plus, Search, ArrowLeft, User } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { CheckCircle2, Clock, AlertTriangle, Plus, Search, ArrowLeft, User, LayoutGrid, List } from "lucide-react"
+import { KanbanBoard } from "@/components/dashboard/kanban-board"
 import { format } from "date-fns"
 import Link from "next/link"
 
@@ -108,6 +110,7 @@ export default function TasksPageClient({
   const [filterProject, setFilterProject] = useState<string>("all")
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [filterAssignee, setFilterAssignee] = useState<string>("all")
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -173,15 +176,31 @@ export default function TasksPageClient({
           </div>
         </div>
         
-        {userPermissions.canCreate && (
-          <Button 
-            onClick={() => router.push(`/dashboard/labs/${lab.id}/tasks/new`)}
-            className="btn-slack-primary"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Task
-          </Button>
-        )}
+        <div className="flex items-center space-x-2">
+          {/* View Mode Toggle */}
+          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "list" | "kanban")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="list" className="flex items-center space-x-1">
+                <List className="h-3 w-3" />
+                <span>List</span>
+              </TabsTrigger>
+              <TabsTrigger value="kanban" className="flex items-center space-x-1">
+                <LayoutGrid className="h-3 w-3" />
+                <span>Board</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {userPermissions.canCreate && (
+            <Button 
+              onClick={() => router.push(`/dashboard/labs/${lab.id}/tasks/new`)}
+              className="btn-slack-primary"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Task
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Task Stats */}
@@ -274,7 +293,7 @@ export default function TasksPageClient({
         </Select>
       </div>
 
-      {/* Tasks List */}
+      {/* Tasks Display */}
       {filteredTasks.length === 0 ? (
         <Card className="card-slack p-12 text-center">
           <CheckCircle2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -297,7 +316,18 @@ export default function TasksPageClient({
             </Button>
           )}
         </Card>
+      ) : viewMode === "kanban" ? (
+        /* Kanban Board View */
+        <div className="bg-muted/30 rounded-lg p-4">
+          <KanbanBoard 
+            study_id={filterProject !== "all" ? filterProject : ""}
+            lab_id={lab.id}
+            onTaskClick={(task) => router.push(`/dashboard/labs/${lab.id}/tasks/${task.id}`)}
+            className="w-full"
+          />
+        </div>
       ) : (
+        /* List View */
         <div className="space-y-4">
           {filteredTasks.map((task) => {
             const StatusIcon = statusIcons[task.status as keyof typeof statusIcons] || Clock

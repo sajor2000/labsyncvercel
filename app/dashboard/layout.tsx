@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import DashboardSidebar from '@/components/dashboard/sidebar'
 import DashboardHeader from '@/components/dashboard/header'
+import { LabProvider } from '@/lib/context/LabContext'
 
 export default async function DashboardLayout({
   children,
@@ -21,7 +22,7 @@ export default async function DashboardLayout({
     .from('lab_members')
     .select(`
       id,
-      lab_role,
+      role,
       labs!inner (
         id,
         name,
@@ -33,20 +34,22 @@ export default async function DashboardLayout({
   const labs = userLabs?.map((l: any) => l.labs).filter(Boolean) || []
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <DashboardSidebar user={user} labs={labs} />
-      
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <DashboardHeader user={user} labs={labs} />
+    <LabProvider user={user}>
+      <div className="flex h-screen bg-background">
+        {/* Sidebar */}
+        <DashboardSidebar user={user} labs={labs} />
         
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          <DashboardHeader user={user} labs={labs} />
+          
+          {/* Page Content */}
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </LabProvider>
   )
 }

@@ -26,7 +26,7 @@ export default async function LabDetailsPage({ params }: { params: Promise<{ lab
     .single()
 
   if (memberError || !membership) {
-    redirect('/dashboard/labs')
+    redirect('/dashboard')
   }
 
   // Get lab details
@@ -37,7 +37,7 @@ export default async function LabDetailsPage({ params }: { params: Promise<{ lab
     .single()
 
   if (labError || !lab) {
-    redirect('/dashboard/labs')
+    redirect('/dashboard')
   }
 
   // Get lab statistics

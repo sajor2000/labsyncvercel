@@ -1,13 +1,15 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowRight, Calendar, Users, Mic, Brain, Mail } from 'lucide-react'
+import { ArrowRight, Calendar, Users, Mic, Brain, Mail, FlaskConical } from 'lucide-react'
+import { LoginForm } from '@/components/auth/login-form'
 
 export default async function HomePage() {
   const supabase = await createClient()
   
   const { data: { user } } = await supabase.auth.getUser()
   
+  // Redirect authenticated users to lab selection dashboard
   if (user) {
     redirect('/dashboard')
   }
@@ -19,10 +21,10 @@ export default async function HomePage() {
         <header className="py-6">
           <nav className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 btn-slack-primary rounded-full flex items-center justify-center">
-                <Brain className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
+                <FlaskConical className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-foreground">LabFlow</h1>
+              <h1 className="text-2xl font-bold text-foreground">Lab Sync</h1>
             </div>
             <div className="space-x-4">
               <Link 
@@ -41,29 +43,45 @@ export default async function HomePage() {
           </nav>
         </header>
 
-        {/* Hero Section */}
-        <section className="py-20 text-center">
-          <h1 className="text-5xl font-bold text-foreground mb-6">
-            Streamline Your Medical Research Lab
-          </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            AI-powered meeting transcription, intelligent task extraction, and seamless team collaboration 
-            for modern medical research laboratories.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link 
-              href="/auth/signup"
-              className="btn-slack-primary px-8 py-4 font-semibold inline-flex items-center justify-center"
-            >
-              Start Free Trial
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Link>
-            <Link 
-              href="#features"
-              className="btn-slack-secondary px-8 py-4 font-semibold"
-            >
-              Learn More
-            </Link>
+        {/* Hero Section with Embedded Login */}
+        <section className="py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left side - Marketing content */}
+            <div className="text-center lg:text-left">
+              <h1 className="text-5xl font-bold text-foreground mb-6">
+                Streamline Your Medical Research Lab
+              </h1>
+              <p className="text-xl text-muted-foreground mb-8">
+                AI-powered meeting transcription, intelligent task extraction, and seamless team collaboration 
+                for modern medical research laboratories.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <Link 
+                  href="#features"
+                  className="btn-slack-secondary px-8 py-4 font-semibold"
+                >
+                  Learn More
+                </Link>
+              </div>
+            </div>
+            
+            {/* Right side - Login form */}
+            <div className="max-w-md mx-auto w-full">
+              <div className="card-slack p-8">
+                <h2 className="text-2xl font-bold text-foreground mb-6 text-center">
+                  Sign In to Lab Sync
+                </h2>
+                <LoginForm />
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Don't have an account?{' '}
+                    <Link href="/auth/signup" className="text-primary hover:underline font-medium">
+                      Sign up here
+                    </Link>
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -177,7 +195,7 @@ export default async function HomePage() {
       <footer className="border-t border-gray-200 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center text-muted-foreground">
-            <p>&copy; 2024 LabFlow. Built for medical research excellence.</p>
+            <p>&copy; 2024 Lab Sync. Built for medical research excellence.</p>
           </div>
         </div>
       </footer>
