@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       endDate ? new Date(endDate) : undefined
     )
 
-    // Convert Google events to LabFlow format
+    // Convert Google events to Lab Sync format
     const labFlowEvents = googleEvents
       .map(event => googleCalendarService.convertGoogleEventToLabFlow(event))
       .filter(event => event !== null)

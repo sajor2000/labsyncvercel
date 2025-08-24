@@ -18,7 +18,7 @@ const optionalEnvVars = [
   'UPSTASH_REDIS_REST_TOKEN'
 ]
 
-console.log('🔍 Validating LabFlow configuration...\n')
+console.log('🔍 Validating Lab Sync configuration...\n')
 
 // Load environment variables
 require('dotenv').config()

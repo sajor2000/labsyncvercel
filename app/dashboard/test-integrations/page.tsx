@@ -160,8 +160,8 @@ export default function TestIntegrationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: process.env.NEXT_PUBLIC_TEST_EMAIL || 'test@example.com',
-          subject: 'LabFlow Integration Test',
-          content: 'This is a test email from LabFlow integration testing.'
+          subject: 'Lab Sync Integration Test',
+          content: 'This is a test email from Lab Sync integration testing.'
         })
       })
 
@@ -199,8 +199,8 @@ export default function TestIntegrationsPage() {
       
       // Then try to create a test event
       const testEvent = {
-        title: 'LabFlow Test Event',
-        description: 'This is a test event from LabFlow integration testing',
+        title: 'Lab Sync Test Event',
+        description: 'This is a test event from Lab Sync integration testing',
         start_date: new Date().toISOString(),
         end_date: new Date(Date.now() + 3600000).toISOString(), // 1 hour later
         event_type: 'MEETING'

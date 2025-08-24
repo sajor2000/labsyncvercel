@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       insertedCount = insertedEvents?.length || 0
     }
 
-    // Now sync LabFlow events to Google Calendar
+    // Now sync Lab Sync events to Google Calendar
     const { data: labFlowEvents } = await supabase
       .from('calendar_events')
       .select('*')

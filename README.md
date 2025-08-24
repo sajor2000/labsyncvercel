@@ -1,6 +1,6 @@
-# LabFlow - Medical Research Lab Management System
+# Lab Sync - Medical Research Lab Management System
 
-**LabSync** is a production-ready medical research lab management system with professional Slack-style dark mode design. Features AI-powered meeting transcription, intelligent task management, and seamless team collaboration.
+**Lab Sync** is a production-ready medical research lab management system with professional Slack-style dark mode design. Features AI-powered meeting transcription, intelligent task management, and seamless team collaboration.
 
 ✅ **GitHub-Vercel Integration Active** - Automatic deployments on every push to main branch.
 
