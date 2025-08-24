@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import LabOverview from '@/components/dashboard/labs/lab-overview'
 import LabMembers from '@/components/dashboard/labs/lab-members'
 import LabSettings from '@/components/dashboard/labs/lab-settings'
+import LabWorkspaceClient from './lab-workspace-client'
 
 export default async function LabDetailsPage({ params }: { params: Promise<{ labId: string }> }) {
   const { labId } = await params
@@ -46,10 +47,21 @@ export default async function LabDetailsPage({ params }: { params: Promise<{ lab
     .eq('lab_id', labId)
     .eq('is_active', true)
 
-  const { count: studyCount } = await supabase
-    .from('studies')
-    .select('*', { count: 'exact', head: true })
+  // Get project count through buckets  
+  const { data: buckets } = await supabase
+    .from('buckets')
+    .select('id')
     .eq('lab_id', labId)
+  
+  let studyCount = 0
+  if (buckets && buckets.length > 0) {
+    const bucketIds = buckets.map(b => b.id)
+    const { count } = await supabase
+      .from('projects')
+      .select('*', { count: 'exact', head: true })
+      .in('bucket_id', bucketIds)
+    studyCount = count || 0
+  }
 
   const labWithStats = {
     ...lab,
@@ -124,6 +136,7 @@ export default async function LabDetailsPage({ params }: { params: Promise<{ lab
 
         <TabsContent value="overview" className="space-y-6">
           <LabOverview lab={labWithStats} />
+          <LabWorkspaceClient labId={labId} />
         </TabsContent>
 
         {canManageMembers && (
