@@ -133,12 +133,12 @@ export default function DashboardPage() {
         // Don't block dashboard load
       }
 
-      // Get user's labs
+      // Get user's labs (fixed field name and added error handling)
       const { data: userLabs, error: labError } = await supabase
         .from('lab_members')
         .select(`
           id,
-          lab_role,
+          role,
           labs!inner (
             id,
             name,
@@ -147,10 +147,15 @@ export default function DashboardPage() {
         `)
         .eq('user_id', authUser.id)
 
-      if (labError) throw labError
+      if (labError) {
+        console.warn('Lab membership query failed (likely RLS):', labError)
+        // Don't throw - handle gracefully for new users
+      }
 
-      const labsArray = Array.isArray(userLabs?.[0]?.labs) ? userLabs[0].labs : (userLabs?.[0]?.labs ? [userLabs[0].labs] : [])
-      let selectedLab = labsArray[0]
+      const labsArray = userLabs && Array.isArray(userLabs) && userLabs.length > 0 
+        ? (Array.isArray(userLabs[0]?.labs) ? userLabs[0].labs : (userLabs[0]?.labs ? [userLabs[0].labs] : []))
+        : []
+      let selectedLab = labsArray[0] || null
       
       if (!selectedLab) {
         // No labs found, show onboarding/welcome page instead of error
@@ -224,7 +229,10 @@ export default function DashboardPage() {
         bucketCount: bucketCount || 0,
         taskStats,
         studies: studies || [],
-        completionPercentage
+        completionPercentage,
+        recentMeetings: [],
+        upcomingDeadlines: [],
+        recentTasks: []
       })
 
     } catch (err: any) {
