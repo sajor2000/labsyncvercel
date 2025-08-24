@@ -27,7 +27,7 @@ export default async function LabMeetingsPage({ params }: { params: Promise<{ la
       .single()
 
     if (memberError || !membership) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab details
@@ -38,7 +38,7 @@ export default async function LabMeetingsPage({ params }: { params: Promise<{ la
       .single()
 
     if (labError || !lab) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab's meetings (using the meetings table if it exists)
@@ -151,6 +151,6 @@ export default async function LabMeetingsPage({ params }: { params: Promise<{ la
 
   } catch (error) {
     console.error('Lab meetings page error:', error)
-    redirect('/dashboard/labs')
+    redirect('/dashboard')
   }
 }

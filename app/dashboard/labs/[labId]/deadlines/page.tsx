@@ -27,7 +27,7 @@ export default async function LabDeadlinesPage({ params }: { params: Promise<{ l
       .single()
 
     if (memberError || !membership) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab details
@@ -38,7 +38,7 @@ export default async function LabDeadlinesPage({ params }: { params: Promise<{ l
       .single()
 
     if (labError || !lab) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab's deadlines
@@ -124,6 +124,6 @@ export default async function LabDeadlinesPage({ params }: { params: Promise<{ l
 
   } catch (error) {
     console.error('Lab deadlines page error:', error)
-    redirect('/dashboard/labs')
+    redirect('/dashboard')
   }
 }

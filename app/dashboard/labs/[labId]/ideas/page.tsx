@@ -27,7 +27,7 @@ export default async function LabIdeasPage({ params }: { params: Promise<{ labId
       .single()
 
     if (memberError || !membership) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab details
@@ -38,7 +38,7 @@ export default async function LabIdeasPage({ params }: { params: Promise<{ labId
       .single()
 
     if (labError || !lab) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab's ideas with vote counts
@@ -143,6 +143,6 @@ export default async function LabIdeasPage({ params }: { params: Promise<{ labId
 
   } catch (error) {
     console.error('Lab ideas page error:', error)
-    redirect('/dashboard/labs')
+    redirect('/dashboard')
   }
 }

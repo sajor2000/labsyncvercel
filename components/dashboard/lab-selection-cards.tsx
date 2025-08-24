@@ -39,7 +39,27 @@ interface LabSelectionCardsProps {
 export function LabSelectionCards({ labs, user }: LabSelectionCardsProps) {
   const router = useRouter()
 
-  const handleLabClick = (labId: string) => {
+  const handleLabClick = async (labId: string) => {
+    try {
+      // Update user's last selected lab preference
+      const response = await fetch('/api/user/preferences', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          last_selected_lab_id: labId,
+        }),
+      })
+
+      if (!response.ok) {
+        console.warn('Failed to update lab preference, but proceeding with navigation')
+      }
+    } catch (error) {
+      console.warn('Error updating lab preference:', error)
+    }
+
+    // Navigate to lab workspace
     router.push(`/dashboard/labs/${labId}`)
   }
 

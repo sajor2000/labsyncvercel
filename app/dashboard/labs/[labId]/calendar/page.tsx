@@ -27,7 +27,7 @@ export default async function LabCalendarPage({ params }: { params: Promise<{ la
       .single()
 
     if (memberError || !membership) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab details
@@ -38,7 +38,7 @@ export default async function LabCalendarPage({ params }: { params: Promise<{ la
       .single()
 
     if (labError || !lab) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get calendar integration status
@@ -121,6 +121,6 @@ export default async function LabCalendarPage({ params }: { params: Promise<{ la
 
   } catch (error) {
     console.error('Lab calendar page error:', error)
-    redirect('/dashboard/labs')
+    redirect('/dashboard')
   }
 }

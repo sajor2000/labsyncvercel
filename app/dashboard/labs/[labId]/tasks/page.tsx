@@ -27,7 +27,7 @@ export default async function LabTasksPage({ params }: { params: Promise<{ labId
       .single()
 
     if (memberError || !membership) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab details
@@ -38,7 +38,7 @@ export default async function LabTasksPage({ params }: { params: Promise<{ labId
       .single()
 
     if (labError || !lab) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab members for task assignment
@@ -140,6 +140,6 @@ export default async function LabTasksPage({ params }: { params: Promise<{ labId
 
   } catch (error) {
     console.error('Lab tasks page error:', error)
-    redirect('/dashboard/labs')
+    redirect('/dashboard')
   }
 }

@@ -56,39 +56,34 @@ export async function login(formData: FormData) {
 
   console.log('✅ [MCP] Login successful for:', data.user.email)
 
-  // Get user's preferred lab for smart redirect
+  // Determine if this is a new or returning user based on profile and lab memberships
   try {
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('last_selected_lab_id')
+      .select('id, onboarding_completed')
       .eq('id', data.user.id)
       .single()
 
-    if (profile?.last_selected_lab_id) {
-      console.log('🎯 [MCP] Redirecting to preferred lab:', profile.last_selected_lab_id)
-      revalidatePath('/', 'layout')
-      redirect(`/dashboard/labs/${profile.last_selected_lab_id}`)
-    } else {
-      // Check if user has any lab memberships
-      const { data: memberships } = await supabase
-        .from('lab_members')
-        .select('lab_id')
-        .eq('user_id', data.user.id)
-        .eq('is_active', true)
-        .limit(1)
+    const { data: memberships } = await supabase
+      .from('lab_members')
+      .select('lab_id')
+      .eq('user_id', data.user.id)
+      .eq('is_active', true)
+      .limit(1)
 
-      if (memberships && memberships.length > 0) {
-        console.log('🎯 [MCP] Redirecting to first available lab')
-        revalidatePath('/', 'layout')
-        redirect(`/dashboard/labs/${memberships[0].lab_id}`)
-      } else {
-        console.log('🎯 [MCP] No labs found, redirecting to dashboard')
-        revalidatePath('/', 'layout')
-        redirect('/dashboard')
-      }
+    const isNewUser = !profile || !profile.onboarding_completed || !memberships || memberships.length === 0
+
+    if (isNewUser) {
+      console.log('🆕 [MCP] New user detected, redirecting to create/join lab flow')
+      revalidatePath('/', 'layout')
+      redirect('/dashboard/join-lab')
+    } else {
+      console.log('🔄 [MCP] Returning user, redirecting to lab selection dashboard')
+      revalidatePath('/', 'layout')
+      redirect('/dashboard')
     }
   } catch (error) {
-    console.warn('⚠️ [MCP] Failed to get lab preference, using default redirect')
+    console.warn('⚠️ [MCP] Failed to determine user type, defaulting to lab selection')
     revalidatePath('/', 'layout')
     redirect('/dashboard')
   }
@@ -143,8 +138,10 @@ export async function signup(formData: FormData) {
     redirect('/auth/signin?message=check_email')
   }
 
+  // New user successfully signed up and confirmed - redirect to create/join lab
+  console.log('🆕 [MCP] New user signup complete, redirecting to create/join lab flow')
   revalidatePath('/', 'layout')
-  redirect('/auth/signin?message=signup_success')
+  redirect('/dashboard/join-lab')
 }
 
 // Simple password reset

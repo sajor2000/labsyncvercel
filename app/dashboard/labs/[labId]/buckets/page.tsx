@@ -27,7 +27,7 @@ export default async function LabBucketsPage({ params }: { params: Promise<{ lab
       .single()
 
     if (memberError || !membership) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab details
@@ -38,7 +38,7 @@ export default async function LabBucketsPage({ params }: { params: Promise<{ lab
       .single()
 
     if (labError || !lab) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab's buckets
@@ -76,6 +76,6 @@ export default async function LabBucketsPage({ params }: { params: Promise<{ lab
 
   } catch (error) {
     console.error('Lab buckets page error:', error)
-    redirect('/dashboard/labs')
+    redirect('/dashboard')
   }
 }

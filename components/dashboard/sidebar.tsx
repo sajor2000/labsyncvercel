@@ -5,48 +5,21 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { 
   LayoutGrid,
-  Beaker,
-  FolderOpen,
-  FlaskConical,
-  LayoutList,
-  Layers,
-  CheckSquare,
-  Lightbulb,
-  Clock,
-  FileText,
   Users,
-  Mic,
   TestTube,
-  Eye,
-  Calendar,
-  CalendarCog,
-  BarChart3,
   User,
   Settings,
   Mail,
   LogOut,
+  FlaskConical,
   ChevronDown
 } from 'lucide-react'
 
+// Lab-centric navigation - only shows lab selection and user settings
 const navigation = [
-  { name: 'Overview', href: '/dashboard', icon: LayoutGrid },
-  { name: 'Labs', href: '/dashboard/labs', icon: Beaker },
-  { name: 'Buckets', href: '/dashboard/buckets', icon: FolderOpen },
-  { name: 'Studies', href: '/dashboard/studies', icon: FlaskConical },
-  { name: 'Study Board', href: '/dashboard/study-board', icon: LayoutList },
-  { name: 'Stacked by Bucket', href: '/dashboard/stacked', icon: Layers },
-  { name: 'Task Management', href: '/dashboard/tasks', icon: CheckSquare },
-  { name: 'Ideas Board', href: '/dashboard/ideas', icon: Lightbulb },
-  { name: 'Deadlines', href: '/dashboard/deadlines', icon: Clock },
-  { name: 'File Management', href: '/dashboard/files', icon: FileText },
-  { name: 'Team Members', href: '/dashboard/team', icon: Users },
-  { name: 'Standup Recording', href: '/dashboard/standup', icon: Mic },
-  { name: 'Meeting Testing', href: '/dashboard/meeting-test', icon: TestTube },
-  { name: 'Production Workflow', href: '/dashboard/workflow', icon: LayoutList },
-  { name: 'Meeting Preview', href: '/dashboard/meeting-preview', icon: Eye },
-  { name: 'Calendar', href: '/dashboard/calendar', icon: Calendar },
-  { name: 'Calendar Setup', href: '/dashboard/calendar-setup', icon: CalendarCog },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+  { name: 'Lab Selection', href: '/dashboard', icon: LayoutGrid },
+  { name: 'Join Lab', href: '/dashboard/join-lab', icon: Users },
+  { name: 'Test Integrations', href: '/dashboard/test-integrations', icon: TestTube },
 ]
 
 const bottomNavigation = [
@@ -90,9 +63,9 @@ export default function DashboardSidebar({ user, labs }: DashboardSidebarProps) 
       {/* Logo */}
       <div className="flex items-center h-16 px-6 border-b border-gray-800">
         <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center">
-          <Beaker className="w-5 h-5 text-white" />
+          <FlaskConical className="w-5 h-5 text-white" />
         </div>
-        <span className="ml-3 text-white font-semibold">LabFlow</span>
+        <span className="ml-3 text-white font-semibold">Lab Sync</span>
       </div>
 
       {/* Lab Switcher */}

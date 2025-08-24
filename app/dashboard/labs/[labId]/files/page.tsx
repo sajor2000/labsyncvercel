@@ -27,7 +27,7 @@ export default async function LabFilesPage({ params }: { params: Promise<{ labId
       .single()
 
     if (memberError || !membership) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab details
@@ -38,7 +38,7 @@ export default async function LabFilesPage({ params }: { params: Promise<{ labId
       .single()
 
     if (labError || !lab) {
-      redirect('/dashboard/labs')
+      redirect('/dashboard')
     }
 
     // Get lab's files with versions and permissions
@@ -164,6 +164,6 @@ export default async function LabFilesPage({ params }: { params: Promise<{ labId
 
   } catch (error) {
     console.error('Lab files page error:', error)
-    redirect('/dashboard/labs')
+    redirect('/dashboard')
   }
 }

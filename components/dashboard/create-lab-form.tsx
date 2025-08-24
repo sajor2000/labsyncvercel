@@ -50,6 +50,22 @@ export function CreateLabForm({ user }: CreateLabFormProps) {
         throw new Error(data.error || 'Failed to create lab')
       }
 
+      // Mark onboarding as completed for new users
+      try {
+        await fetch('/api/user/preferences', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            onboarding_completed: true,
+            last_selected_lab_id: data.lab.id,
+          }),
+        })
+      } catch (error) {
+        console.warn('Failed to update onboarding status:', error)
+      }
+
       toast.success(`Lab "${name}" created successfully!`)
       
       // Redirect to the new lab workspace

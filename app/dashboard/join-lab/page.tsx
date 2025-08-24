@@ -42,6 +42,21 @@ export default function JoinLabPage() {
       if (error) throw error
 
       if (data) {
+        // Mark onboarding as completed for new users
+        try {
+          await fetch('/api/user/preferences', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              onboarding_completed: true,
+            }),
+          })
+        } catch (error) {
+          console.warn('Failed to update onboarding status:', error)
+        }
+
         toast.success('Successfully joined lab!')
         router.push('/dashboard')
       } else {
