@@ -114,7 +114,7 @@ export default async function DashboardPage() {
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-violet-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">LS</span>
               </div>
               <div>

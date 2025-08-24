@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
               <div className="space-y-3">
                 <Link 
                   href="/auth/signin"
-                  className="w-full inline-flex items-center justify-center px-4 py-2 bg-violet-600 hover:bg-violet-700 text-foreground font-medium rounded-lg transition-colors"
+                  className="w-full inline-flex items-center justify-center px-4 py-2 bg-primary hover:bg-primary text-foreground font-medium rounded-lg transition-colors"
                 >
                   Back to sign in
                 </Link>
@@ -125,7 +125,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-violet-600">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
             <span className="text-xl font-bold text-foreground">LS</span>
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Lab Sync</h1>
@@ -173,7 +173,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={isLoading || !!errors.email || !email}
-              className="w-full py-2.5 px-4 bg-violet-600 hover:bg-violet-700 disabled:bg-700 disabled:text-slate-500 text-foreground font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+              className="w-full py-2.5 px-4 bg-primary hover:bg-primary disabled:bg-700 disabled:text-slate-500 text-foreground font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-800"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">

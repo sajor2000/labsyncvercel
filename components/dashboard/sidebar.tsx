@@ -59,13 +59,13 @@ export default function DashboardSidebar({ user, labs }: DashboardSidebarProps) 
   }
 
   return (
-    <div className="w-64 bg-[#0F172A] border-r border-gray-800 flex flex-col">
+    <div className="w-[260px] bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Logo */}
-      <div className="flex items-center h-16 px-6 border-b border-gray-800">
-        <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center">
+      <div className="flex items-center h-16 px-6 border-b border-sidebar-border">
+        <div className="w-8 h-8 bg-sidebar-primary rounded-lg flex items-center justify-center">
           <FlaskConical className="w-5 h-5 text-white" />
         </div>
-        <span className="ml-3 text-white font-semibold">Lab Sync</span>
+        <span className="ml-3 text-sidebar-foreground font-semibold">Lab Sync</span>
       </div>
 
       {/* Lab Switcher */}
@@ -155,7 +155,7 @@ export default function DashboardSidebar({ user, labs }: DashboardSidebarProps) 
               <div className="text-sm font-medium text-white">
                 {user?.user_metadata?.first_name || 'User'}
               </div>
-              <div className="text-xs text-gray-400">Making Science Easier</div>
+              <div className="text-xs text-gray-400">{user?.email}</div>
             </div>
           </div>
         </div>

@@ -169,7 +169,7 @@ export default function CreateLabDialog({ isOpen, onClose, onSuccess }: CreateLa
             <Button
               type="submit"
               disabled={loading || !formData.name.trim()}
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-primary hover:bg-primary"
             >
               {loading ? 'Creating...' : 'Create Lab'}
             </Button>

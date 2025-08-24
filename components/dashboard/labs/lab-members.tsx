@@ -209,7 +209,7 @@ export default function LabMembers({ labId, userRole }: LabMembersProps) {
           </p>
         </div>
         {canManageMembers && (
-          <Button onClick={() => setShowAddDialog(true)} className="bg-violet-600 hover:bg-violet-700">
+          <Button onClick={() => setShowAddDialog(true)} className="bg-primary hover:bg-primary">
             <UserPlus className="h-4 w-4 mr-2" />
             Add Member
           </Button>

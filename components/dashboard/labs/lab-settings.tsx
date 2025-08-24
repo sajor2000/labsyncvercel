@@ -269,7 +269,7 @@ export default function LabSettings({ lab }: LabSettingsProps) {
             <Button
               type="submit"
               disabled={loading}
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-primary hover:bg-primary"
             >
               <Save className="h-4 w-4 mr-2" />
               {loading ? 'Saving...' : 'Save Changes'}

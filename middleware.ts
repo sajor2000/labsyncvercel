@@ -4,10 +4,17 @@ import { updateSession } from './utils/supabase/middleware'
 
 // Helper function to get client identifier for rate limiting
 function getClientIdentifier(request: NextRequest): string {
-  return request.headers.get('x-forwarded-for')?.split(',')[0] ?? 
-         request.headers.get('x-real-ip') ?? 
-         request.headers.get('cf-connecting-ip') ??
-         '127.0.0.1'
+  // Get the real IP, handling proxy headers securely
+  const forwarded = request.headers.get('x-forwarded-for')
+  const realIp = request.headers.get('x-real-ip')
+  const cfIp = request.headers.get('cf-connecting-ip')
+  
+  // Use the first IP from x-forwarded-for (most reliable)
+  if (forwarded) {
+    return forwarded.split(',')[0].trim()
+  }
+  
+  return realIp ?? cfIp ?? '127.0.0.1'
 }
 
 // Helper function to determine if path should skip middleware

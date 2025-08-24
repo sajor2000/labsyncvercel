@@ -21,7 +21,7 @@ export default async function HomePage() {
         <header className="py-6">
           <nav className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <FlaskConical className="w-5 h-5 text-white" />
               </div>
               <h1 className="text-2xl font-bold text-foreground">Lab Sync</h1>

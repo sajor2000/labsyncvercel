@@ -536,7 +536,7 @@ export default function CreateProjectDialog({
             <Button
               type="submit"
               disabled={loading || !formData.name.trim()}
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-primary hover:bg-primary"
             >
               {loading ? 'Creating...' : 'Create Project'}
             </Button>

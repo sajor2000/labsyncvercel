@@ -58,7 +58,7 @@ const roleColors: Record<string, string> = {
   // Technical roles
   'research_technician': 'bg-slate-600 text-white',
   'lab_technician': 'bg-gray-600 text-white',
-  'data_analyst': 'bg-violet-600 text-white',
+  'data_analyst': 'bg-primary text-white',
   'bioinformatician': 'bg-pink-600 text-white',
   
   // Support roles

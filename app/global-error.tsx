@@ -32,7 +32,7 @@ export default function GlobalError({
           <div className="space-y-4">
             <Button 
               onClick={reset}
-              className="w-full bg-violet-600 hover:bg-violet-700"
+              className="w-full bg-primary hover:bg-primary"
             >
               Try Again
             </Button>

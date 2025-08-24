@@ -106,7 +106,7 @@ export default function VerifyEmailPage() {
       <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-violet-600">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
             <span className="text-xl font-bold text-white">LS</span>
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Lab Sync</h1>
@@ -147,7 +147,7 @@ export default function VerifyEmailPage() {
                 <div className="space-y-3">
                   <Link 
                     href="/auth/signin"
-                    className="w-full inline-flex items-center justify-center px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors"
+                    className="w-full inline-flex items-center justify-center px-4 py-2 bg-primary hover:bg-primary text-white font-medium rounded-lg transition-colors"
                   >
                     Try signing in
                   </Link>
@@ -185,7 +185,7 @@ export default function VerifyEmailPage() {
                   <button
                     onClick={handleResendVerification}
                     disabled={isResending || !email}
-                    className="w-full inline-flex items-center justify-center px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors"
+                    className="w-full inline-flex items-center justify-center px-4 py-2 bg-primary hover:bg-primary disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors"
                   >
                     {isResending ? (
                       <>

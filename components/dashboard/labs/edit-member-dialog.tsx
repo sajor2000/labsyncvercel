@@ -123,10 +123,10 @@ export default function EditMemberDialog({ member, isOpen, onClose, onUpdate }: 
         <form onSubmit={handleSubmit}>
           <Tabs defaultValue="role" className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-slate-700">
-              <TabsTrigger value="role" className="data-[state=active]:bg-violet-600">
+              <TabsTrigger value="role" className="data-[state=active]:bg-primary">
                 Role & Status
               </TabsTrigger>
-              <TabsTrigger value="permissions" className="data-[state=active]:bg-violet-600">
+              <TabsTrigger value="permissions" className="data-[state=active]:bg-primary">
                 Permissions
               </TabsTrigger>
             </TabsList>
@@ -220,7 +220,7 @@ export default function EditMemberDialog({ member, isOpen, onClose, onUpdate }: 
             <Button
               type="submit"
               disabled={loading}
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-primary hover:bg-primary"
             >
               {loading ? 'Updating...' : 'Update Member'}
             </Button>

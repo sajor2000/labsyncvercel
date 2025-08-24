@@ -119,16 +119,16 @@ export default async function LabDetailsPage({ params }: { params: Promise<{ lab
       {/* Tab Navigation */}
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList className="bg-slate-800 border-slate-700">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-violet-600">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-primary">
             Overview
           </TabsTrigger>
           {canManageMembers && (
-            <TabsTrigger value="members" className="data-[state=active]:bg-violet-600">
+            <TabsTrigger value="members" className="data-[state=active]:bg-primary">
               Members
             </TabsTrigger>
           )}
           {canManageLab && (
-            <TabsTrigger value="settings" className="data-[state=active]:bg-violet-600">
+            <TabsTrigger value="settings" className="data-[state=active]:bg-primary">
               Settings
             </TabsTrigger>
           )}

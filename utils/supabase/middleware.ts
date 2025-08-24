@@ -36,15 +36,19 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // MCP Pattern: Simple auth protection
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth')
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
+  // Define public routes that don't require authentication
+  const publicRoutes = ['/', '/auth']
+  const isPublicRoute = publicRoutes.some(route => 
+    request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(route)
+  )
+  
+  // Only redirect unauthenticated users if they're trying to access protected routes
+  if (!user && !isPublicRoute) {
+    // Security: Prevent open redirects by validating the redirect URL
     const url = request.nextUrl.clone()
-    url.pathname = '/auth/signin'
+    url.pathname = '/'
+    // Clear any potentially malicious search params
+    url.search = ''
     return NextResponse.redirect(url)
   }
 

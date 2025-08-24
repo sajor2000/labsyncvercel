@@ -21,7 +21,7 @@ export default function DashboardHeader({ user, labs }: DashboardHeaderProps) {
       {/* Left section - Brand and Lab Switcher */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <span className="text-foreground font-bold text-sm">LS</span>
           </div>
           <span className="text-foreground font-semibold hidden sm:block">Lab Sync</span>

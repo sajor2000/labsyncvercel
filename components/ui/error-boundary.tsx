@@ -48,7 +48,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           </p>
           <button
             onClick={this.handleReset}
-            className="inline-flex items-center px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary text-white rounded-lg transition-colors"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Try Again

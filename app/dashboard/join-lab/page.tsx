@@ -147,7 +147,7 @@ export default function JoinLabPage() {
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                 <span className="text-sm font-bold text-white">LS</span>
               </div>
               <div>
@@ -168,8 +168,8 @@ export default function JoinLabPage() {
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="text-center mb-12">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-600/10 border border-violet-600/20">
-            <Users className="h-8 w-8 text-violet-400" />
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
+            <Users className="h-8 w-8 text-primary" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-4">Join or Create a Lab</h1>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto">
@@ -234,8 +234,8 @@ export default function JoinLabPage() {
           {/* Create Lab Card */}
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-8">
             <div className="flex items-center mb-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-600/10 border border-violet-600/20 mr-4">
-                <Plus className="h-5 w-5 text-violet-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 mr-4">
+                <Plus className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">Create New Lab</h2>
@@ -249,19 +249,19 @@ export default function JoinLabPage() {
                   <h3 className="font-medium text-white mb-2">What you'll get:</h3>
                   <ul className="space-y-2 text-sm text-slate-400">
                     <li className="flex items-center">
-                      <div className="w-1.5 h-1.5 bg-violet-400 rounded-full mr-2" />
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full mr-2" />
                       Full admin access to your lab
                     </li>
                     <li className="flex items-center">
-                      <div className="w-1.5 h-1.5 bg-violet-400 rounded-full mr-2" />
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full mr-2" />
                       Invite and manage team members
                     </li>
                     <li className="flex items-center">
-                      <div className="w-1.5 h-1.5 bg-violet-400 rounded-full mr-2" />
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full mr-2" />
                       Create and manage studies
                     </li>
                     <li className="flex items-center">
-                      <div className="w-1.5 h-1.5 bg-violet-400 rounded-full mr-2" />
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full mr-2" />
                       Track tasks and deadlines
                     </li>
                   </ul>
@@ -269,7 +269,7 @@ export default function JoinLabPage() {
 
                 <button
                   onClick={() => setShowCreateForm(true)}
-                  className="w-full py-2.5 px-4 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+                  className="w-full py-2.5 px-4 bg-primary hover:bg-primary text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-slate-800"
                 >
                   <div className="flex items-center justify-center">
                     <Plus className="w-4 h-4 mr-2" />
@@ -289,7 +289,7 @@ export default function JoinLabPage() {
                     type="text"
                     value={newLabName}
                     onChange={(e) => setNewLabName(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="e.g., Smith Research Lab"
                     disabled={isCreating}
                     required
@@ -306,7 +306,7 @@ export default function JoinLabPage() {
                     rows={3}
                     value={newLabDescription}
                     onChange={(e) => setNewLabDescription(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                     placeholder="Brief description of your research lab..."
                     disabled={isCreating}
                   />
@@ -328,7 +328,7 @@ export default function JoinLabPage() {
                   <button
                     type="submit"
                     disabled={isCreating || !newLabName.trim()}
-                    className="flex-1 py-2.5 px-4 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+                    className="flex-1 py-2.5 px-4 bg-primary hover:bg-primary disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-slate-800"
                   >
                     {isCreating ? (
                       <div className="flex items-center justify-center">

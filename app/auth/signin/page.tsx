@@ -119,7 +119,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full py-2.5 px-4 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+              className="w-full py-2.5 px-4 bg-primary hover:bg-primary text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-800"
             >
               Sign In
             </Button>

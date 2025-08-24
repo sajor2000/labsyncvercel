@@ -63,7 +63,7 @@ export default function LabsPageClient({ initialLabs, isLoading = false }: LabsP
             <button 
               onClick={() => setShowCreateDialog(true)}
               disabled={showLoading}
-              className="flex items-center px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              className="flex items-center px-4 py-2 bg-primary hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
             >
               <Plus className="w-4 h-4 mr-2" />
               New Lab
@@ -119,7 +119,7 @@ export default function LabsPageClient({ initialLabs, isLoading = false }: LabsP
             <button 
               onClick={() => setShowCreateDialog(true)}
               disabled={showLoading}
-              className="inline-flex items-center px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Lab
