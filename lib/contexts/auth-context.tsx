@@ -52,9 +52,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const supabase = createClient()
 
+  // MCP Pattern: Simplified client-side profile fetching
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      // Fetch user profile
+      // Only fetch profile data, let server components handle lab data
       const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
@@ -62,52 +63,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single()
 
       if (profileError) {
-        console.warn('No profile found for user, will be created on first dashboard visit:', profileError)
-        // Don't throw error - user can still authenticate
+        console.warn('No profile found for user:', profileError)
         setProfile(null)
         return
       }
+      
       setProfile(profileData)
-
-      // Fetch lab memberships with lab details
-      const { data: memberships, error: membershipError } = await supabase
-        .from('lab_members')
-        .select(`
-          lab_id,
-          role,
-          joined_at,
-          lab:labs (
-            id,
-            name,
-            description
-          )
-        `)
-        .eq('user_id', userId)
-        .is('removed_at', null)
-
-      if (membershipError) throw membershipError
-      
-      const formattedMemberships = memberships?.map(m => ({
-        lab_id: m.lab_id,
-        role: m.role,
-        joined_at: m.joined_at,
-        lab: Array.isArray(m.lab) ? m.lab[0] : m.lab
-      })) || []
-      
-      setLabMemberships(formattedMemberships)
-
-      // Set current lab from localStorage or first membership
-      const savedLabId = localStorage.getItem('currentLabId')
-      const savedLab = formattedMemberships.find(m => m.lab_id === savedLabId)
-      
-      if (savedLab) {
-        setCurrentLabState(savedLab)
-      } else if (formattedMemberships.length > 0) {
-        setCurrentLabState(formattedMemberships[0])
-        localStorage.setItem('currentLabId', formattedMemberships[0].lab_id)
-      }
     } catch (error) {
       console.error('Error fetching profile:', error)
+      setProfile(null)
     }
   }, [supabase])
 
@@ -137,8 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await fetchProfile(session.user.id)
         } else {
           setProfile(null)
-          setLabMemberships([])
-          setCurrentLabState(null)
+          // Clear client-side state only
         }
         
         if (event === 'SIGNED_IN') {

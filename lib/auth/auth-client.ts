@@ -3,7 +3,7 @@
  * Main auth flows now use MCP-compliant server actions
  */
 
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/utils/supabase/client'
 import type { User, AuthError } from '@supabase/supabase-js'
 
 class AuthClient {

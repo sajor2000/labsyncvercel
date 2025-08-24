@@ -21,7 +21,8 @@ export async function signIn(formData: FormData) {
 
   if (error) {
     console.error('Signin error:', error)
-    redirect('/auth/signin?error=' + encodeURIComponent(error.message))
+    // MCP Pattern: Simple error redirect
+    redirect('/auth/signin?error=authentication_failed')
   }
 
   if (!data.user) {
@@ -64,7 +65,8 @@ export async function signUp(formData: FormData) {
 
   if (error) {
     console.error('Signup error:', error)
-    redirect('/auth/signup?error=' + encodeURIComponent(error.message))
+    // MCP Pattern: Simple error redirect
+    redirect('/auth/signup?error=signup_failed')
   }
 
   console.log('✅ Server-side signup successful for:', email)
@@ -95,7 +97,7 @@ export async function requestPasswordReset(formData: FormData) {
 
     if (error) {
       console.error('MCP Password reset error:', error)
-      redirect('/auth/forgot-password?error=' + encodeURIComponent(error.message))
+      redirect('/auth/forgot-password?error=reset_failed')
     }
 
     console.log('✅ MCP Password reset email sent to:', email)
