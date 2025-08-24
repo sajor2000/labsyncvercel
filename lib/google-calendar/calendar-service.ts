@@ -3,10 +3,23 @@ import { Database } from '../supabase/database.types'
 import { googleConfig } from '../config/api-keys'
 import { retryGoogleCalendar } from '../utils/retry'
 import { mapGoogleCalendarError } from '../errors/api-errors'
+import { createClient } from '../supabase/server'
 
-// Google Calendar configuration
-const GOOGLE_CALENDAR_ID = googleConfig.calendarId
+// Default Google Calendar configuration (fallback for RICCC labs)
+const RICCC_CALENDAR_ID = googleConfig.calendarId
 const CALENDAR_TIMEZONE = googleConfig.timezone
+
+interface CalendarIntegration {
+  id: string
+  lab_id: string
+  provider: string
+  external_calendar_id: string
+  access_token_encrypted: string | null
+  refresh_token_encrypted: string | null
+  expires_at: string | null
+  sync_enabled: boolean
+  status: string
+}
 
 // Google Calendar color IDs mapping to our event types
 const GOOGLE_CALENDAR_COLORS = {
@@ -38,6 +51,93 @@ export class GoogleCalendarService {
   
   constructor() {
     this.initializeGoogleAuth()
+  }
+
+  /**
+   * Resolve calendar configuration for a specific lab
+   */
+  private async getLabCalendarConfig(labId?: string): Promise<{
+    calendarId: string
+    auth: any
+    integration: CalendarIntegration | null
+  }> {
+    if (!labId) {
+      // No lab specified, use default RICCC calendar
+      return {
+        calendarId: RICCC_CALENDAR_ID,
+        auth: this.calendar.auth,
+        integration: null
+      }
+    }
+
+    try {
+      const supabase = await createClient()
+      
+      // Get lab's calendar integration
+      const { data: integration, error } = await supabase
+        .from('calendar_integrations')
+        .select('*')
+        .eq('lab_id', labId)
+        .eq('is_primary', true)
+        .eq('sync_enabled', true)
+        .single()
+
+      if (error || !integration) {
+        // No integration found, check if this is a RICCC/RHEDAS lab
+        const { data: lab } = await supabase
+          .from('labs')
+          .select('name')
+          .eq('id', labId)
+          .single()
+
+        const yourLabNames = ['RICCC', 'RHEDAS', 'Rush Health Equity', 'Rush Interdisciplinary']
+        const isYourLab = lab && (lab as any).name && yourLabNames.some(name => (lab as any).name.includes(name))
+
+        if (isYourLab) {
+          // Your lab without explicit integration, use RICCC calendar
+          return {
+            calendarId: RICCC_CALENDAR_ID,
+            auth: this.calendar.auth,
+            integration: null
+          }
+        } else {
+          // Other lab without integration, no calendar access
+          throw new Error('No calendar integration configured for this lab')
+        }
+      }
+
+      if ((integration as any).provider === 'ricc') {
+        // RICCC calendar integration
+        return {
+          calendarId: RICCC_CALENDAR_ID,
+          auth: this.calendar.auth,
+          integration
+        }
+      } else if ((integration as any).provider === 'google') {
+        // Personal Google Calendar integration
+        const oauth2Client = new google.auth.OAuth2(
+          googleConfig.clientId,
+          googleConfig.clientSecret
+        )
+
+        oauth2Client.setCredentials({
+          access_token: (integration as any).access_token_encrypted, // TODO: Decrypt in production
+          refresh_token: (integration as any).refresh_token_encrypted // TODO: Decrypt in production
+        })
+
+        return {
+          calendarId: (integration as any).external_calendar_id,
+          auth: oauth2Client,
+          integration
+        }
+      } else {
+        throw new Error(`Unsupported calendar provider: ${(integration as any).provider}`)
+      }
+
+    } catch (error) {
+      console.error('Error resolving calendar config for lab:', labId, error)
+      throw error
+    }
   }
 
   /**
@@ -103,21 +203,22 @@ export class GoogleCalendarService {
   /**
    * Fetch events from Google Calendar with retry logic
    */
-  async fetchGoogleCalendarEvents(startDate?: Date, endDate?: Date, correlationId?: string): Promise<GoogleEvent[]> {
-    if (!this.calendar) {
-      console.warn(`[${correlationId}] Google Calendar not initialized`)
-      return []
-    }
-
+  async fetchGoogleCalendarEvents(startDate?: Date, endDate?: Date, correlationId?: string, labId?: string): Promise<GoogleEvent[]> {
     try {
       const timeMin = startDate ? startDate.toISOString() : new Date().toISOString()
       const timeMax = endDate ? endDate.toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
-      console.log(`[${correlationId}] Fetching Google Calendar events from ${timeMin} to ${timeMax}`)
+      console.log(`[${correlationId}] Fetching Google Calendar events from ${timeMin} to ${timeMax} for lab: ${labId || 'default'}`)
+
+      // Get lab-specific calendar configuration
+      const { calendarId, auth } = await this.getLabCalendarConfig(labId)
+      
+      // Create calendar client with the appropriate auth
+      const calendar = google.calendar({ version: 'v3', auth })
 
       const response = await retryGoogleCalendar(async () => {
-        return await this.calendar.events.list({
-          calendarId: GOOGLE_CALENDAR_ID,
+        return await calendar.events.list({
+          calendarId,
           timeMin,
           timeMax,
           singleEvents: true,
@@ -191,14 +292,16 @@ export class GoogleCalendarService {
   /**
    * Sync LabFlow event to Google Calendar with enhanced formatting
    */
-  async syncEventToGoogle(labFlowEvent: CalendarEvent, correlationId?: string): Promise<string | null> {
-    if (!this.calendar) {
-      console.warn(`[${correlationId}] Google Calendar not initialized`)
-      return null
-    }
-
+  async syncEventToGoogle(labFlowEvent: CalendarEvent, correlationId?: string, labId?: string): Promise<string | null> {
     try {
-      console.log(`[${correlationId}] Syncing event to Google Calendar: ${labFlowEvent.title}`)
+      console.log(`[${correlationId}] Syncing event to Google Calendar: ${labFlowEvent.title} for lab: ${labId || 'default'}`)
+      
+      // Get lab-specific calendar configuration
+      const { calendarId, auth } = await this.getLabCalendarConfig(labId)
+      
+      // Create calendar client with the appropriate auth
+      const calendar = google.calendar({ version: 'v3', auth })
+
       const metadata = labFlowEvent.metadata as any || {}
       
       // Create professional title based on event type and metadata
@@ -248,14 +351,14 @@ export class GoogleCalendarService {
       }
 
       const response = await retryGoogleCalendar(async () => {
-        return await this.calendar.events.insert({
-          calendarId: GOOGLE_CALENDAR_ID,
-          resource: googleEvent,
+        return await calendar.events.insert({
+          calendarId,
+          requestBody: googleEvent,
         })
       })
 
       console.log(`[${correlationId}] Successfully synced event to Google Calendar with ID: ${response.data.id}`)
-      return response.data.id
+      return response.data.id || null
     } catch (error) {
       console.error(`[${correlationId}] Error syncing event to Google Calendar:`, error)
       throw mapGoogleCalendarError(error, correlationId)

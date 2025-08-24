@@ -32,11 +32,21 @@ export default async function LabsPage() {
     (userLabs || []).map(async (membership: any) => {
       const lab = membership.labs
       
-      // Get study count
-      const { count: studyCount } = await supabase
-        .from('studies')
-        .select('*', { count: 'exact', head: true })
+      // Get project count through buckets
+      const { data: buckets } = await supabase
+        .from('buckets')
+        .select('id')
         .eq('lab_id', lab.id)
+      
+      let studyCount = 0
+      if (buckets && buckets.length > 0) {
+        const bucketIds = buckets.map(b => b.id)
+        const { count } = await supabase
+          .from('projects')
+          .select('*', { count: 'exact', head: true })
+          .in('bucket_id', bucketIds)
+        studyCount = count || 0
+      }
       
       // Get member count
       const { count: memberCount } = await supabase

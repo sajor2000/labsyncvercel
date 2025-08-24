@@ -58,11 +58,21 @@ export async function GET() {
           .eq('lab_id', lab.id)
           .eq('is_active', true)
 
-        // Get study count
-        const { count: studyCount } = await supabase
-          .from('studies')
-          .select('*', { count: 'exact', head: true })
+        // Get project count through buckets
+        const { data: buckets } = await supabase
+          .from('buckets')
+          .select('id')
           .eq('lab_id', lab.id)
+        
+        let studyCount = 0
+        if (buckets && buckets.length > 0) {
+          const bucketIds = buckets.map(b => b.id)
+          const { count } = await supabase
+            .from('projects')
+            .select('*', { count: 'exact', head: true })
+            .in('bucket_id', bucketIds)
+          studyCount = count || 0
+        }
 
         return {
           ...lab,
@@ -124,16 +134,41 @@ export async function POST(request: Request) {
         lab_id: lab.id,
         user_id: user.id,
         role: 'principal_investigator',
+        is_admin: true,
+        is_super_admin: true,
         is_active: true,
+        can_manage_lab_settings: true,
         can_manage_members: true,
-        can_create_studies: true,
-        can_edit_studies: true,
-        can_delete_studies: true,
-        can_manage_tasks: true,
-        can_view_reports: true,
+        can_manage_permissions: true,
+        can_view_audit_logs: true,
+        can_manage_integrations: true,
+        can_create_projects: true,
+        can_edit_all_projects: true,
+        can_delete_projects: true,
+        can_view_all_projects: true,
+        can_archive_projects: true,
+        can_restore_projects: true,
+        can_create_tasks: true,
+        can_assign_tasks: true,
+        can_edit_all_tasks: true,
+        can_delete_tasks: true,
+        can_view_all_tasks: true,
+        can_set_task_priorities: true,
+        can_manage_deadlines: true,
+        can_access_reports: true,
         can_export_data: true,
-        can_manage_lab: true,
-        can_manage_permissions: true
+        can_view_analytics: true,
+        can_schedule_meetings: true,
+        can_manage_standups: true,
+        can_send_announcements: true,
+        can_moderate_discussions: true,
+        can_manage_calendar: true,
+        can_upload_files: true,
+        can_share_files: true,
+        can_delete_files: true,
+        can_manage_file_permissions: true,
+        can_create_ideas: true,
+        can_moderate_ideas: true
       })
 
     if (memberError) {

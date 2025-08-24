@@ -1,10 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { LabSwitcher } from '@/components/dashboard/lab-switcher'
 import { 
   Beaker,
   FlaskConical,
@@ -34,44 +32,7 @@ export default function DashboardClient({
   dashboardData,
   showWelcome = false 
 }: DashboardClientProps) {
-  const [isJoining, setIsJoining] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
-
-  const joinRHEDAS = async () => {
-    setIsJoining(true)
-    
-    try {
-      const { error } = await supabase
-        .from('lab_members')
-        .insert({
-          lab_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', // RHEDAS lab ID
-          user_id: user.id,
-          role: 'data_scientist',
-          is_active: true,
-          can_create_studies: true,
-          can_edit_studies: true,
-          can_manage_tasks: true,
-          can_view_reports: true,
-          can_export_data: true,
-          joined_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-      
-      if (!error) {
-        toast.success('Successfully joined RHEDAS lab!')
-        router.refresh() // Refresh to show lab data
-      } else {
-        console.error('Join lab error:', error)
-        toast.error('Failed to join lab. Please try again.')
-      }
-    } catch (err) {
-      console.error('Join lab exception:', err)
-      toast.error('Failed to join lab. Please try again.')
-    } finally {
-      setIsJoining(false)
-    }
-  }
 
   // Welcome screen for users without lab membership
   if (showWelcome || !selectedLab) {
@@ -89,29 +50,14 @@ export default function DashboardClient({
               Your account has been created successfully. To get started, you need to join a research lab or create your own.
             </p>
             
-            <div className="grid gap-6 md:grid-cols-2 max-w-2xl mx-auto">
-              <div className="card-slack p-6 text-center">
-                <h3 className="text-xl font-semibold text-foreground mb-3">Join RHEDAS Lab</h3>
-                <p className="text-muted-foreground mb-4">
-                  Join the Rush Health Equity Data Analytics Studio to collaborate on health equity research.
-                </p>
-                <Button 
-                  className="btn-slack-primary w-full"
-                  onClick={joinRHEDAS}
-                  disabled={isJoining}
-                >
-                  {isJoining ? 'Joining...' : 'Join RHEDAS Lab'}
-                </Button>
-              </div>
-              
+            <div className="max-w-md mx-auto">
               <div className="card-slack p-6 text-center">
                 <h3 className="text-xl font-semibold text-foreground mb-3">Create Your Lab</h3>
                 <p className="text-muted-foreground mb-4">
-                  Create your own research lab and invite team members to collaborate.
+                  Create your own research lab and invite team members to collaborate with advanced project management and AI-powered tools.
                 </p>
                 <Button 
-                  variant="outline" 
-                  className="w-full"
+                  className="btn-slack-primary w-full"
                   onClick={() => router.push('/dashboard/labs')}
                 >
                   Create New Lab
@@ -140,13 +86,21 @@ export default function DashboardClient({
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground mb-1">
-              {data.selectedLab?.name} Dashboard
-            </h1>
-            <p className="text-muted-foreground">
-              Manage research activities and collaborate with your team
-            </p>
+          <div className="flex items-center space-x-4">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground mb-1">
+                {data.selectedLab?.name} Dashboard
+              </h1>
+              <p className="text-muted-foreground">
+                Manage research activities and collaborate with your team
+              </p>
+            </div>
+            {/* Lab Switcher - always show for easy lab creation/switching */}
+            {labs && labs.length > 0 && (
+              <div className="ml-6">
+                <LabSwitcher />
+              </div>
+            )}
           </div>
           <div className="flex space-x-3">
             <Button 

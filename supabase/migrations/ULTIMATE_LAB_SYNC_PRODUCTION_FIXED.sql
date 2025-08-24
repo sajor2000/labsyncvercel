@@ -2832,4 +2832,3 @@ BEGIN
 EXCEPTION
     WHEN OTHERS THEN
         RAISE EXCEPTION 'Migration validation or completion failed: %', SQLERRM;
-END $$;

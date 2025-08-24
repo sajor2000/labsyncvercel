@@ -12,28 +12,49 @@ export async function signIn(formData: FormData) {
     redirect('/auth/signin?error=missing_credentials')
   }
 
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: email.trim(),
-    password: password.trim(),
-  })
+    console.log('🔑 Attempting signin for:', email)
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: password.trim(),
+    })
 
-  if (error) {
-    console.error('Signin error:', error)
-    // MCP Pattern: Simple error redirect
-    redirect('/auth/signin?error=authentication_failed')
+    if (error) {
+      console.error('❌ Signin error:', {
+        message: error.message,
+        status: error.status,
+        name: error.name
+      })
+      
+      // Handle specific error cases
+      if (error.message.includes('Invalid login credentials')) {
+        redirect('/auth/signin?error=invalid_credentials')
+      } else if (error.message.includes('Email not confirmed')) {
+        redirect('/auth/signin?error=email_not_confirmed')
+      } else if (error.message.includes('Too many requests')) {
+        redirect('/auth/signin?error=too_many_requests')
+      } else {
+        redirect(`/auth/signin?error=${encodeURIComponent(error.message)}`)
+      }
+    }
+
+    if (!data.user) {
+      console.error('❌ No user data returned from signin')
+      redirect('/auth/signin?error=no_user_data')
+    }
+
+    console.log('✅ Server-side signin successful for:', data.user.email)
+    
+    // MCP Best Practice: revalidate path before redirect
+    revalidatePath('/', 'layout')
+    redirect('/dashboard')
+    
+  } catch (serverError: any) {
+    console.error('❌ Server error during signin:', serverError)
+    redirect(`/auth/signin?error=server_error: ${encodeURIComponent(serverError.message)}`)
   }
-
-  if (!data.user) {
-    redirect('/auth/signin?error=authentication_failed')
-  }
-
-  console.log('✅ Server-side signin successful for:', data.user.email)
-  
-  // MCP Best Practice: revalidate path before redirect
-  revalidatePath('/', 'layout')
-  redirect('/dashboard')
 }
 
 export async function signUp(formData: FormData) {

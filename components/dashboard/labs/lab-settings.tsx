@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Trash2, AlertTriangle, Save, Settings } from 'lucide-react'
+import { Trash2, AlertTriangle, Save, Settings, Calendar, Link, Unlink, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -46,9 +46,104 @@ export default function LabSettings({ lab }: LabSettingsProps) {
   })
   const [loading, setLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  
+  // Calendar integration state
+  const [calendarIntegration, setCalendarIntegration] = useState<any>(null)
+  const [calendarLoading, setCalendarLoading] = useState(false)
+  const [isYourLab, setIsYourLab] = useState(false)
 
   const canDelete = lab.userRole === 'principal_investigator'
   const hasData = lab.memberCount > 1 || lab.studyCount > 0
+
+  // Check if this is one of your labs (RICCC/RHEDAS) and fetch calendar integration
+  useEffect(() => {
+    const fetchCalendarIntegration = async () => {
+      try {
+        // Check if this is your lab by name patterns
+        const yourLabNames = ['RICCC', 'RHEDAS', 'Rush Health Equity', 'Rush Interdisciplinary']
+        const isYour = yourLabNames.some(name => lab.name.includes(name))
+        setIsYourLab(isYour)
+
+        // Fetch existing calendar integration
+        const response = await fetch(`/api/labs/${lab.id}/calendar-integration`)
+        if (response.ok) {
+          const integration = await response.json()
+          setCalendarIntegration(integration.integration)
+        }
+      } catch (error) {
+        console.error('Error fetching calendar integration:', error)
+      }
+    }
+
+    fetchCalendarIntegration()
+  }, [lab.id, lab.name])
+
+  const handleConnectGoogleCalendar = async () => {
+    setCalendarLoading(true)
+    try {
+      // Start Google OAuth flow
+      const response = await fetch(`/api/labs/${lab.id}/calendar-integration/connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'google' })
+      })
+
+      if (response.ok) {
+        const { authUrl } = await response.json()
+        window.location.href = authUrl
+      } else {
+        throw new Error('Failed to start OAuth flow')
+      }
+    } catch (error) {
+      console.error('Error connecting calendar:', error)
+      toast.error('Failed to connect Google Calendar')
+    } finally {
+      setCalendarLoading(false)
+    }
+  }
+
+  const handleUseRICCCalendar = async () => {
+    setCalendarLoading(true)
+    try {
+      const response = await fetch(`/api/labs/${lab.id}/calendar-integration/ricc`, {
+        method: 'POST'
+      })
+
+      if (response.ok) {
+        const integration = await response.json()
+        setCalendarIntegration(integration.integration)
+        toast.success('RICCC Labs calendar connected successfully')
+      } else {
+        throw new Error('Failed to connect RICCC calendar')
+      }
+    } catch (error) {
+      console.error('Error connecting RICCC calendar:', error)
+      toast.error('Failed to connect RICCC Labs calendar')
+    } finally {
+      setCalendarLoading(false)
+    }
+  }
+
+  const handleDisconnectCalendar = async () => {
+    setCalendarLoading(true)
+    try {
+      const response = await fetch(`/api/labs/${lab.id}/calendar-integration`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        setCalendarIntegration(null)
+        toast.success('Calendar disconnected successfully')
+      } else {
+        throw new Error('Failed to disconnect calendar')
+      }
+    } catch (error) {
+      console.error('Error disconnecting calendar:', error)
+      toast.error('Failed to disconnect calendar')
+    } finally {
+      setCalendarLoading(false)
+    }
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -180,6 +275,112 @@ export default function LabSettings({ lab }: LabSettingsProps) {
               {loading ? 'Saving...' : 'Save Changes'}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Calendar Integration */}
+      <Card className="bg-slate-800/50 border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Calendar Integration
+          </CardTitle>
+          <CardDescription>
+            Connect your lab with Google Calendar to sync meetings and deadlines.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {calendarIntegration ? (
+            <div className="space-y-4">
+              {/* Connected State */}
+              <div className="flex items-center justify-between p-4 bg-green-900/20 border border-green-700 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                  <div>
+                    <p className="text-white font-medium">
+                      {calendarIntegration.provider === 'ricc' 
+                        ? 'RICCC Labs Calendar' 
+                        : 'Personal Google Calendar'} Connected
+                    </p>
+                    <p className="text-sm text-slate-400">
+                      Calendar: {calendarIntegration.external_calendar_id}
+                    </p>
+                    {calendarIntegration.last_sync_at && (
+                      <p className="text-xs text-slate-500">
+                        Last synced: {new Date(calendarIntegration.last_sync_at).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDisconnectCalendar}
+                  disabled={calendarLoading}
+                  className="text-red-400 border-red-600 hover:bg-red-900/20"
+                >
+                  <Unlink className="h-4 w-4 mr-2" />
+                  Disconnect
+                </Button>
+              </div>
+
+              {/* Calendar Actions */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open('/api/calendar/sync', '_blank')}
+                  className="text-blue-400 border-blue-600 hover:bg-blue-900/20"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Calendar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Not Connected State */}
+              <div className="text-center py-6">
+                <Calendar className="h-12 w-12 text-slate-500 mx-auto mb-3" />
+                <p className="text-white font-medium mb-2">No Calendar Connected</p>
+                <p className="text-sm text-slate-400 mb-6">
+                  Connect a calendar to sync lab meetings, deadlines, and events.
+                </p>
+
+                <div className="space-y-3">
+                  {/* Your Labs: Show RICCC option */}
+                  {isYourLab && (
+                    <Button
+                      onClick={handleUseRICCCalendar}
+                      disabled={calendarLoading}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Link className="h-4 w-4 mr-2" />
+                      {calendarLoading ? 'Connecting...' : 'Use RICCC Labs Calendar'}
+                    </Button>
+                  )}
+
+                  {/* All Labs: Personal Google Calendar option */}
+                  <Button
+                    variant="outline"
+                    onClick={handleConnectGoogleCalendar}
+                    disabled={calendarLoading}
+                    className="w-full border-slate-600 hover:bg-slate-700"
+                  >
+                    <Link className="h-4 w-4 mr-2" />
+                    {calendarLoading ? 'Connecting...' : 'Connect Personal Google Calendar'}
+                  </Button>
+                </div>
+
+                <p className="text-xs text-slate-500 mt-4">
+                  {isYourLab 
+                    ? 'Your labs can use RICCC calendar or connect a personal calendar'
+                    : 'Connect your Google Calendar to enable calendar features'
+                  }
+                </p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

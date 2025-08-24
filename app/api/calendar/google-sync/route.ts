@@ -12,15 +12,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get query parameters for date range
+    // Get query parameters for date range and lab
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
+    const labId = searchParams.get('labId')
 
-    // Fetch events from Google Calendar
+    // Fetch events from Google Calendar (lab-specific)
     const googleEvents = await googleCalendarService.fetchGoogleCalendarEvents(
       startDate ? new Date(startDate) : undefined,
-      endDate ? new Date(endDate) : undefined
+      endDate ? new Date(endDate) : undefined,
+      `google-sync-${Date.now()}`,
+      labId || undefined
     )
 
     // Convert Google events to Lab Sync format

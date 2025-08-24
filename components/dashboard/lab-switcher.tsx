@@ -337,7 +337,7 @@ export function LabSwitcher() {
               <CommandItem
                 onSelect={() => {
                   setOpen(false)
-                  router.push("/dashboard/labs/new")
+                  router.push("/dashboard/labs")
                 }}
                 className="cursor-pointer"
               >

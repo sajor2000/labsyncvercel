@@ -39,18 +39,18 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             <div className="mb-6 p-4 bg-destructive/20 border border-destructive rounded-lg">
               <p className="text-destructive text-sm">
                 {error === 'missing_credentials' && 'Please enter both email and password'}
+                {error === 'invalid_credentials' && 'Invalid email or password'}
+                {error === 'email_not_confirmed' && 'Please verify your email address first'}
+                {error === 'too_many_requests' && 'Too many login attempts. Please wait a moment and try again.'}
+                {error === 'no_user_data' && 'Authentication failed - no user data received'}
                 {error === 'authentication_failed' && 'Authentication failed - please try again'}
                 {error === 'reset_link_expired' && 'Password reset link has expired. Please request a new one.'}
                 {error === 'access_denied' && 'Access denied. Please try signing in again.'}
                 {error === 'callback_failed' && 'Authentication callback failed. Please try again.'}
                 {error === 'no_code' && 'No authentication code provided. Please try again.'}
-                {error.includes('Invalid login credentials') && 'Invalid email or password'}
-                {error.includes('Email not confirmed') && 'Please verify your email address first'}
-                {error.includes('too_many_requests') && 'Too many login attempts. Please wait a moment and try again.'}
-                {!['missing_credentials', 'authentication_failed', 'reset_link_expired', 'access_denied', 'callback_failed', 'no_code'].includes(error) && 
-                 !error.includes('Invalid login credentials') && 
-                 !error.includes('Email not confirmed') && 
-                 !error.includes('too_many_requests') && 
+                {error.startsWith('server_error:') && `Server error: ${error.replace('server_error:', '').trim()}`}
+                {!['missing_credentials', 'invalid_credentials', 'email_not_confirmed', 'too_many_requests', 'no_user_data', 'authentication_failed', 'reset_link_expired', 'access_denied', 'callback_failed', 'no_code'].includes(error) && 
+                 !error.startsWith('server_error:') && 
                  decodeURIComponent(error)}
               </p>
             </div>
