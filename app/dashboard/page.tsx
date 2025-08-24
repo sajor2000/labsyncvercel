@@ -20,6 +20,7 @@ import {
   ExternalLink
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 
 interface Lab {
   id: string
@@ -49,8 +50,11 @@ interface DashboardData {
     inProgress: number
     urgent: number
   }
-  studies: Study[]
+  studies?: Study[]
   completionPercentage: number
+  recentMeetings?: any[]
+  upcomingDeadlines?: any[]
+  recentTasks?: any[]
 }
 
 export default function DashboardPage() {
@@ -90,6 +94,45 @@ export default function DashboardPage() {
 
       setUser(authUser as any)
 
+      // Ensure user profile exists (create if needed)
+      try {
+        const { data: existingProfile, error: profileCheckError } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('id', authUser.id)
+          .single()
+
+        if (profileCheckError && profileCheckError.code === 'PGRST116') {
+          // Profile doesn't exist, create it
+          console.log('Creating user profile for:', authUser.email)
+          const { error: createProfileError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: authUser.id,
+              email: authUser.email!,
+              first_name: authUser.user_metadata?.first_name || null,
+              last_name: authUser.user_metadata?.last_name || null,
+              full_name: authUser.user_metadata?.full_name || 
+                        (authUser.user_metadata?.first_name && authUser.user_metadata?.last_name
+                          ? `${authUser.user_metadata.first_name} ${authUser.user_metadata.last_name}`
+                          : null),
+              avatar_url: authUser.user_metadata?.avatar_url || null,
+              is_active: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+          
+          if (createProfileError) {
+            console.error('Failed to create profile:', createProfileError)
+          } else {
+            console.log('✅ User profile created successfully')
+          }
+        }
+      } catch (error) {
+        console.error('Profile creation error:', error)
+        // Don't block dashboard load
+      }
+
       // Get user's labs
       const { data: userLabs, error: labError } = await supabase
         .from('lab_members')
@@ -107,11 +150,23 @@ export default function DashboardPage() {
       if (labError) throw labError
 
       const labsArray = Array.isArray(userLabs?.[0]?.labs) ? userLabs[0].labs : (userLabs?.[0]?.labs ? [userLabs[0].labs] : [])
-      const selectedLab = labsArray[0]
+      let selectedLab = labsArray[0]
       
       if (!selectedLab) {
-        // No labs found, redirect to create first lab
-        router.push('/dashboard/labs')
+        // No labs found, show onboarding/welcome page instead of error
+        console.log('No lab memberships found for user')
+        setData({
+          selectedLab: null,
+          labCount: 0,
+          studyCount: 0,
+          bucketCount: 0,
+          taskStats: { total: 0, completed: 0, inProgress: 0, urgent: 0 },
+          completionPercentage: 0,
+          recentMeetings: [],
+          upcomingDeadlines: [],
+          recentTasks: []
+        })
+        setLoading(false)
         return
       }
 
@@ -279,6 +334,84 @@ export default function DashboardPage() {
           >
             Try Again
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Show welcome screen if no lab membership
+  if (data && !data.selectedLab) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto">
+        <div className="text-center space-y-6">
+          <div className="card-slack p-8">
+            <h1 className="text-3xl font-bold text-foreground mb-4">
+              Welcome to Lab Sync! 🔬
+            </h1>
+            <p className="text-muted-foreground text-lg mb-8">
+              Your account has been created successfully. To get started, you need to join a research lab or create your own.
+            </p>
+            
+            <div className="grid gap-6 md:grid-cols-2 max-w-2xl mx-auto">
+              <div className="card-slack p-6 text-center">
+                <h3 className="text-xl font-semibold text-foreground mb-3">Join RHEDAS Lab</h3>
+                <p className="text-muted-foreground mb-4">
+                  Join the Rush Health Equity Data Analytics Studio to collaborate on health equity research.
+                </p>
+                <Button 
+                  className="btn-slack-primary w-full"
+                  onClick={() => {
+                    // Add user to RHEDAS lab
+                    const addToRHEDAS = async () => {
+                      try {
+                        const { error } = await supabase
+                          .from('lab_members')
+                          .insert({
+                            lab_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+                            user_id: user?.id,
+                            role: 'data_scientist',
+                            is_active: true,
+                            can_create_studies: true,
+                            can_edit_studies: true,
+                            can_manage_tasks: true,
+                            can_view_reports: true,
+                            can_export_data: true,
+                            joined_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                          })
+                        
+                        if (!error) {
+                          toast.success('Successfully joined RHEDAS lab!')
+                          loadDashboardData()
+                        } else {
+                          toast.error('Failed to join lab. Please try again.')
+                        }
+                      } catch (err) {
+                        toast.error('Failed to join lab. Please try again.')
+                      }
+                    }
+                    addToRHEDAS()
+                  }}
+                >
+                  Join RHEDAS Lab
+                </Button>
+              </div>
+              
+              <div className="card-slack p-6 text-center">
+                <h3 className="text-xl font-semibold text-foreground mb-3">Create Your Lab</h3>
+                <p className="text-muted-foreground mb-4">
+                  Create your own research lab and invite team members to collaborate.
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => router.push('/dashboard/labs')}
+                >
+                  Create New Lab
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )

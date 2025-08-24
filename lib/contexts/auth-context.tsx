@@ -61,7 +61,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .single()
 
-      if (profileError) throw profileError
+      if (profileError) {
+        console.warn('No profile found for user, will be created on first dashboard visit:', profileError)
+        // Don't throw error - user can still authenticate
+        setProfile(null)
+        return
+      }
       setProfile(profileData)
 
       // Fetch lab memberships with lab details
@@ -129,10 +134,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null)
         
         if (session?.user) {
-          // Handle new user setup if needed
-          if (event === 'SIGNED_IN') {
-            await profileHandler.handleNewUserSetup(session.user)
-          }
           await fetchProfile(session.user.id)
         } else {
           setProfile(null)
