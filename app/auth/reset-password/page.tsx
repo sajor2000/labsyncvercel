@@ -72,24 +72,24 @@ export default function ForgotPasswordPage() {
 
   if (emailSent) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4 py-12">
+      <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
         <div className="w-full max-w-md">
           {/* Brand Header */}
           <div className="text-center mb-8">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-violet-600">
-              <span className="text-xl font-bold text-white">LS</span>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
+              <span className="text-xl font-bold text-primary-foreground">LS</span>
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Lab Sync</h1>
-            <p className="text-slate-400 text-sm">Making Science Easier</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Lab Sync</h1>
+            <p className="text-muted-foreground text-sm">Making Science Easier</p>
           </div>
 
           {/* Success Card */}
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 shadow-2xl">
+          <div className="card-slack p-8 shadow-2xl">
             <div className="text-center">
-              <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-white mb-2">Check your email</h2>
+              <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-foreground mb-2">Check your email</h2>
               <p className="text-slate-400 mb-6">
-                We've sent a password reset link to <strong className="text-white">{email}</strong>
+                We've sent a password reset link to <strong className="text-foreground">{email}</strong>
               </p>
               <p className="text-sm text-slate-500 mb-6">
                 If you don't see the email in your inbox, check your spam folder.
@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
               <div className="space-y-3">
                 <Link 
                   href="/auth/signin"
-                  className="w-full inline-flex items-center justify-center px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors"
+                  className="w-full inline-flex items-center justify-center px-4 py-2 bg-violet-600 hover:bg-violet-700 text-foreground font-medium rounded-lg transition-colors"
                 >
                   Back to sign in
                 </Link>
@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
                     setEmailSent(false)
                     setEmail('')
                   }}
-                  className="w-full inline-flex items-center justify-center px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors"
+                  className="w-full inline-flex items-center justify-center px-4 py-2 bg-700 hover:bg-600 text-foreground font-medium rounded-lg transition-colors"
                 >
                   Send to different email
                 </button>
@@ -121,21 +121,21 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-900 px-4 py-12">
       <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="text-center mb-8">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-violet-600">
-            <span className="text-xl font-bold text-white">LS</span>
+            <span className="text-xl font-bold text-foreground">LS</span>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Lab Sync</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Lab Sync</h1>
           <p className="text-slate-400 text-sm">Making Science Easier</p>
         </div>
 
         {/* Reset Password Form */}
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 shadow-2xl">
+        <div className="bg-800 border border-slate-700 rounded-xl p-8 shadow-2xl">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">Reset your password</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Reset your password</h2>
             <p className="text-slate-400">
               Enter your email address and we'll send you a link to reset your password
             </p>
@@ -156,7 +156,7 @@ export default function ForgotPasswordPage() {
                   required
                   value={email}
                   onChange={handleEmailChange}
-                  className={`w-full pl-10 pr-4 py-2 bg-slate-900 border rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-colors ${
+                  className={`w-full pl-10 pr-4 py-2 bg-900 border rounded-lg text-foreground placeholder-slate-500 focus:outline-none focus:ring-2 transition-colors ${
                     errors.email
                       ? 'border-red-500 focus:ring-red-500'
                       : 'border-slate-600 focus:ring-violet-500 focus:border-transparent'
@@ -173,7 +173,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={isLoading || !!errors.email || !email}
-              className="w-full py-2.5 px-4 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+              className="w-full py-2.5 px-4 bg-violet-600 hover:bg-violet-700 disabled:bg-700 disabled:text-slate-500 text-foreground font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-800"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">

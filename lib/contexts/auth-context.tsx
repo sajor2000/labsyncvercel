@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
+import { profileHandler } from '@/lib/auth/profile-handler'
 
 interface UserProfile {
   id: string
@@ -128,6 +129,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null)
         
         if (session?.user) {
+          // Handle new user setup if needed
+          if (event === 'SIGNED_IN') {
+            await profileHandler.handleNewUserSetup(session.user)
+          }
           await fetchProfile(session.user.id)
         } else {
           setProfile(null)
@@ -136,8 +141,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         if (event === 'SIGNED_IN') {
+          console.log('✅ User signed in, redirecting to dashboard')
+          // Broadcast auth state change to other tabs
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem('auth-event', JSON.stringify({
+              event: 'SIGNED_IN',
+              timestamp: Date.now(),
+              userId: session?.user?.id
+            }))
+          }
           router.push('/dashboard')
         } else if (event === 'SIGNED_OUT') {
+          console.log('🔓 User signed out')
+          // Broadcast auth state change to other tabs
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem('auth-event', JSON.stringify({
+              event: 'SIGNED_OUT',
+              timestamp: Date.now()
+            }))
+          }
           router.push('/auth/signin')
         }
       }

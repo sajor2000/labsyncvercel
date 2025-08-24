@@ -92,10 +92,21 @@ class AuthClient {
     const { error } = await this.supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
       }
     })
     return { error }
+  }
+
+  /**
+   * Sign in with Google specifically 
+   */
+  async signInWithGoogle() {
+    return this.signInWithProvider('google')
   }
 
   /**

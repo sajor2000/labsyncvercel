@@ -27,8 +27,17 @@ export default function UpdatePasswordPage() {
         
         if (error || !session) {
           setIsValidToken(false)
-          toast.error('Invalid or expired reset link. Please request a new one.')
-          setTimeout(() => router.push('/auth/reset-password'), 2000)
+          // Check URL parameters for specific error details
+          const urlParams = new URLSearchParams(window.location.search)
+          const urlError = urlParams.get('error')
+          const errorDescription = urlParams.get('error_description')
+          
+          if (urlError === 'access_denied' && errorDescription?.includes('expired')) {
+            toast.error('Password reset link has expired. Please request a new one.')
+          } else {
+            toast.error('Invalid or expired reset link. Please request a new one.')
+          }
+          setTimeout(() => router.push('/auth/forgot-password'), 2000)
         } else {
           setIsValidToken(true)
         }
@@ -129,9 +138,9 @@ export default function UpdatePasswordPage() {
   // Loading state while checking token
   if (isValidToken === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4 py-12">
+      <div className="flex min-h-screen items-center justify-center bg-900 px-4 py-12">
         <div className="w-full max-w-md">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 shadow-2xl">
+          <div className="bg-800 border border-slate-700 rounded-xl p-8 shadow-2xl">
             <div className="text-center">
               <Loader2 className="w-8 h-8 text-violet-400 animate-spin mx-auto mb-4" />
               <p className="text-slate-400">Verifying reset link...</p>
@@ -145,33 +154,33 @@ export default function UpdatePasswordPage() {
   // Invalid token state
   if (isValidToken === false) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4 py-12">
+      <div className="flex min-h-screen items-center justify-center bg-900 px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-violet-600">
-              <span className="text-xl font-bold text-white">LS</span>
+              <span className="text-xl font-bold text-foreground">LS</span>
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Lab Sync</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Lab Sync</h1>
             <p className="text-slate-400 text-sm">Making Science Easier</p>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 shadow-2xl">
+          <div className="bg-800 border border-slate-700 rounded-xl p-8 shadow-2xl">
             <div className="text-center">
               <XCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-white mb-2">Invalid reset link</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-2">Invalid reset link</h2>
               <p className="text-slate-400 mb-6">
                 This password reset link is invalid or has expired. Please request a new one.
               </p>
               <div className="space-y-3">
                 <Link 
                   href="/auth/reset-password"
-                  className="w-full inline-flex items-center justify-center px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors"
+                  className="w-full inline-flex items-center justify-center px-4 py-2 bg-violet-600 hover:bg-violet-700 text-foreground font-medium rounded-lg transition-colors"
                 >
                   Request new reset link
                 </Link>
                 <Link 
                   href="/auth/signin"
-                  className="w-full inline-flex items-center justify-center px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors"
+                  className="w-full inline-flex items-center justify-center px-4 py-2 bg-700 hover:bg-600 text-foreground font-medium rounded-lg transition-colors"
                 >
                   Back to sign in
                 </Link>
@@ -186,20 +195,20 @@ export default function UpdatePasswordPage() {
   // Success state
   if (passwordReset) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4 py-12">
+      <div className="flex min-h-screen items-center justify-center bg-900 px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-violet-600">
-              <span className="text-xl font-bold text-white">LS</span>
+              <span className="text-xl font-bold text-foreground">LS</span>
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Lab Sync</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Lab Sync</h1>
             <p className="text-slate-400 text-sm">Making Science Easier</p>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 shadow-2xl">
+          <div className="bg-800 border border-slate-700 rounded-xl p-8 shadow-2xl">
             <div className="text-center">
               <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-white mb-2">Password updated!</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-2">Password updated!</h2>
               <p className="text-slate-400 mb-4">
                 Your password has been successfully updated. Redirecting you to sign in...
               </p>
@@ -215,19 +224,19 @@ export default function UpdatePasswordPage() {
 
   // Reset password form
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-900 px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-violet-600">
-            <span className="text-xl font-bold text-white">LS</span>
+            <span className="text-xl font-bold text-foreground">LS</span>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Lab Sync</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Lab Sync</h1>
           <p className="text-slate-400 text-sm">Making Science Easier</p>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 shadow-2xl">
+        <div className="bg-800 border border-slate-700 rounded-xl p-8 shadow-2xl">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">Set new password</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Set new password</h2>
             <p className="text-slate-400">Choose a strong password for your account</p>
           </div>
 
@@ -246,7 +255,7 @@ export default function UpdatePasswordPage() {
                   required
                   value={password}
                   onChange={handlePasswordChange}
-                  className={`w-full pl-10 pr-12 py-2 bg-slate-900 border rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-colors ${
+                  className={`w-full pl-10 pr-12 py-2 bg-900 border rounded-lg text-foreground placeholder-slate-500 focus:outline-none focus:ring-2 transition-colors ${
                     errors.password
                       ? 'border-red-500 focus:ring-red-500'
                       : 'border-slate-600 focus:ring-violet-500 focus:border-transparent'
@@ -256,7 +265,7 @@ export default function UpdatePasswordPage() {
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-foreground transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -286,7 +295,7 @@ export default function UpdatePasswordPage() {
                   required
                   value={confirmPassword}
                   onChange={handleConfirmPasswordChange}
-                  className={`w-full pl-10 pr-12 py-2 bg-slate-900 border rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-colors ${
+                  className={`w-full pl-10 pr-12 py-2 bg-900 border rounded-lg text-foreground placeholder-slate-500 focus:outline-none focus:ring-2 transition-colors ${
                     errors.confirmPassword
                       ? 'border-red-500 focus:ring-red-500'
                       : 'border-slate-600 focus:ring-violet-500 focus:border-transparent'
@@ -296,7 +305,7 @@ export default function UpdatePasswordPage() {
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-foreground transition-colors"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -310,7 +319,7 @@ export default function UpdatePasswordPage() {
             <button
               type="submit"
               disabled={isLoading || Object.keys(errors).length > 0 || !password || !confirmPassword}
-              className="w-full py-2.5 px-4 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+              className="w-full py-2.5 px-4 bg-violet-600 hover:bg-violet-700 disabled:bg-700 disabled:text-slate-500 text-foreground font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-800"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
