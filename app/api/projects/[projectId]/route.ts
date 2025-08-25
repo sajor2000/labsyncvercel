@@ -123,12 +123,12 @@ export async function PATCH(
     }
     
     // Map database field names back to frontend field names
-    const project = {
+    const updatedProject = {
       ...updated,
       title: updated.name || updated.title
     }
     
-    return NextResponse.json({ project })
+    return NextResponse.json({ project: updatedProject })
     
   } catch (error) {
     console.error('Project PATCH error:', error)
