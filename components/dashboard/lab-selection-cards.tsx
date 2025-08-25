@@ -96,18 +96,19 @@ export function LabSelectionCards({ labs, user }: LabSelectionCardsProps) {
             Get started by creating your first lab or joining an existing one.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/dashboard/labs/new">
-              <Button className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Lab
-              </Button>
-            </Link>
-            <Link href="/dashboard/join-lab">
-              <Button variant="outline" className="w-full sm:w-auto">
-                <UserPlus className="h-4 w-4 mr-2" />
-                Join Lab
-              </Button>
-            </Link>
+            <Button 
+              onClick={() => router.push('/dashboard/labs/new')}
+              className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Lab
+            </Button>
+            <Button 
+              onClick={() => router.push('/dashboard/join-lab')}
+              variant="outline" 
+              className="w-full sm:w-auto">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Join Lab
+            </Button>
           </div>
         </div>
       </div>
@@ -123,18 +124,19 @@ export function LabSelectionCards({ labs, user }: LabSelectionCardsProps) {
           <p className="text-muted-foreground">Select a lab to continue working</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/dashboard/join-lab">
-            <Button variant="outline" size="sm">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Join Lab
-            </Button>
-          </Link>
-          <Link href="/dashboard/labs/new">
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Lab
-            </Button>
-          </Link>
+          <Button 
+            onClick={() => router.push('/dashboard/join-lab')}
+            variant="outline" 
+            size="sm">
+            <UserPlus className="h-4 w-4 mr-2" />
+            Join Lab
+          </Button>
+          <Button 
+            onClick={() => router.push('/dashboard/labs/new')}
+            size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Lab
+          </Button>
         </div>
       </div>
 
