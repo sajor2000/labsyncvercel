@@ -670,7 +670,7 @@ export default function TasksPageClient({
         )
       ) : (
         <KanbanBoard
-          study_id={selectedProject || ''}
+          study_id={filterProject === 'all' ? '' : filterProject}
           lab_id={lab.id}
           onTaskClick={(task) => openEditDialog(task)}
         />
