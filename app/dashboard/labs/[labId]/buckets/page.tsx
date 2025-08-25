@@ -23,7 +23,6 @@ export default async function LabBucketsPage({ params }: { params: Promise<{ lab
       .select('id, role, can_create_projects, can_edit_all_projects, can_delete_projects')
       .eq('lab_id', labId)
       .eq('user_id', user.id)
-      .eq('is_active', true)
       .single()
 
     if (memberError || !membership) {
@@ -41,7 +40,7 @@ export default async function LabBucketsPage({ params }: { params: Promise<{ lab
       redirect('/dashboard')
     }
 
-    // Get lab's buckets
+    // Get lab's buckets (excluding soft-deleted ones)
     const { data: buckets, error: bucketsError } = await supabase
       .from('buckets')
       .select(`
@@ -49,13 +48,13 @@ export default async function LabBucketsPage({ params }: { params: Promise<{ lab
         name,
         description,
         color,
-        icon,
         position,
-        status,
         created_at,
-        updated_at
+        updated_at,
+        deleted_at
       `)
       .eq('lab_id', labId)
+      .is('deleted_at', null)
       .order('position', { ascending: true })
 
     if (bucketsError) {
@@ -65,7 +64,7 @@ export default async function LabBucketsPage({ params }: { params: Promise<{ lab
     return (
       <BucketsPageClient 
         lab={lab}
-        initialBuckets={buckets || []}
+        initialBuckets={(buckets || []) as any}
         userPermissions={{
           canCreate: membership.can_create_projects || false,
           canEdit: membership.can_edit_all_projects || false,

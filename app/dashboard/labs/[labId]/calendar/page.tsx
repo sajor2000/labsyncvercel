@@ -20,10 +20,9 @@ export default async function LabCalendarPage({ params }: { params: Promise<{ la
     // Verify user has access to this lab
     const { data: membership, error: memberError } = await supabase
       .from('lab_members')
-      .select('id, role, can_schedule_meetings, can_manage_calendar')
+      .select('id, role, can_create_tasks, can_edit_all_tasks')
       .eq('lab_id', labId)
       .eq('user_id', user.id)
-      .eq('is_active', true)
       .single()
 
     if (memberError || !membership) {
@@ -41,12 +40,11 @@ export default async function LabCalendarPage({ params }: { params: Promise<{ la
       redirect('/dashboard')
     }
 
-    // Get calendar integration status
-    const { data: calendarIntegration, error: integrationError } = await supabase
-      .from('calendar_integrations')
+    // Get calendar integration status (simplified - may not exist)
+    const { data: calendarIntegration } = await supabase
+      .from('google_calendar_integrations')
       .select('*')
       .eq('lab_id', labId)
-      .eq('is_primary', true)
       .single()
 
     // Get lab's calendar events
@@ -54,23 +52,21 @@ export default async function LabCalendarPage({ params }: { params: Promise<{ la
       .from('calendar_events')
       .select(`
         id,
-        title,
+        summary,
         description,
-        event_type,
-        start_datetime,
-        end_datetime,
+        start_time,
+        end_time,
         location,
         attendees,
-        is_all_day,
-        recurrence_rule,
-        external_event_id,
-        sync_status,
+        all_day,
+        google_event_id,
+        google_meet_link,
         created_at,
         updated_at
       `)
       .eq('lab_id', labId)
-      .gte('end_datetime', new Date().toISOString()) // Only future events
-      .order('start_datetime', { ascending: true })
+      .gte('end_time', new Date().toISOString()) // Only future events
+      .order('start_time', { ascending: true })
       .limit(50)
 
     if (eventsError) {
@@ -86,13 +82,10 @@ export default async function LabCalendarPage({ params }: { params: Promise<{ la
         user_profiles (
           id,
           email,
-          full_name,
-          first_name,
-          last_name
+          full_name
         )
       `)
       .eq('lab_id', labId)
-      .eq('is_active', true)
 
     if (membersError) {
       console.error('Error fetching lab members:', membersError)
@@ -113,8 +106,8 @@ export default async function LabCalendarPage({ params }: { params: Promise<{ la
         initialEvents={events || []}
         labMembers={transformedMembers}
         userPermissions={{
-          canSchedule: membership.can_schedule_meetings || false,
-          canManage: membership.can_manage_calendar || false
+          canSchedule: membership.can_create_tasks || false,
+          canManage: membership.can_edit_all_tasks || false
         }}
       />
     )

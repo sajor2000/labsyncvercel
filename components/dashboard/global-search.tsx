@@ -5,7 +5,17 @@ import { useRouter } from 'next/navigation'
 import { Search, X, FileText, Beaker, FolderOpen, CheckSquare, Lightbulb, Calendar } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { debounce } from 'lodash'
+// Simple debounce implementation
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null
+  return (...args: Parameters<T>) => {
+    if (timeout) clearTimeout(timeout)
+    timeout = setTimeout(() => func(...args), wait)
+  }
+}
 
 interface SearchResult {
   id: string

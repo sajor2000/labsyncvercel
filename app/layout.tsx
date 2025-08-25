@@ -3,9 +3,7 @@ import './globals.css'
 import { Providers } from './providers'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { Analytics } from '@vercel/analytics/react'
-import { SpeedInsights } from '@vercel/speed-insights/next'
-import { WebVitals } from '@/components/web-vitals'
+// Removed analytics packages
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -67,9 +65,6 @@ export default async function RootLayout({
             {children}
           </div>
         </Providers>
-        <WebVitals />
-        <Analytics />
-        <SpeedInsights />
       </body>
     </html>
   )

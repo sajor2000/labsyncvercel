@@ -1,0 +1,1372 @@
+{
+  "database": "supabase",
+  "schema": "public",
+  "generated_at": "2025-01-24T00:00:00Z",
+  "enums": {
+    "activity_type": ["created", "updated", "deleted", "completed", "assigned", "commented", "uploaded", "shared", "archived", "restored"],
+    "bucket_status": ["active", "archived", "deleted"],
+    "calendar_provider": ["google", "outlook", "apple", "internal"],
+    "citation_type": ["journal", "conference", "book", "patent", "preprint", "thesis", "other"],
+    "comment_type": ["task", "project", "idea", "file", "meeting", "deadline", "general"],
+    "conference_status": ["planning", "abstract_submitted", "accepted", "rejected", "presented"],
+    "deadline_type": ["grant_deadline", "paper_submission", "conference_abstract", "irb_submission", "ethics_review", "data_collection", "analysis_completion", "milestone", "presentation", "meeting", "other"],
+    "effort_level": ["low", "medium", "high"],
+    "event_type": ["meeting", "deadline", "conference", "training", "holiday", "pto", "clinic", "other"],
+    "file_type": ["document", "spreadsheet", "presentation", "image", "video", "audio", "code", "data", "archive", "other"],
+    "grant_status": ["planning", "submitted", "awarded", "active", "completed", "closed", "rejected"],
+    "idea_category": ["research", "process_improvement", "technology", "collaboration", "training", "equipment", "other"],
+    "idea_status": ["draft", "proposed", "under_review", "approved", "in_progress", "implemented", "rejected", "archived"],
+    "impact_level": ["low", "medium", "high"],
+    "integration_status": ["connected", "disconnected", "error", "syncing"],
+    "irb_status": ["not_required", "planning", "submitted", "under_review", "approved", "expired", "suspended", "withdrawn", "exempt"],
+    "lab_status": ["active", "inactive", "archived"],
+    "meeting_type": ["standup", "planning", "review", "presentation", "training", "social", "other"],
+    "notification_type": ["task_assigned", "task_completed", "task_overdue", "deadline_reminder", "mention", "lab_invite", "member_joined", "meeting_scheduled", "file_shared", "comment_added"],
+    "patent_status": ["idea", "filed", "pending", "granted", "expired", "abandoned"],
+    "priority": ["low", "medium", "high", "urgent"],
+    "procurement_status": ["requested", "approved", "ordered", "received", "cancelled", "returned"],
+    "project_status": ["planning", "active", "on_hold", "completed", "cancelled", "archived"],
+    "publication_status": ["planning", "writing", "draft_complete", "under_review", "revision_requested", "accepted", "published", "rejected"],
+    "review_type": ["peer_review", "grant_review", "editorial_review", "book_review"],
+    "share_permission": ["view", "comment", "edit", "admin"],
+    "storage_provider": ["supabase", "google_drive", "dropbox", "onedrive", "local"],
+    "task_status": ["todo", "in_progress", "review", "done", "blocked", "cancelled"],
+    "user_role": ["principal_investigator", "co_investigator", "lab_manager", "data_analyst", "data_scientist", "regulatory_coordinator", "lab_assistant", "research_volunteer", "external_collaborator"],
+    "vendor_status": ["active", "preferred", "restricted", "inactive", "blacklisted"]
+  },
+  "tables": {
+    "action_items": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "meeting_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "meetings.id"
+        },
+        "task_id": {
+          "type": "uuid", 
+          "nullable": true,
+          "references": "tasks.id"
+        },
+        "title": {
+          "type": "varchar(500)",
+          "nullable": false
+        },
+        "description": {
+          "type": "text",
+          "nullable": true
+        },
+        "assigned_to": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "due_date": {
+          "type": "date",
+          "nullable": true
+        },
+        "priority": {
+          "type": "priority",
+          "nullable": true,
+          "default": "medium"
+        },
+        "is_ai_generated": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "ai_confidence_score": {
+          "type": "numeric(3,2)",
+          "nullable": true
+        },
+        "is_completed": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "completed_at": {
+          "type": "timestamptz",
+          "nullable": true
+        },
+        "completed_by": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "activity_logs": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "user_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "lab_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "labs.id"
+        },
+        "action": {
+          "type": "activity_type",
+          "nullable": false
+        },
+        "entity_type": {
+          "type": "varchar(50)",
+          "nullable": false
+        },
+        "entity_id": {
+          "type": "uuid",
+          "nullable": false
+        },
+        "entity_name": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "description": {
+          "type": "text",
+          "nullable": true
+        },
+        "changes": {
+          "type": "jsonb",
+          "nullable": true
+        },
+        "metadata": {
+          "type": "jsonb",
+          "nullable": true,
+          "default": "{}"
+        },
+        "ip_address": {
+          "type": "inet",
+          "nullable": true
+        },
+        "user_agent": {
+          "type": "text",
+          "nullable": true
+        },
+        "request_id": {
+          "type": "uuid",
+          "nullable": true
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "buckets": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "lab_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "labs.id"
+        },
+        "name": {
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        "description": {
+          "type": "text",
+          "nullable": true
+        },
+        "color": {
+          "type": "varchar(7)",
+          "nullable": true,
+          "default": "#6b7280"
+        },
+        "icon": {
+          "type": "varchar(50)",
+          "nullable": true,
+          "default": "folder"
+        },
+        "status": {
+          "type": "bucket_status",
+          "nullable": true,
+          "default": "active"
+        },
+        "position": {
+          "type": "integer",
+          "nullable": true,
+          "default": 0
+        },
+        "parent_bucket_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "buckets.id"
+        },
+        "is_private": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "owner_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "tags": {
+          "type": "text[]",
+          "nullable": true
+        },
+        "metadata": {
+          "type": "jsonb",
+          "nullable": true,
+          "default": "{}"
+        },
+        "archived_at": {
+          "type": "timestamptz",
+          "nullable": true
+        },
+        "archived_by": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "deleted_at": {
+          "type": "timestamptz",
+          "nullable": true
+        },
+        "deleted_by": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "calendar_events": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "lab_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "labs.id"
+        },
+        "title": {
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        "description": {
+          "type": "text",
+          "nullable": true
+        },
+        "location": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "event_type": {
+          "type": "event_type",
+          "nullable": true,
+          "default": "other"
+        },
+        "start_date": {
+          "type": "timestamptz",
+          "nullable": false
+        },
+        "end_date": {
+          "type": "timestamptz",
+          "nullable": false
+        },
+        "all_day": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "timezone": {
+          "type": "varchar(50)",
+          "nullable": true,
+          "default": "UTC"
+        },
+        "is_recurring": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "recurrence_rule": {
+          "type": "text",
+          "nullable": true
+        },
+        "recurrence_parent_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "calendar_events.id"
+        },
+        "organizer_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "auth.users.id"
+        },
+        "attendees": {
+          "type": "uuid[]",
+          "nullable": true
+        },
+        "external_calendar_id": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "external_event_id": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "external_provider": {
+          "type": "calendar_provider",
+          "nullable": true
+        },
+        "sync_status": {
+          "type": "integration_status",
+          "nullable": true,
+          "default": "disconnected"
+        },
+        "last_synced_at": {
+          "type": "timestamptz",
+          "nullable": true
+        },
+        "related_meeting_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "meetings.id"
+        },
+        "related_project_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "projects.id"
+        },
+        "related_deadline_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "deadlines.id"
+        },
+        "export_title": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "export_description": {
+          "type": "text",
+          "nullable": true
+        },
+        "metadata": {
+          "type": "jsonb",
+          "nullable": true,
+          "default": "{}"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "calendar_integrations": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "user_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "auth.users.id"
+        },
+        "lab_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "labs.id"
+        },
+        "provider": {
+          "type": "calendar_provider",
+          "nullable": false
+        },
+        "name": {
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        "external_calendar_id": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "access_token_encrypted": {
+          "type": "text",
+          "nullable": true
+        },
+        "refresh_token_encrypted": {
+          "type": "text",
+          "nullable": true
+        },
+        "expires_at": {
+          "type": "timestamptz",
+          "nullable": true
+        },
+        "sync_settings": {
+          "type": "jsonb",
+          "nullable": true,
+          "default": "{}"
+        },
+        "is_primary": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "sync_enabled": {
+          "type": "boolean",
+          "nullable": true,
+          "default": true
+        },
+        "status": {
+          "type": "integration_status",
+          "nullable": true,
+          "default": "connected"
+        },
+        "last_sync_at": {
+          "type": "timestamptz",
+          "nullable": true
+        },
+        "last_error": {
+          "type": "text",
+          "nullable": true
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "comments": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "entity_type": {
+          "type": "comment_type",
+          "nullable": false
+        },
+        "entity_id": {
+          "type": "uuid",
+          "nullable": false
+        },
+        "user_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "auth.users.id"
+        },
+        "parent_comment_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "comments.id"
+        },
+        "content": {
+          "type": "text",
+          "nullable": false
+        },
+        "mentions": {
+          "type": "uuid[]",
+          "nullable": true
+        },
+        "is_edited": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "edited_at": {
+          "type": "timestamptz",
+          "nullable": true
+        },
+        "edit_history": {
+          "type": "jsonb",
+          "nullable": true,
+          "default": "[]"
+        },
+        "is_pinned": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "is_resolved": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "resolved_by": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "resolved_at": {
+          "type": "timestamptz",
+          "nullable": true
+        },
+        "reactions": {
+          "type": "jsonb",
+          "nullable": true,
+          "default": "{}"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "conferences": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "lab_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "labs.id"
+        },
+        "related_project_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "projects.id"
+        },
+        "name": {
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        "location": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "start_date": {
+          "type": "date",
+          "nullable": true
+        },
+        "end_date": {
+          "type": "date",
+          "nullable": true
+        },
+        "website": {
+          "type": "varchar(1000)",
+          "nullable": true
+        },
+        "abstract_title": {
+          "type": "varchar(500)",
+          "nullable": true
+        },
+        "abstract_text": {
+          "type": "text",
+          "nullable": true
+        },
+        "submission_deadline": {
+          "type": "date",
+          "nullable": true
+        },
+        "submission_date": {
+          "type": "date",
+          "nullable": true
+        },
+        "presentation_type": {
+          "type": "varchar(50)",
+          "nullable": true
+        },
+        "status": {
+          "type": "conference_status",
+          "nullable": true,
+          "default": "planning"
+        },
+        "acceptance_date": {
+          "type": "date",
+          "nullable": true
+        },
+        "rejection_date": {
+          "type": "date",
+          "nullable": true
+        },
+        "presentation_date": {
+          "type": "date",
+          "nullable": true
+        },
+        "primary_presenter_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "co_presenters": {
+          "type": "uuid[]",
+          "nullable": true
+        },
+        "abstract_file_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "files.id"
+        },
+        "presentation_file_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "files.id"
+        },
+        "poster_file_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "files.id"
+        },
+        "registration_fee": {
+          "type": "numeric(8,2)",
+          "nullable": true
+        },
+        "travel_budget": {
+          "type": "numeric(8,2)",
+          "nullable": true
+        },
+        "actual_cost": {
+          "type": "numeric(8,2)",
+          "nullable": true
+        },
+        "notes": {
+          "type": "text",
+          "nullable": true
+        },
+        "added_by": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "auth.users.id"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "deadlines": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "lab_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "labs.id"
+        },
+        "title": {
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        "description": {
+          "type": "text",
+          "nullable": true
+        },
+        "type": {
+          "type": "deadline_type",
+          "nullable": false
+        },
+        "due_date": {
+          "type": "timestamptz",
+          "nullable": false
+        },
+        "assigned_to": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "created_by": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "is_completed": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "priority": {
+          "type": "priority",
+          "nullable": true,
+          "default": "medium"
+        },
+        "is_critical": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "related_project_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "projects.id"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "labs": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "name": {
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        "description": {
+          "type": "text",
+          "nullable": true
+        },
+        "institution": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "department": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "pi_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "status": {
+          "type": "lab_status",
+          "nullable": true,
+          "default": "active"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "lab_members": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "lab_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "labs.id"
+        },
+        "user_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "auth.users.id"
+        },
+        "role": {
+          "type": "user_role",
+          "nullable": false,
+          "default": "lab_assistant"
+        },
+        "joined_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "is_active": {
+          "type": "boolean",
+          "nullable": true,
+          "default": true
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "projects": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "lab_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "labs.id"
+        },
+        "bucket_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "buckets.id"
+        },
+        "title": {
+          "type": "varchar(500)",
+          "nullable": false
+        },
+        "description": {
+          "type": "text",
+          "nullable": true
+        },
+        "status": {
+          "type": "project_status",
+          "nullable": true,
+          "default": "planning"
+        },
+        "priority": {
+          "type": "priority",
+          "nullable": true,
+          "default": "medium"
+        },
+        "lead_investigator_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "start_date": {
+          "type": "date",
+          "nullable": true
+        },
+        "end_date": {
+          "type": "date",
+          "nullable": true
+        },
+        "irb_status": {
+          "type": "irb_status",
+          "nullable": true,
+          "default": "not_required"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "tasks": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "project_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "projects.id"
+        },
+        "bucket_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "buckets.id"
+        },
+        "assigned_to": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "created_by": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "auth.users.id"
+        },
+        "title": {
+          "type": "varchar(500)",
+          "nullable": false
+        },
+        "description": {
+          "type": "text",
+          "nullable": true
+        },
+        "status": {
+          "type": "task_status",
+          "nullable": true,
+          "default": "todo"
+        },
+        "priority": {
+          "type": "priority",
+          "nullable": true,
+          "default": "medium"
+        },
+        "due_date": {
+          "type": "date",
+          "nullable": true
+        },
+        "completed_at": {
+          "type": "timestamptz",
+          "nullable": true
+        },
+        "effort_level": {
+          "type": "effort_level",
+          "nullable": true,
+          "default": "medium"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "user_profiles": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "auth.users.id",
+          "primary_key": true
+        },
+        "first_name": {
+          "type": "varchar(100)",
+          "nullable": true
+        },
+        "last_name": {
+          "type": "varchar(100)",
+          "nullable": true
+        },
+        "display_name": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "email": {
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        "avatar_url": {
+          "type": "text",
+          "nullable": true
+        },
+        "bio": {
+          "type": "text",
+          "nullable": true
+        },
+        "institution": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "department": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "position": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "phone": {
+          "type": "varchar(20)",
+          "nullable": true
+        },
+        "timezone": {
+          "type": "varchar(50)",
+          "nullable": true,
+          "default": "UTC"
+        },
+        "active_lab_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "labs.id"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "meetings": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "lab_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "labs.id"
+        },
+        "title": {
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        "description": {
+          "type": "text",
+          "nullable": true
+        },
+        "type": {
+          "type": "meeting_type",
+          "nullable": true,
+          "default": "standup"
+        },
+        "scheduled_at": {
+          "type": "timestamptz",
+          "nullable": false
+        },
+        "duration_minutes": {
+          "type": "integer",
+          "nullable": true,
+          "default": 30
+        },
+        "location": {
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        "organizer_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "auth.users.id"
+        },
+        "attendees": {
+          "type": "uuid[]",
+          "nullable": true
+        },
+        "transcript": {
+          "type": "text",
+          "nullable": true
+        },
+        "summary": {
+          "type": "text",
+          "nullable": true
+        },
+        "is_completed": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "ideas": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "lab_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "labs.id"
+        },
+        "title": {
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        "description": {
+          "type": "text",
+          "nullable": true
+        },
+        "category": {
+          "type": "idea_category",
+          "nullable": true,
+          "default": "research"
+        },
+        "status": {
+          "type": "idea_status",
+          "nullable": true,
+          "default": "draft"
+        },
+        "impact_level": {
+          "type": "impact_level",
+          "nullable": true,
+          "default": "medium"
+        },
+        "effort_level": {
+          "type": "effort_level",
+          "nullable": true,
+          "default": "medium"
+        },
+        "created_by": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "auth.users.id"
+        },
+        "tags": {
+          "type": "text[]",
+          "nullable": true
+        },
+        "votes_count": {
+          "type": "integer",
+          "nullable": true,
+          "default": 0
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "files": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "name": {
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        "original_name": {
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        "file_type": {
+          "type": "file_type",
+          "nullable": true,
+          "default": "document"
+        },
+        "mime_type": {
+          "type": "varchar(100)",
+          "nullable": true
+        },
+        "size_bytes": {
+          "type": "bigint",
+          "nullable": false
+        },
+        "storage_path": {
+          "type": "text",
+          "nullable": false
+        },
+        "storage_provider": {
+          "type": "storage_provider",
+          "nullable": true,
+          "default": "supabase"
+        },
+        "lab_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "labs.id"
+        },
+        "uploaded_by": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "auth.users.id"
+        },
+        "project_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "projects.id"
+        },
+        "bucket_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "buckets.id"
+        },
+        "is_public": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "description": {
+          "type": "text",
+          "nullable": true
+        },
+        "tags": {
+          "type": "text[]",
+          "nullable": true
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    },
+    "notifications": {
+      "columns": {
+        "id": {
+          "type": "uuid",
+          "nullable": false,
+          "default": "extensions.uuid_generate_v4()",
+          "primary_key": true
+        },
+        "user_id": {
+          "type": "uuid",
+          "nullable": false,
+          "references": "auth.users.id"
+        },
+        "lab_id": {
+          "type": "uuid",
+          "nullable": true,
+          "references": "labs.id"
+        },
+        "type": {
+          "type": "notification_type",
+          "nullable": false
+        },
+        "title": {
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        "message": {
+          "type": "text",
+          "nullable": false
+        },
+        "entity_type": {
+          "type": "varchar(50)",
+          "nullable": true
+        },
+        "entity_id": {
+          "type": "uuid",
+          "nullable": true
+        },
+        "is_read": {
+          "type": "boolean",
+          "nullable": true,
+          "default": false
+        },
+        "read_at": {
+          "type": "timestamptz",
+          "nullable": true
+        },
+        "action_url": {
+          "type": "varchar(1000)",
+          "nullable": true
+        },
+        "metadata": {
+          "type": "jsonb",
+          "nullable": true,
+          "default": "{}"
+        },
+        "created_at": {
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "now()"
+        }
+      }
+    }
+  },
+  "notes": {
+    "total_tables": 34,
+    "core_tables_documented": [
+      "action_items", "activity_logs", "buckets", "calendar_events", 
+      "calendar_integrations", "comments", "conferences", "deadlines", 
+      "labs", "lab_members", "projects", "tasks", "user_profiles", 
+      "meetings", "ideas", "files", "notifications"
+    ],
+    "additional_tables": [
+      "deadline_reminders", "effort_reporting", "file_permissions", 
+      "file_versions", "grants", "idea_votes", "lab_invitations", 
+      "lab_invite_codes", "meeting_attendance", "patents", "peer_reviews", 
+      "procurement_requests", "publications", "task_dependencies", 
+      "usage_analytics", "user_preferences", "vendors"
+    ],
+    "description": "This schema represents the core tables in the multi-lab research management system. All tables use Row Level Security (RLS) for lab-based data isolation. The lab_members table contains 48+ granular permissions for fine-grained access control."
+  }
+}

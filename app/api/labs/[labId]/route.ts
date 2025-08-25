@@ -1,240 +1,181 @@
+/**
+ * Simple lab API - GET, PATCH, DELETE operations
+ */
+
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
-import { rateLimit } from '@/lib/rate-limit/rate-limiter'
-import { z } from 'zod'
 
-const UpdateLabSchema = z.object({
-  name: z.string().min(2, 'Lab name must be at least 2 characters').max(100, 'Lab name too long').optional(),
-  description: z.string().max(500, 'Description too long').optional(),
-  is_active: z.boolean().optional(),
-})
-
-// GET /api/labs/[labId] - Get specific lab details
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ labId: string }> }
 ) {
-  const { labId } = await params
   try {
-    await rateLimit('api', 30)
-    
+    const { labId } = await params
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (authError || !user) {
+    // Check auth
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    // Check if user has access to this lab
-    const { data: membership, error: memberError } = await supabase
-      .from('lab_members')
-      .select('role, can_manage_members, can_create_studies, can_edit_studies, can_delete_studies, can_manage_tasks, can_view_reports, can_export_data, can_manage_lab, can_manage_permissions')
-      .eq('lab_id', labId)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .single()
-
-    if (memberError || !membership) {
-      return NextResponse.json({ error: 'Lab not found or access denied' }, { status: 404 })
-    }
-
-    // Get lab details
-    const { data: lab, error: labError } = await supabase
+    
+    // Get lab and check membership
+    const { data: lab, error } = await supabase
       .from('labs')
       .select('*')
       .eq('id', labId)
       .single()
-
-    if (labError) {
-      console.error('Error fetching lab:', labError)
-      return NextResponse.json({ error: 'Failed to fetch lab' }, { status: 500 })
+    
+    if (error || !lab) {
+      return NextResponse.json({ error: 'Lab not found' }, { status: 404 })
     }
-
-    // Get lab statistics
+    
+    const { data: membership } = await supabase
+      .from('lab_members')
+      .select('*')
+      .eq('lab_id', labId)
+      .eq('user_id', user.id)
+      .single()
+    
+    if (!membership) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+    
+    // Get simple stats
     const { count: memberCount } = await supabase
       .from('lab_members')
       .select('*', { count: 'exact', head: true })
       .eq('lab_id', labId)
-      .eq('is_active', true)
-
-    const { count: studyCount } = await supabase
-      .from('studies')
-      .select('*', { count: 'exact', head: true })
+    
+    const { data: buckets } = await supabase
+      .from('buckets')
+      .select('id')
       .eq('lab_id', labId)
-
+      .is('deleted_at', null)
+    
+    let projectCount = 0
+    if (buckets && buckets.length > 0) {
+      const { count } = await supabase
+        .from('projects')
+        .select('*', { count: 'exact', head: true })
+        .in('bucket_id', buckets.map(b => b.id))
+        .is('deleted_at', null)
+      projectCount = count || 0
+    }
+    
     return NextResponse.json({
-      lab: {
-        ...lab,
-        userRole: membership.role,
-        userPermissions: {
-          can_manage_members: membership.can_manage_members,
-          can_create_studies: membership.can_create_studies,
-          can_edit_studies: membership.can_edit_studies,
-          can_delete_studies: membership.can_delete_studies,
-          can_manage_tasks: membership.can_manage_tasks,
-          can_view_reports: membership.can_view_reports,
-          can_export_data: membership.can_export_data,
-          can_manage_lab: membership.can_manage_lab,
-          can_manage_permissions: membership.can_manage_permissions,
-        },
+      lab,
+      membership,
+      stats: {
         memberCount: memberCount || 0,
-        studyCount: studyCount || 0,
-        bucketCount: 0, // Placeholder
+        bucketCount: buckets?.length || 0,
+        projectCount
       }
     })
-
+    
   } catch (error) {
     console.error('Lab GET error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
 
-// PATCH /api/labs/[labId] - Update lab details
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ labId: string }> }
 ) {
-  const { labId } = await params
   try {
-    await rateLimit('api', 10)
-    
+    const { labId } = await params
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (authError || !user) {
+    // Check auth
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    // Check if user can manage this lab
-    const { data: membership, error: memberError } = await supabase
+    
+    // Check permissions
+    const { data: membership } = await supabase
       .from('lab_members')
-      .select('role, can_manage_lab')
+      .select('role, can_manage_members')
       .eq('lab_id', labId)
       .eq('user_id', user.id)
-      .eq('is_active', true)
       .single()
-
-    if (memberError || !membership) {
-      return NextResponse.json({ error: 'Lab not found or access denied' }, { status: 404 })
+    
+    if (!membership || (!membership.can_manage_members && membership.role !== 'principal_investigator')) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
-
-    if (!membership.can_manage_lab) {
-      return NextResponse.json({ error: 'Insufficient permissions to edit lab' }, { status: 403 })
-    }
-
+    
+    // Update lab
     const body = await request.json()
-    const validatedData = UpdateLabSchema.parse(body)
-
-    // Update the lab
-    const { data: updatedLab, error: updateError } = await supabase
+    const { name, description } = body
+    
+    if (!name || name.length < 2) {
+      return NextResponse.json({ error: 'Invalid lab name' }, { status: 400 })
+    }
+    
+    const { data: lab, error } = await supabase
       .from('labs')
       .update({
-        ...validatedData,
-        updated_at: new Date().toISOString(),
+        name,
+        description,
+        updated_at: new Date().toISOString()
       })
       .eq('id', labId)
       .select()
       .single()
-
-    if (updateError) {
-      console.error('Error updating lab:', updateError)
-      if (updateError.code === '23505') {
-        return NextResponse.json({ error: 'A lab with this name already exists' }, { status: 409 })
-      }
-      return NextResponse.json({ error: 'Failed to update lab' }, { status: 500 })
+    
+    if (error) {
+      return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
     }
-
-    return NextResponse.json({ lab: updatedLab })
-
+    
+    return NextResponse.json({ lab })
+    
   } catch (error) {
     console.error('Lab PATCH error:', error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ 
-        error: 'Validation failed', 
-        details: error.errors 
-      }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
 
-// DELETE /api/labs/[labId] - Delete/deactivate lab
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ labId: string }> }
 ) {
-  const { labId } = await params
   try {
-    await rateLimit('api', 5) // Stricter limit for deletion
-    
+    const { labId } = await params
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (authError || !user) {
+    // Check auth
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    // Check if user can manage this lab
-    const { data: membership, error: memberError } = await supabase
+    
+    // Only PI can delete
+    const { data: membership } = await supabase
       .from('lab_members')
-      .select('role, can_manage_lab')
+      .select('role')
       .eq('lab_id', labId)
       .eq('user_id', user.id)
-      .eq('is_active', true)
       .single()
-
-    if (memberError || !membership) {
-      return NextResponse.json({ error: 'Lab not found or access denied' }, { status: 404 })
+    
+    if (!membership || membership.role !== 'principal_investigator') {
+      return NextResponse.json({ error: 'Only PI can delete lab' }, { status: 403 })
     }
-
-    if (!membership.can_manage_lab) {
-      return NextResponse.json({ error: 'Insufficient permissions to delete lab' }, { status: 403 })
+    
+    // Delete lab (cascades to all related data)
+    const { error } = await supabase
+      .from('labs')
+      .delete()
+      .eq('id', labId)
+    
+    if (error) {
+      return NextResponse.json({ error: 'Failed to delete' }, { status: 500 })
     }
-
-    // Check if user is principal_investigator (only they can delete)
-    if (membership.role !== 'principal_investigator') {
-      return NextResponse.json({ error: 'Only principal investigators can delete labs' }, { status: 403 })
-    }
-
-    // Get confirmation query param for hard delete vs soft delete
-    const url = new URL(request.url)
-    const hardDelete = url.searchParams.get('hard') === 'true'
-
-    if (hardDelete) {
-      // Hard delete - actually remove the lab and all related data
-      // This is dangerous and should be used carefully
-      const { error: deleteError } = await supabase
-        .from('labs')
-        .delete()
-        .eq('id', labId)
-
-      if (deleteError) {
-        console.error('Error deleting lab:', deleteError)
-        return NextResponse.json({ error: 'Failed to delete lab' }, { status: 500 })
-      }
-    } else {
-      // Soft delete - just deactivate the lab
-      const { error: deactivateError } = await supabase
-        .from('labs')
-        .update({ 
-          is_active: false,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', labId)
-
-      if (deactivateError) {
-        console.error('Error deactivating lab:', deactivateError)
-        return NextResponse.json({ error: 'Failed to deactivate lab' }, { status: 500 })
-      }
-    }
-
-    return NextResponse.json({ 
-      message: hardDelete ? 'Lab deleted successfully' : 'Lab deactivated successfully',
-      deleted: hardDelete
-    })
-
+    
+    return NextResponse.json({ success: true })
+    
   } catch (error) {
     console.error('Lab DELETE error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

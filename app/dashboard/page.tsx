@@ -23,25 +23,22 @@ export default async function DashboardPage() {
     // Ensure user profile exists
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('id, last_selected_lab_id')
+      .select('id')
       .eq('id', user.id)
       .single()
 
     if (profileError && profileError.code === 'PGRST116') {
-      // Create profile if it doesn't exist
+      // Create profile if it doesn't exist (handle_new_user trigger should have done this)
       await supabase
         .from('user_profiles')
         .insert({
           id: user.id,
           email: user.email!,
-          first_name: user.user_metadata?.first_name || null,
-          last_name: user.user_metadata?.last_name || null,
           full_name: user.user_metadata?.full_name || 
                     (user.user_metadata?.first_name && user.user_metadata?.last_name
                       ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
                       : null),
-          avatar_url: user.user_metadata?.avatar_url || null,
-          is_active: true
+          avatar_url: user.user_metadata?.avatar_url || null
         })
       console.log('✅ [Dashboard] Created user profile')
     }
@@ -61,7 +58,6 @@ export default async function DashboardPage() {
         )
       `)
       .eq('user_id', user.id)
-      .eq('is_active', true)
 
     let labsWithStats = []
     
@@ -76,7 +72,6 @@ export default async function DashboardPage() {
             .from('lab_members')
             .select('*', { count: 'exact', head: true })
             .eq('lab_id', lab.id)
-            .eq('is_active', true)
 
           // Get bucket count
           const { data: buckets } = await supabase

@@ -20,10 +20,9 @@ export default async function LabTasksPage({ params }: { params: Promise<{ labId
     // Verify user has access to this lab
     const { data: membership, error: memberError } = await supabase
       .from('lab_members')
-      .select('id, role, can_create_tasks, can_assign_tasks, can_edit_all_tasks, can_delete_tasks, can_view_all_tasks')
+      .select('id, role, can_create_tasks, can_edit_all_tasks, can_delete_tasks')
       .eq('lab_id', labId)
       .eq('user_id', user.id)
-      .eq('is_active', true)
       .single()
 
     if (memberError || !membership) {
@@ -50,13 +49,10 @@ export default async function LabTasksPage({ params }: { params: Promise<{ labId
         user_profiles (
           id,
           email,
-          full_name,
-          first_name,
-          last_name
+          full_name
         )
       `)
       .eq('lab_id', labId)
-      .eq('is_active', true)
 
     if (membersError) {
       console.error('Error fetching lab members:', membersError)
@@ -78,7 +74,7 @@ export default async function LabTasksPage({ params }: { params: Promise<{ labId
       // Get projects
       const { data: projectsData } = await supabase
         .from('projects')
-        .select('id, name, bucket_id')
+        .select('id, title, bucket_id')
         .in('bucket_id', bucketIds)
         .order('name', { ascending: true })
 
@@ -127,13 +123,13 @@ export default async function LabTasksPage({ params }: { params: Promise<{ labId
         buckets={buckets || []}
         projects={projects}
         initialTasks={tasks}
-        labMembers={transformedMembers}
+        labMembers={transformedMembers as any}
         userPermissions={{
           canCreate: membership.can_create_tasks || false,
-          canAssign: membership.can_assign_tasks || false,
+          canAssign: membership.can_create_tasks || false, // Use create permission for assign
           canEdit: membership.can_edit_all_tasks || false,
           canDelete: membership.can_delete_tasks || false,
-          canView: membership.can_view_all_tasks || false
+          canView: true // All lab members can view tasks
         }}
       />
     )

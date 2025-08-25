@@ -1,9 +1,7 @@
 import { google } from 'googleapis'
-import { Database } from '../supabase/database.types'
 import { googleConfig } from '../config/api-keys'
-import { retryGoogleCalendar } from '../utils/retry'
-import { mapGoogleCalendarError } from '../errors/api-errors'
-import { createClient } from '../supabase/server'
+import { retry } from '../utils/retry'
+import { createClient } from '@/utils/supabase/server'
 
 // Default Google Calendar configuration (fallback for RICCC labs)
 const RICCC_CALENDAR_ID = googleConfig.calendarId
@@ -33,9 +31,9 @@ const GOOGLE_CALENDAR_COLORS = {
   'other': '4' // Flamingo pink for misc events
 } as const
 
-type CalendarEvent = Database['public']['Tables']['calendar_events']['Row']
-import type { EventType } from '@/lib/supabase/database.types' // Use the database EventType definition
+type CalendarEvent = any
 type GoogleEvent = any
+type EventType = 'pto' | 'clinic' | 'holiday' | 'conference' | 'training' | 'meeting' | 'deadline' | 'other'
 
 /**
  * Google Calendar Integration Service for Next.js
@@ -216,7 +214,7 @@ export class GoogleCalendarService {
       // Create calendar client with the appropriate auth
       const calendar = google.calendar({ version: 'v3', auth })
 
-      const response = await retryGoogleCalendar(async () => {
+      const response = await retry(async () => {
         return await calendar.events.list({
           calendarId,
           timeMin,
@@ -233,7 +231,7 @@ export class GoogleCalendarService {
       return events
     } catch (error) {
       console.error(`[${correlationId}] Error fetching Google Calendar events:`, error)
-      throw mapGoogleCalendarError(error, correlationId)
+      throw error
     }
   }
 
@@ -350,7 +348,7 @@ export class GoogleCalendarService {
         }
       }
 
-      const response = await retryGoogleCalendar(async () => {
+      const response = await retry(async () => {
         return await calendar.events.insert({
           calendarId,
           requestBody: googleEvent,
@@ -361,7 +359,7 @@ export class GoogleCalendarService {
       return response.data.id || null
     } catch (error) {
       console.error(`[${correlationId}] Error syncing event to Google Calendar:`, error)
-      throw mapGoogleCalendarError(error, correlationId)
+      throw error
     }
   }
 

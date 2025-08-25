@@ -22,9 +22,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useDeleteConfirmation } from '@/components/ui/delete-confirmation-dialog'
 import { cn } from '@/lib/utils'
 import { Plus, MoreVertical, Clock, Calendar, Flag, User, CheckCircle2, Circle, AlertCircle, Pause, Filter, Search, ChevronRight, ChevronDown, Layers, Hash, GripVertical } from 'lucide-react'
-import type { Task, TaskWithRelations } from '@/lib/services/hierarchy.service'
-import type { Priority } from '@/lib/supabase/database.types'
-import { useTasks } from '@/lib/hooks/use-hierarchy'
+import type { Task } from '@/lib/db/types'
+import { useTasks } from '@/lib/hooks/use-data'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 
@@ -42,7 +41,7 @@ interface KanbanColumn {
 interface KanbanBoardProps {
   study_id: string // Keep study_id for UI compatibility (maps to project_id in backend)
   lab_id: string
-  onTaskClick?: (task: TaskWithRelations) => void
+  onTaskClick?: (task: Task) => void
   className?: string
 }
 
@@ -53,9 +52,8 @@ interface KanbanBoardProps {
 const COLUMNS: KanbanColumn[] = [
   { id: 'todo', title: 'To Do', color: 'bg-slate-500', icon: <Circle className="w-4 h-4" /> },
   { id: 'in_progress', title: 'In Progress', color: 'bg-blue-500', icon: <Clock className="w-4 h-4" /> },
-  { id: 'blocked', title: 'Blocked', color: 'bg-red-500', icon: <AlertCircle className="w-4 h-4" /> },
-  { id: 'review', title: 'In Review', color: 'bg-amber-500', icon: <Pause className="w-4 h-4" /> },
   { id: 'done', title: 'Done', color: 'bg-green-500', icon: <CheckCircle2 className="w-4 h-4" /> },
+  { id: 'archived', title: 'Archived', color: 'bg-gray-500', icon: <AlertCircle className="w-4 h-4" /> },
 ]
 
 const PRIORITY_COLORS = {
@@ -70,9 +68,9 @@ const PRIORITY_COLORS = {
 // ============================================
 
 interface TaskCardProps {
-  task: TaskWithRelations
+  task: Task
   isDragging?: boolean
-  onEdit: (task: TaskWithRelations) => void
+  onEdit: (task: Task) => void
   onDelete: (id: string) => void
 }
 
@@ -90,9 +88,7 @@ function TaskCard({ task, isDragging, onEdit, onDelete }: TaskCardProps) {
     transition,
   }
 
-  const [showSubtasks, setShowSubtasks] = useState(false)
-  const hasSubtasks = (task._count?.subtasks || 0) > 0
-  const completionPercentage = task.completion_percentage || 0
+  // Removed subtask support - not in simplified schema
 
   return (
     <div
@@ -163,56 +159,12 @@ function TaskCard({ task, isDragging, onEdit, onDelete }: TaskCardProps) {
               </Badge>
             )}
             
-            {task.tags && task.tags.length > 0 && (
-              <Badge variant="outline" className="text-xs">
-                <Hash className="w-3 h-3 mr-1" />
-                {task.tags[0]}
-                {task.tags.length > 1 && ` +${task.tags.length - 1}`}
-              </Badge>
-            )}
+            {/* Tags removed from simplified schema */}
           </div>
         </CardHeader>
         
         <CardContent className="pt-0">
-          {hasSubtasks && (
-            <div className="space-y-2">
-              <button
-                onClick={() => setShowSubtasks(!showSubtasks)}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showSubtasks ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                <Layers className="w-3 h-3" />
-                {task._count?.subtasks} subtask{task._count?.subtasks !== 1 ? 's' : ''}
-                {task._count?.completed_subtasks ? ` (${task._count.completed_subtasks} done)` : ''}
-              </button>
-              
-              {completionPercentage > 0 && (
-                <Progress value={completionPercentage} className="h-1" />
-              )}
-            </div>
-          )}
-          
-          {task.assignee && (
-            <div className="flex items-center gap-2 mt-3">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={task.assignee.avatar_url || undefined} />
-                <AvatarFallback className="text-xs">
-                  {task.assignee.full_name?.charAt(0) || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-xs text-muted-foreground">
-                {task.assignee.full_name}
-              </span>
-            </div>
-          )}
-          
-          {task.estimated_hours && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
-              <Clock className="w-3 h-3" />
-              {task.estimated_hours}h estimated
-              {task.actual_hours && ` (${task.actual_hours}h actual)`}
-            </div>
-          )}
+          {/* Simplified - removed subtasks, assignee display, and hours tracking */}
         </CardContent>
       </Card>
     </div>
@@ -225,9 +177,9 @@ function TaskCard({ task, isDragging, onEdit, onDelete }: TaskCardProps) {
 
 interface ColumnProps {
   column: KanbanColumn
-  tasks: TaskWithRelations[]
+  tasks: Task[]
   onAddTask: (status: Task['status']) => void
-  onEditTask: (task: TaskWithRelations) => void
+  onEditTask: (task: Task) => void
   onDeleteTask: (id: string) => void
 }
 
@@ -298,21 +250,21 @@ function Column({ column, tasks, onAddTask, onEditTask, onDeleteTask }: ColumnPr
 // ============================================
 
 export function KanbanBoard({ study_id, lab_id, onTaskClick, className }: KanbanBoardProps) {
-  const { tasks, loading, createTask, updateTask, deleteTask } = useTasks(study_id)
+  const { tasks, loading, addTask, editTask, removeTask } = useTasks(study_id)
   const { showDeleteConfirmation, DeleteDialog } = useDeleteConfirmation()
   const [activeId, setActiveId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterPriority, setFilterPriority] = useState<Task['priority'] | 'ALL'>('ALL')
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [addingToColumn, setAddingToColumn] = useState<Task['status'] | null>(null)
-  const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(null)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   
   // Group tasks by status
   const tasksByStatus = useMemo(() => {
     const grouped = COLUMNS.reduce((acc, column) => {
       acc[column.id as NonNullable<Task['status']>] = []
       return acc
-    }, {} as Record<NonNullable<Task['status']>, TaskWithRelations[]>)
+    }, {} as Record<NonNullable<Task['status']>, Task[]>)
     
     tasks
       .filter(task => {
@@ -366,7 +318,7 @@ export function KanbanBoard({ study_id, lab_id, onTaskClick, className }: Kanban
     // Find which column it was dropped into
     const overColumn = COLUMNS.find(col => col.id === over.id)
     if (overColumn && activeTask.status !== overColumn.id) {
-      await updateTask(activeTask.id, { status: overColumn.id })
+      await editTask(activeTask.id, { status: overColumn.id })
     }
     
     setActiveId(null)
@@ -384,7 +336,7 @@ export function KanbanBoard({ study_id, lab_id, onTaskClick, className }: Kanban
     
     // If dragging over another task, get its status
     if (overTask && activeTask.status !== overTask.status) {
-      updateTask(activeTask.id, { status: overTask.status })
+      editTask(activeTask.id, { status: overTask.status })
     }
   }
   
@@ -396,23 +348,23 @@ export function KanbanBoard({ study_id, lab_id, onTaskClick, className }: Kanban
   const handleCreateTask = async (data: any) => {
     if (!addingToColumn) return
     
-    await createTask({
+    await addTask({
       ...data,
       status: addingToColumn
-    }, lab_id)
+    })
     
     setIsAddingTask(false)
     setAddingToColumn(null)
   }
   
-  const handleEditTask = (task: TaskWithRelations) => {
+  const handleEditTask = (task: Task) => {
     setEditingTask(task)
   }
   
   const handleUpdateTask = async (data: any) => {
     if (!editingTask) return
     
-    await updateTask(editingTask.id, data)
+    await editTask(editingTask.id, data)
     setEditingTask(null)
   }
   
@@ -420,8 +372,8 @@ export function KanbanBoard({ study_id, lab_id, onTaskClick, className }: Kanban
     const task = tasks.find(t => t.id === taskId)
     if (!task) return
     
-    // Check if task has subtasks to determine severity
-    const hasSubtasks = (task._count?.subtasks || 0) > 0
+    // Simplified - no subtasks in new schema
+    const hasSubtasks = false
     
     showDeleteConfirmation(
       {
@@ -433,7 +385,7 @@ export function KanbanBoard({ study_id, lab_id, onTaskClick, className }: Kanban
       },
       async () => {
         try {
-          await deleteTask(taskId)
+          await removeTask(taskId)
           toast.success('Task deleted successfully')
         } catch (error) {
           toast.error('Failed to delete task')
@@ -481,10 +433,10 @@ export function KanbanBoard({ study_id, lab_id, onTaskClick, className }: Kanban
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All</SelectItem>
-              <SelectItem value="LOW">Low</SelectItem>
-              <SelectItem value="MEDIUM">Medium</SelectItem>
-              <SelectItem value="HIGH">High</SelectItem>
-              <SelectItem value="URGENT">Urgent</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="urgent">Urgent</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -569,7 +521,7 @@ export function KanbanBoard({ study_id, lab_id, onTaskClick, className }: Kanban
 // ============================================
 
 interface TaskFormProps {
-  task?: TaskWithRelations
+  task?: Task
   defaultStatus?: Task['status']
   onSubmit: (data: any) => void
   onCancel: () => void
@@ -580,18 +532,14 @@ function TaskForm({ task, defaultStatus, onSubmit, onCancel }: TaskFormProps) {
     title: task?.title || '',
     description: task?.description || '',
     status: task?.status || defaultStatus || 'todo',
-    priority: task?.priority || 'MEDIUM',
-    due_date: task?.due_date ? format(new Date(task.due_date), 'yyyy-MM-dd') : '',
-    estimated_hours: task?.estimated_hours || '',
-    tags: task?.tags?.join(', ') || ''
+    priority: task?.priority || 'medium',
+    due_date: task?.due_date ? format(new Date(task.due_date), 'yyyy-MM-dd') : ''
   })
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSubmit({
       ...formData,
-      estimated_hours: formData.estimated_hours ? Number(formData.estimated_hours) : undefined,
-      tags: formData.tags ? formData.tags.split(',').map(t => t.trim()) : undefined
     })
   }
   
@@ -642,45 +590,22 @@ function TaskForm({ task, defaultStatus, onSubmit, onCancel }: TaskFormProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="LOW">Low</SelectItem>
-              <SelectItem value="MEDIUM">Medium</SelectItem>
-              <SelectItem value="HIGH">High</SelectItem>
-              <SelectItem value="URGENT">Urgent</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="urgent">Urgent</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
       
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="due_date">Due Date</Label>
-          <Input
-            id="due_date"
-            type="date"
-            value={formData.due_date}
-            onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="estimated_hours">Estimated Hours</Label>
-          <Input
-            id="estimated_hours"
-            type="number"
-            step="0.5"
-            value={formData.estimated_hours}
-            onChange={(e) => setFormData({ ...formData, estimated_hours: e.target.value })}
-          />
-        </div>
-      </div>
-      
       <div>
-        <Label htmlFor="tags">Tags (comma separated)</Label>
+        <Label htmlFor="due_date">Due Date</Label>
         <Input
-          id="tags"
-          value={formData.tags}
-          onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-          placeholder="bug, feature, documentation"
+          id="due_date"
+          type="date"
+          value={formData.due_date}
+          onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
         />
       </div>
       

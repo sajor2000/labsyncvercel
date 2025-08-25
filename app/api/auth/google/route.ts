@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      throw new AuthenticationError('Authentication required', { authError: authError?.message }, correlationId)
+      throw new AuthenticationError('Authentication required')
     }
 
     // Get Google OAuth authorization URL
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      throw new AuthenticationError('Authentication required', { authError: authError?.message }, correlationId)
+      throw new AuthenticationError('Authentication required')
     }
 
     const { code, state } = await request.json()

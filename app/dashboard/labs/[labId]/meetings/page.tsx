@@ -20,10 +20,9 @@ export default async function LabMeetingsPage({ params }: { params: Promise<{ la
     // Verify user has access to this lab
     const { data: membership, error: memberError } = await supabase
       .from('lab_members')
-      .select('id, role, can_schedule_meetings, can_manage_standups')
+      .select('id, role, can_create_tasks, can_edit_all_tasks')
       .eq('lab_id', labId)
       .eq('user_id', user.id)
-      .eq('is_active', true)
       .single()
 
     if (memberError || !membership) {
@@ -41,69 +40,88 @@ export default async function LabMeetingsPage({ params }: { params: Promise<{ la
       redirect('/dashboard')
     }
 
-    // Get lab's meetings (using the meetings table if it exists)
-    const { data: meetings, error: meetingsError } = await supabase
-      .from('meetings')
-      .select(`
-        id,
-        title,
-        description,
-        meeting_type,
-        start_datetime,
-        end_datetime,
-        location,
-        transcript,
-        summary,
-        action_items_extracted,
-        attendee_count,
-        recording_url,
-        is_recurring,
-        recurrence_pattern,
-        status,
-        created_at,
-        updated_at
-      `)
+    // Get lab's meetings from calendar_events
+    const { data: calendarEvents, error: meetingsError } = await supabase
+      .from('calendar_events')
+      .select('*')
       .eq('lab_id', labId)
-      .order('start_datetime', { ascending: false })
+      .or('summary.ilike.%meeting%,summary.ilike.%standup%')
+      .order('start_time', { ascending: false })
       .limit(20)
+    
+    // Transform calendar events to meeting format
+    const meetings = calendarEvents?.map(event => ({
+      id: event.id,
+      title: event.summary,
+      description: event.description,
+      meeting_type: 'scheduled' as const,
+      meeting_date: event.start_time,
+      start_datetime: event.start_time,
+      end_datetime: event.end_time,
+      location: event.location,
+      attendees: event.attendees || [],
+      all_day: event.all_day,
+      google_event_id: event.google_event_id,
+      google_meet_link: event.google_meet_link,
+      transcript: null,
+      ai_summary: null,
+      duration_minutes: null,
+      action_items_count: 0,
+      created_at: event.created_at,
+      updated_at: event.updated_at
+    })) || []
 
-    // Get standup meetings (AI-processed meetings)
-    const { data: standupMeetings, error: standupError } = await supabase
-      .from('standup_meetings')
-      .select(`
-        id,
-        title,
-        description,
-        meeting_date,
-        transcript,
-        ai_summary,
-        attendees,
-        duration_minutes,
-        recording_url,
-        action_items_count,
-        created_at,
-        updated_at
-      `)
-      .eq('lab_id', labId)
-      .order('meeting_date', { ascending: false })
-      .limit(10)
+    // Get standup meetings (AI-processed meetings) - table may not exist
+    let standupMeetings: any[] = []
+    try {
+      const { data, error } = await supabase
+        .from('standup_meetings')
+        .select(`
+          id,
+          title,
+          description,
+          meeting_date,
+          transcript,
+          ai_summary,
+          attendees,
+          duration_minutes,
+          recording_url,
+          action_items_count,
+          created_at,
+          updated_at
+        `)
+        .eq('lab_id', labId)
+        .order('meeting_date', { ascending: false })
+        .limit(10)
+      
+      if (!error) standupMeetings = data || []
+    } catch (e) {
+      console.log('Standup meetings table not available')
+    }
 
-    // Get action items from AI-processed meetings
-    const { data: actionItems, error: actionItemsError } = await supabase
-      .from('standup_action_items')
-      .select(`
-        id,
-        meeting_id,
-        description,
-        assignee_email,
-        priority,
-        due_date,
-        status,
-        created_at
-      `)
-      .eq('lab_id', labId)
-      .eq('status', 'open')
-      .order('created_at', { ascending: false })
+    // Get action items from AI-processed meetings - table may not exist
+    let actionItems: any[] = []
+    try {
+      const { data, error } = await supabase
+        .from('standup_action_items')
+        .select(`
+          id,
+          meeting_id,
+          description,
+          assignee_email,
+          priority,
+          due_date,
+          status,
+          created_at
+        `)
+        .eq('lab_id', labId)
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+      
+      if (!error) actionItems = data || []
+    } catch (e) {
+      console.log('Standup action items table not available')
+    }
 
     // Get lab members for meeting attendees
     const { data: labMembers, error: membersError } = await supabase
@@ -114,17 +132,12 @@ export default async function LabMeetingsPage({ params }: { params: Promise<{ la
         user_profiles (
           id,
           email,
-          full_name,
-          first_name,
-          last_name
+          full_name
         )
       `)
       .eq('lab_id', labId)
-      .eq('is_active', true)
 
     if (meetingsError) console.error('Error fetching meetings:', meetingsError)
-    if (standupError) console.error('Error fetching standup meetings:', standupError)
-    if (actionItemsError) console.error('Error fetching action items:', actionItemsError)
     if (membersError) console.error('Error fetching members:', membersError)
 
     // Transform lab members to handle Supabase join structure
@@ -138,13 +151,13 @@ export default async function LabMeetingsPage({ params }: { params: Promise<{ la
     return (
       <MeetingsPageClient 
         lab={lab}
-        initialMeetings={meetings || []}
-        standupMeetings={standupMeetings || []}
-        actionItems={actionItems || []}
-        labMembers={transformedMembers}
+        initialMeetings={(meetings || []) as any}
+        standupMeetings={standupMeetings}
+        actionItems={actionItems}
+        labMembers={transformedMembers as any}
         userPermissions={{
-          canSchedule: membership.can_schedule_meetings || false,
-          canManage: membership.can_manage_standups || false
+          canSchedule: membership.can_create_tasks || false,
+          canManage: membership.can_edit_all_tasks || false
         }}
       />
     )

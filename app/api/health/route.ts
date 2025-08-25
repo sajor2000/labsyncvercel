@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
-import { Redis } from '@upstash/redis'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,33 +52,10 @@ async function checkDatabase(): Promise<ServiceStatus> {
 }
 
 async function checkRedis(): Promise<ServiceStatus> {
-  const start = Date.now()
-  try {
-    if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-      return {
-        status: 'down',
-        error: 'Redis not configured'
-      }
-    }
-    
-    const redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    })
-    
-    // Simple ping to verify connection
-    await redis.ping()
-    
-    return {
-      status: 'up',
-      responseTime: Date.now() - start
-    }
-  } catch (error) {
-    return {
-      status: 'down',
-      responseTime: Date.now() - start,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }
+  // Redis removed - using simple in-memory rate limiting
+  return {
+    status: 'up',
+    responseTime: 0
   }
 }
 

@@ -20,10 +20,9 @@ export default async function LabProjectsPage({ params }: { params: Promise<{ la
     // Verify user has access to this lab
     const { data: membership, error: memberError } = await supabase
       .from('lab_members')
-      .select('id, role, can_create_projects, can_edit_all_projects, can_delete_projects, can_view_all_projects')
+      .select('id, role, can_create_projects, can_edit_all_projects, can_delete_projects')
       .eq('lab_id', labId)
       .eq('user_id', user.id)
-      .eq('is_active', true)
       .single()
 
     if (memberError || !membership) {
@@ -61,18 +60,23 @@ export default async function LabProjectsPage({ params }: { params: Promise<{ la
         .from('projects')
         .select(`
           id,
-          name,
+          title,
           description,
           status,
           priority,
-          progress_percentage,
           start_date,
           due_date,
           bucket_id,
+          lab_id,
+          irb_status,
+          irb_number,
+          manuscript_status,
           created_at,
-          updated_at
+          updated_at,
+          deleted_at
         `)
         .in('bucket_id', bucketIds)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
 
       if (projectsError) {
@@ -91,7 +95,7 @@ export default async function LabProjectsPage({ params }: { params: Promise<{ la
           canCreate: membership.can_create_projects || false,
           canEdit: membership.can_edit_all_projects || false,
           canDelete: membership.can_delete_projects || false,
-          canView: membership.can_view_all_projects || false
+          canView: true // All members can view projects in their lab
         }}
       />
     )

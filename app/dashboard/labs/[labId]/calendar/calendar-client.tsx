@@ -18,17 +18,15 @@ import Link from "next/link"
 
 interface CalendarEvent {
   id: string
-  title: string
+  summary: string
   description: string | null
-  event_type: string
-  start_datetime: string
-  end_datetime: string
+  start_time: string
+  end_time: string
   location: string | null
-  attendees: string[] | null
-  is_all_day: boolean
-  recurrence_rule: string | null
-  external_event_id: string | null
-  sync_status: string | null
+  attendees: any | null
+  all_day: boolean
+  google_event_id: string | null
+  google_meet_link: string | null
   created_at: string
   updated_at: string
 }
@@ -56,8 +54,6 @@ interface LabMember {
     id: string
     email: string
     full_name: string | null
-    first_name: string | null
-    last_name: string | null
   } | null
 }
 
@@ -72,15 +68,14 @@ interface CalendarPageClientProps {
   }
 }
 
-const eventTypeColors = {
-  'meeting': 'bg-blue-500',
-  'deadline': 'bg-red-500',
-  'conference': 'bg-purple-500',
-  'training': 'bg-green-500',
-  'holiday': 'bg-orange-500',
-  'pto': 'bg-yellow-500',
-  'clinic': 'bg-teal-500',
-  'other': 'bg-gray-500'
+// Event type colors can be based on keywords in summary or description
+const getEventColor = (summary: string) => {
+  const lower = summary.toLowerCase()
+  if (lower.includes('meeting')) return 'bg-blue-500'
+  if (lower.includes('deadline')) return 'bg-red-500'
+  if (lower.includes('conference')) return 'bg-purple-500'
+  if (lower.includes('training')) return 'bg-green-500'
+  return 'bg-gray-500'
 }
 
 export default function CalendarPageClient({ 
@@ -100,20 +95,23 @@ export default function CalendarPageClient({
   const [syncLoading, setSyncLoading] = useState(false)
   
   const [formData, setFormData] = useState({
-    title: '',
+    summary: '',
     description: '',
-    event_type: 'meeting',
-    start_datetime: '',
-    end_datetime: '',
+    start_time: '',
+    end_time: '',
     location: '',
-    is_all_day: false
+    all_day: false
   })
 
   const filteredEvents = events.filter(event => {
-    const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = event.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase()))
     
-    const matchesType = filterType === "all" || event.event_type === filterType
+    const matchesType = filterType === "all" || 
+      (filterType === "meeting" && event.summary.toLowerCase().includes("meeting")) ||
+      (filterType === "deadline" && event.summary.toLowerCase().includes("deadline")) ||
+      (filterType === "conference" && event.summary.toLowerCase().includes("conference")) ||
+      (filterType === "training" && event.summary.toLowerCase().includes("training"))
     
     return matchesSearch && matchesType
   })
@@ -127,7 +125,7 @@ export default function CalendarPageClient({
   }
 
   const groupedEvents = filteredEvents.reduce((groups, event) => {
-    const category = getDateCategory(event.start_datetime)
+    const category = getDateCategory(event.start_time)
     if (!groups[category]) groups[category] = []
     groups[category].push(event)
     return groups
@@ -157,7 +155,7 @@ export default function CalendarPageClient({
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.title.trim()) return
+    if (!formData.summary.trim()) return
 
     setIsLoading(true)
     try {
@@ -165,15 +163,15 @@ export default function CalendarPageClient({
         .from('calendar_events')
         .insert({
           lab_id: lab.id,
-          title: formData.title.trim(),
+          summary: formData.summary.trim(),
           description: formData.description.trim() || null,
-          event_type: formData.event_type,
-          start_datetime: formData.start_datetime,
-          end_datetime: formData.end_datetime,
+          start_time: formData.start_time,
+          end_time: formData.end_time,
           location: formData.location.trim() || null,
-          is_all_day: formData.is_all_day,
-          attendees: [],
-          sync_status: 'pending'
+          all_day: formData.all_day,
+          attendees: null,
+          google_event_id: null,
+          google_meet_link: null
         })
         .select()
         .single()
@@ -181,17 +179,16 @@ export default function CalendarPageClient({
       if (error) throw error
 
       setEvents(prev => [...prev, data].sort((a, b) => 
-        new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()
+        new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
       ))
       
       setFormData({
-        title: '',
+        summary: '',
         description: '',
-        event_type: 'meeting',
-        start_datetime: '',
-        end_datetime: '',
+        start_time: '',
+        end_time: '',
         location: '',
-        is_all_day: false
+        all_day: false
       })
       setIsCreateDialogOpen(false)
       toast.success('Event created successfully!')
@@ -275,48 +272,30 @@ export default function CalendarPageClient({
                     <Label htmlFor="event-title">Event Title</Label>
                     <Input
                       id="event-title"
-                      value={formData.title}
-                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      value={formData.summary}
+                      onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))}
                       placeholder="e.g., Weekly Lab Meeting"
                       required
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="event-type">Event Type</Label>
-                    <Select 
-                      value={formData.event_type} 
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, event_type: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="meeting">Meeting</SelectItem>
-                        <SelectItem value="deadline">Deadline</SelectItem>
-                        <SelectItem value="conference">Conference</SelectItem>
-                        <SelectItem value="training">Training</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="start-datetime">Start Date & Time</Label>
+                      <Label htmlFor="start-time">Start Date & Time</Label>
                       <Input
-                        id="start-datetime"
+                        id="start-time"
                         type="datetime-local"
-                        value={formData.start_datetime}
-                        onChange={(e) => setFormData(prev => ({ ...prev, start_datetime: e.target.value }))}
+                        value={formData.start_time}
+                        onChange={(e) => setFormData(prev => ({ ...prev, start_time: e.target.value }))}
                         required
                       />
                     </div>
                     <div>
-                      <Label htmlFor="end-datetime">End Date & Time</Label>
+                      <Label htmlFor="end-time">End Date & Time</Label>
                       <Input
-                        id="end-datetime"
+                        id="end-time"
                         type="datetime-local"
-                        value={formData.end_datetime}
-                        onChange={(e) => setFormData(prev => ({ ...prev, end_datetime: e.target.value }))}
+                        value={formData.end_time}
+                        onChange={(e) => setFormData(prev => ({ ...prev, end_time: e.target.value }))}
                         required
                       />
                     </div>
@@ -441,14 +420,17 @@ export default function CalendarPageClient({
                           <div className="flex items-center space-x-3 mb-2">
                             <Badge 
                               variant="outline"
-                              className={`text-xs text-white ${eventTypeColors[event.event_type as keyof typeof eventTypeColors] || 'bg-gray-500'}`}
+                              className={`text-xs text-white ${getEventColor(event.summary)}`}
                             >
-                              {event.event_type}
+                              {event.summary.toLowerCase().includes('meeting') ? 'Meeting' :
+                               event.summary.toLowerCase().includes('deadline') ? 'Deadline' :
+                               event.summary.toLowerCase().includes('conference') ? 'Conference' :
+                               event.summary.toLowerCase().includes('training') ? 'Training' : 'Event'}
                             </Badge>
                             <h4 className="text-lg font-medium text-foreground truncate">
-                              {event.title}
+                              {event.summary}
                             </h4>
-                            {calendarIntegration && event.external_event_id && (
+                            {calendarIntegration && event.google_event_id && (
                               <Badge variant="outline" className="text-xs">
                                 Synced
                               </Badge>
@@ -465,9 +447,9 @@ export default function CalendarPageClient({
                             <div className="flex items-center space-x-1">
                               <Clock className="h-3 w-3" />
                               <span>
-                                {event.is_all_day 
-                                  ? format(new Date(event.start_datetime), 'MMM d, yyyy')
-                                  : `${format(new Date(event.start_datetime), 'MMM d, h:mm a')} - ${format(new Date(event.end_datetime), 'h:mm a')}`
+                                {event.all_day 
+                                  ? format(new Date(event.start_time), 'MMM d, yyyy')
+                                  : `${format(new Date(event.start_time), 'MMM d, h:mm a')} - ${format(new Date(event.end_time), 'h:mm a')}`
                                 }
                               </span>
                             </div>
