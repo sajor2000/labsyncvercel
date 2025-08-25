@@ -144,7 +144,15 @@ Use `router.push()` with onClick handlers, not Link wrappers:
 
 ### Environment Configuration
 
-Required variables (validated on build):
+**⚠️ CRITICAL VERCEL DEPLOYMENT NOTE:**
+- **Environment variables are ALREADY configured in Vercel dashboard**
+- **DO NOT validate environment variables during build phase**
+- **Build scripts should NOT require environment validation**
+- **The `validate-config.cjs` script automatically skips when `process.env.VERCEL` is set**
+- **Vercel environment variables are only available at runtime, NOT during build**
+- **Never add build-time validation that depends on environment variables**
+
+Required variables (validated locally only):
 ```env
 # AI Integration
 OPENAI_API_KEY=sk-proj-...
@@ -222,4 +230,4 @@ Migrations are in `supabase/migrations/`:
 - Input validation with Zod schemas
 - Rate limiting on AI and email operations
 - Service role key only used server-side
-- Environment variables validated on build
+- Environment variables validated at runtime (not build time on Vercel)
