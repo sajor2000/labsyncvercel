@@ -670,13 +670,9 @@ export default function TasksPageClient({
         )
       ) : (
         <KanbanBoard
-          tasks={filteredTasks}
-          projects={projects}
-          labMembers={labMembers}
-          onTaskUpdate={(taskId, updates) => {
-            // Handle task updates from kanban board
-            setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
-          }}
+          study_id={selectedProject || ''}
+          lab_id={lab.id}
+          onTaskClick={(task) => openEditDialog(task)}
         />
       )}
 
