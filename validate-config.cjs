@@ -20,6 +20,13 @@ const optionalEnvVars = [
 
 console.log('🔍 Validating Lab Sync configuration...\n')
 
+// Skip validation on Vercel during build
+if (process.env.VERCEL) {
+  console.log('🏗️  Running on Vercel - skipping environment validation during build')
+  console.log('✅ Configuration will be validated at runtime')
+  process.exit(0)
+}
+
 // Load environment variables
 require('dotenv').config()
 
