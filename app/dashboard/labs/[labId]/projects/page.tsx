@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import ProjectsPageClient from './projects-client'
+import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 
 // Force dynamic rendering for auth-dependent page
 export const dynamic = 'force-dynamic'
@@ -16,6 +17,13 @@ export default async function LabProjectsPage({ params }: { params: Promise<{ la
     if (authError || !user) {
       redirect('/auth/signin')
     }
+
+    // Get user profile for header
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single()
 
     // Verify user has access to this lab
     const { data: membership, error: memberError } = await supabase
@@ -87,17 +95,28 @@ export default async function LabProjectsPage({ params }: { params: Promise<{ la
     }
 
     return (
-      <ProjectsPageClient 
-        lab={lab}
-        buckets={buckets || []}
-        initialProjects={projects}
-        userPermissions={{
-          canCreate: membership.can_create_projects || false,
-          canEdit: membership.can_edit_all_projects || false,
-          canDelete: membership.can_delete_projects || false,
-          canView: true // All members can view projects in their lab
-        }}
-      />
+      <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
+        <DashboardHeader 
+          user={{
+            email: user.email,
+            name: profile?.full_name || user.email?.split('@')[0]
+          }} 
+        />
+        
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <ProjectsPageClient 
+            lab={lab}
+            buckets={buckets || []}
+            initialProjects={projects}
+            userPermissions={{
+              canCreate: membership.can_create_projects || false,
+              canEdit: membership.can_edit_all_projects || false,
+              canDelete: membership.can_delete_projects || false,
+              canView: true // All members can view projects in their lab
+            }}
+          />
+        </main>
+      </div>
     )
 
   } catch (error) {

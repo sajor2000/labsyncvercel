@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { CreateLabForm } from '@/components/dashboard/create-lab-form'
-import { ArrowLeft } from 'lucide-react'
-import Link from 'next/link'
+import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 
 export default async function CreateLabPage() {
   const supabase = await createClient()
@@ -13,25 +12,25 @@ export default async function CreateLabPage() {
     redirect('/auth/signin')
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <Link 
-            href="/dashboard"
-            className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Lab Selection
-          </Link>
-          <h1 className="text-3xl font-bold text-foreground">Create New Lab</h1>
-          <p className="text-muted-foreground">Set up a new research laboratory workspace</p>
-        </div>
+  // Get user profile for header
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .single()
 
-        {/* Create Lab Form */}
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
+      <DashboardHeader 
+        user={{
+          email: user.email,
+          name: profile?.full_name || user.email?.split('@')[0]
+        }} 
+      />
+      
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <CreateLabForm user={user} />
-      </div>
+      </main>
     </div>
   )
 }

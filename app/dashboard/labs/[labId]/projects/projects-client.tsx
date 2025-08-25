@@ -7,16 +7,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Beaker, Plus, Search, Calendar, User, ArrowLeft, FolderOpen } from "lucide-react"
+import { Beaker, Plus, Search, Calendar, User, ArrowLeft, FolderOpen, Edit2, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { toast } from "sonner"
 import Link from "next/link"
 
 interface Project {
   id: string
-  name: string
+  title: string
   description: string | null
   status: string
   priority: string
@@ -24,8 +27,13 @@ interface Project {
   start_date: string | null
   due_date: string | null
   bucket_id: string
+  lab_id: string
+  irb_status: string | null
+  irb_number: string | null
+  manuscript_status: string | null
   created_at: string
   updated_at: string
+  deleted_at: string | null
 }
 
 interface Bucket {
@@ -75,13 +83,31 @@ export default function ProjectsPageClient({
   userPermissions 
 }: ProjectsPageClientProps) {
   const router = useRouter()
+  const supabase = createClient()
   const [projects, setProjects] = useState<Project[]>(initialProjects)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterBucket, setFilterBucket] = useState<string>("all")
   const [filterStatus, setFilterStatus] = useState<string>("all")
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [loading, setLoading] = useState(false)
+  
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    status: 'planning',
+    priority: 'medium',
+    bucket_id: '',
+    start_date: '',
+    due_date: '',
+    irb_status: 'planning',
+    irb_number: '',
+    manuscript_status: 'not_started'
+  })
 
   const filteredProjects = projects.filter(project => {
-    const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()))
     
     const matchesBucket = filterBucket === "all" || project.bucket_id === filterBucket
@@ -96,6 +122,91 @@ export default function ProjectsPageClient({
 
   const getBucketColor = (bucketId: string) => {
     return buckets.find(b => b.id === bucketId)?.color || '#6b7280'
+  }
+
+  const handleEditProject = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedProject || !formData.title.trim()) return
+
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/projects/${selectedProject.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: formData.title.trim(),
+          description: formData.description.trim() || null,
+          status: formData.status,
+          priority: formData.priority,
+          bucket_id: formData.bucket_id,
+          start_date: formData.start_date || null,
+          due_date: formData.due_date || null,
+          irb_status: formData.irb_status,
+          irb_number: formData.irb_number || null,
+          manuscript_status: formData.manuscript_status
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to update project')
+
+      const { project } = await response.json()
+      setProjects(prev => prev.map(p => p.id === selectedProject.id ? project : p))
+      setIsEditDialogOpen(false)
+      setSelectedProject(null)
+      toast.success('Project updated successfully!')
+      
+    } catch (error: any) {
+      console.error('Error updating project:', error)
+      toast.error('Failed to update project')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteProject = async () => {
+    if (!selectedProject) return
+
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/projects/${selectedProject.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) throw new Error('Failed to delete project')
+
+      setProjects(prev => prev.filter(p => p.id !== selectedProject.id))
+      setIsDeleteDialogOpen(false)
+      setSelectedProject(null)
+      toast.success('Project deleted successfully!')
+      
+    } catch (error: any) {
+      console.error('Error deleting project:', error)
+      toast.error('Failed to delete project')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const openEditDialog = (project: Project) => {
+    setSelectedProject(project)
+    setFormData({
+      title: project.title,
+      description: project.description || '',
+      status: project.status,
+      priority: project.priority,
+      bucket_id: project.bucket_id,
+      start_date: project.start_date || '',
+      due_date: project.due_date || '',
+      irb_status: project.irb_status || 'planning',
+      irb_number: project.irb_number || '',
+      manuscript_status: project.manuscript_status || 'not_started'
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const openDeleteDialog = (project: Project) => {
+    setSelectedProject(project)
+    setIsDeleteDialogOpen(true)
   }
 
   return (
@@ -215,7 +326,7 @@ export default function ProjectsPageClient({
             <Card key={project.id} className="card-slack hover:border-primary/50 transition-colors">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg truncate">{project.name}</CardTitle>
+                  <CardTitle className="text-lg truncate">{project.title}</CardTitle>
                   <div className="flex items-center space-x-2">
                     <Badge 
                       variant="outline" 
@@ -286,12 +397,224 @@ export default function ProjectsPageClient({
                   >
                     Tasks
                   </Button>
+                  {userPermissions.canEdit && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => openEditDialog(project)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {userPermissions.canDelete && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => openDeleteDialog(project)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Edit Project Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Project</DialogTitle>
+            <DialogDescription>
+              Update the project details
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditProject} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label htmlFor="edit-project-title">Project Title</Label>
+                <Input
+                  id="edit-project-title"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Enter project title"
+                  required
+                />
+              </div>
+              
+              <div className="col-span-2">
+                <Label htmlFor="edit-project-description">Description</Label>
+                <Textarea
+                  id="edit-project-description"
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Describe the project goals and scope"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-project-bucket">Bucket</Label>
+                <Select value={formData.bucket_id} onValueChange={(value) => setFormData(prev => ({ ...prev, bucket_id: value }))}>
+                  <SelectTrigger id="edit-project-bucket">
+                    <SelectValue placeholder="Select a bucket" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {buckets.map(bucket => (
+                      <SelectItem key={bucket.id} value={bucket.id}>
+                        <div className="flex items-center space-x-2">
+                          <div 
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: bucket.color || '#6b7280' }}
+                          />
+                          <span>{bucket.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-project-status">Status</Label>
+                <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
+                  <SelectTrigger id="edit-project-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="planning">Planning</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="on_hold">On Hold</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-project-priority">Priority</Label>
+                <Select value={formData.priority} onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))}>
+                  <SelectTrigger id="edit-project-priority">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-project-irb-status">IRB Status</Label>
+                <Select value={formData.irb_status} onValueChange={(value) => setFormData(prev => ({ ...prev, irb_status: value }))}>
+                  <SelectTrigger id="edit-project-irb-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="not_required">Not Required</SelectItem>
+                    <SelectItem value="planning">Planning</SelectItem>
+                    <SelectItem value="submitted">Submitted</SelectItem>
+                    <SelectItem value="under_review">Under Review</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="expired">Expired</SelectItem>
+                    <SelectItem value="exempt">Exempt</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-project-irb-number">IRB Number</Label>
+                <Input
+                  id="edit-project-irb-number"
+                  value={formData.irb_number}
+                  onChange={(e) => setFormData(prev => ({ ...prev, irb_number: e.target.value }))}
+                  placeholder="e.g., IRB-2024-001"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-project-manuscript">Manuscript Status</Label>
+                <Select value={formData.manuscript_status} onValueChange={(value) => setFormData(prev => ({ ...prev, manuscript_status: value }))}>
+                  <SelectTrigger id="edit-project-manuscript">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="not_started">Not Started</SelectItem>
+                    <SelectItem value="in_preparation">In Preparation</SelectItem>
+                    <SelectItem value="submitted">Submitted</SelectItem>
+                    <SelectItem value="under_review">Under Review</SelectItem>
+                    <SelectItem value="accepted">Accepted</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-project-start">Start Date</Label>
+                <Input
+                  id="edit-project-start"
+                  type="date"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-project-due">Due Date</Label>
+                <Input
+                  id="edit-project-due"
+                  type="date"
+                  value={formData.due_date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Updating...' : 'Update Project'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Project Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Project</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{selectedProject?.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              All tasks associated with this project will also be deleted.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDeleteProject}
+              disabled={loading}
+              variant="destructive"
+            >
+              {loading ? 'Deleting...' : 'Delete Project'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

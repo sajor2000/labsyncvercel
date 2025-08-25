@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
-import { Mail, Lock } from 'lucide-react'
+import { Beaker } from 'lucide-react'
 
 interface SignInPageProps {
   searchParams: Promise<{
@@ -17,93 +17,97 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const { error, message, redirect } = await searchParams
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-md">
-        {/* Brand Header */}
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-            <span className="text-xl font-bold text-primary-foreground">LS</span>
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/95 flex flex-col">
+      {/* Simple Header */}
+      <header className="w-full max-w-7xl mx-auto px-6 py-6">
+        <Link href="/" className="flex items-center space-x-3 w-fit">
+          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+            <Beaker className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Lab Sync</h1>
-          <p className="text-muted-foreground text-sm">Making Science Easier</p>
-        </div>
+          <span className="text-2xl font-bold text-foreground">Lab Sync</span>
+        </Link>
+      </header>
 
-        <div className="card-slack p-8 shadow-2xl">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-foreground mb-2">Welcome back</h2>
-            <p className="text-muted-foreground">Sign in to your Lab Sync account</p>
-          </div>
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-md">
+          <div className="bg-card/50 backdrop-blur-sm border border-border rounded-xl p-8 shadow-xl">
+            <h2 className="text-2xl font-bold text-foreground mb-2 text-center">
+              Welcome Back
+            </h2>
+            <p className="text-muted-foreground text-center mb-6">
+              Sign in to your Lab Sync account
+            </p>
 
-          {/* Error Messages */}
-          {error && (
-            <div className="mb-6 p-4 bg-destructive/20 border border-destructive rounded-lg">
-              <p className="text-destructive text-sm">
-                {error === 'missing_credentials' && 'Please enter both email and password'}
-                {error === 'invalid_credentials' && 'Invalid email or password'}
-                {error === 'email_not_confirmed' && 'Please verify your email address first'}
-                {error === 'too_many_requests' && 'Too many login attempts. Please wait a moment and try again.'}
-                {error === 'no_user_data' && 'Authentication failed - no user data received'}
-                {error === 'authentication_failed' && 'Authentication failed - please try again'}
-                {error === 'reset_link_expired' && 'Password reset link has expired. Please request a new one.'}
-                {error === 'access_denied' && 'Access denied. Please try signing in again.'}
-                {error === 'callback_failed' && 'Authentication callback failed. Please try again.'}
-                {error === 'no_code' && 'No authentication code provided. Please try again.'}
-                {error.startsWith('server_error:') && `Server error: ${error.replace('server_error:', '').trim()}`}
-                {!['missing_credentials', 'invalid_credentials', 'email_not_confirmed', 'too_many_requests', 'no_user_data', 'authentication_failed', 'reset_link_expired', 'access_denied', 'callback_failed', 'no_code'].includes(error) && 
-                 !error.startsWith('server_error:') && 
-                 decodeURIComponent(error)}
-              </p>
-            </div>
-          )}
-
-          {/* Success Messages */}
-          {message && (
-            <div className="mb-6 p-4 bg-success/20 border border-success rounded-lg">
-              <p className="text-success text-sm">
-                {message === 'signup_success' && 'Account created successfully! Please sign in.'}
-                {message === 'check_email' && 'Please check your email to verify your account.'}
-                {message === 'logout_success' && 'You have been signed out successfully.'}
-                {message === 'password_updated' && 'Password updated successfully! You can now sign in.'}
-                {message === 'email_confirmed' && 'Email verified successfully! You can now sign in.'}
-                {!['signup_success', 'check_email', 'logout_success', 'password_updated', 'email_confirmed'].includes(message) && 
-                 decodeURIComponent(message)}
-              </p>
-            </div>
-          )}
-
-          {/* Sign In Form using Server Action */}
-          <form action={login} className="space-y-6">
-            {/* Hidden redirect field */}
-            {redirect && (
-              <input type="hidden" name="redirect" value={redirect} />
+            {/* Error Messages */}
+            {error && (
+              <div className="mb-6 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-destructive text-sm">
+                  {error === 'missing_credentials' && 'Please enter both email and password'}
+                  {error === 'invalid_credentials' && 'Invalid email or password'}
+                  {error === 'email_not_confirmed' && 'Please verify your email address first'}
+                  {error === 'too_many_requests' && 'Too many login attempts. Please wait a moment and try again.'}
+                  {error === 'no_user_data' && 'Authentication failed - no user data received'}
+                  {error === 'authentication_failed' && 'Authentication failed - please try again'}
+                  {error === 'reset_link_expired' && 'Password reset link has expired. Please request a new one.'}
+                  {error === 'access_denied' && 'Access denied. Please try signing in again.'}
+                  {error === 'callback_failed' && 'Authentication callback failed. Please try again.'}
+                  {error === 'no_code' && 'No authentication code provided. Please try again.'}
+                  {error.startsWith('server_error:') && `Server error: ${error.replace('server_error:', '').trim()}`}
+                  {!['missing_credentials', 'invalid_credentials', 'email_not_confirmed', 'too_many_requests', 'no_user_data', 'authentication_failed', 'reset_link_expired', 'access_denied', 'callback_failed', 'no_code'].includes(error) && 
+                   !error.startsWith('server_error:') && 
+                   decodeURIComponent(error)}
+                </p>
+              </div>
             )}
 
-            {/* Email Field */}
-            <div>
-              <Label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
-                Email address
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+            {/* Success Messages */}
+            {message && (
+              <div className="mb-6 p-3 bg-success/10 border border-success/20 rounded-lg">
+                <p className="text-success text-sm">
+                  {message === 'signup_success' && 'Account created successfully! Please sign in.'}
+                  {message === 'check_email' && 'Please check your email to verify your account.'}
+                  {message === 'logout_success' && 'You have been signed out successfully.'}
+                  {message === 'password_updated' && 'Password updated successfully! You can now sign in.'}
+                  {message === 'email_confirmed' && 'Email verified successfully! You can now sign in.'}
+                  {!['signup_success', 'check_email', 'logout_success', 'password_updated', 'email_confirmed'].includes(message) && 
+                   decodeURIComponent(message)}
+                </p>
+              </div>
+            )}
+
+            {/* Sign In Form */}
+            <form action={login} className="space-y-4">
+              {/* Hidden redirect field */}
+              {redirect && (
+                <input type="hidden" name="redirect" value={redirect} />
+              )}
+
+              {/* Email Field */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   autoComplete="email"
                   required
-                  placeholder="Enter your email"
-                  className="w-full pl-10 pr-4 py-2 bg-900 border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                  placeholder="name@example.com"
+                  className="h-11"
                 />
               </div>
-            </div>
 
-            {/* Password Field */}
-            <div>
-              <Label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
-                Password
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              {/* Password Field */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link 
+                    href="/auth/forgot-password" 
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 <Input
                   id="password"
                   name="password"
@@ -111,38 +115,65 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
                   autoComplete="current-password"
                   required
                   placeholder="Enter your password"
-                  className="w-full pl-10 pr-4 py-2 bg-900 border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                  className="h-11"
                 />
               </div>
-            </div>
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full py-2.5 px-4 bg-primary hover:bg-primary text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-800"
-            >
-              Sign In
-            </Button>
-          </form>
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                className="w-full h-12 text-base font-medium"
+              >
+                Sign In
+              </Button>
 
-          {/* Footer Links */}
-          <div className="mt-6 text-center space-y-3">
-            <p className="text-slate-400 text-sm">
-              Don't have an account?{' '}
-              <Link href="/auth/signup" className="text-violet-400 hover:text-violet-300 font-medium">
-                Sign up here
-              </Link>
-            </p>
-            
-            <p className="text-slate-400 text-sm">
-              Forgot your password?{' '}
-              <Link href="/auth/forgot-password" className="text-violet-400 hover:text-violet-300 font-medium">
-                Reset it here
-              </Link>
-            </p>
+              {/* Demo Access */}
+              <Button 
+                type="button"
+                variant="outline"
+                className="w-full h-11 text-base"
+                onClick={(e) => {
+                  e.preventDefault();
+                  const emailInput = document.getElementById('email') as HTMLInputElement;
+                  const passwordInput = document.getElementById('password') as HTMLInputElement;
+                  if (emailInput && passwordInput) {
+                    emailInput.value = 'demo@labsync.io';
+                    passwordInput.value = 'demo123456';
+                  }
+                }}
+              >
+                Use Demo Account
+              </Button>
+
+              {/* Sign Up Link */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-card px-2 text-muted-foreground">NEW USER?</span>
+                </div>
+              </div>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Don't have an account?{' '}
+                <Link href="/auth/signup" className="text-primary hover:underline font-semibold">
+                  Create an account
+                </Link>
+              </p>
+            </form>
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* Minimal Footer */}
+      <footer className="w-full border-t border-border/50">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <p className="text-center text-sm text-muted-foreground">
+            © 2024 Lab Sync. Built for medical research excellence.
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }

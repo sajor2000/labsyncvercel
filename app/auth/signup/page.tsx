@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
-import { Mail, Lock, User } from 'lucide-react'
+import { Beaker } from 'lucide-react'
 
 interface SignUpPageProps {
   searchParams: Promise<{
@@ -16,159 +16,164 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const { error, message } = await searchParams
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-md">
-        {/* Brand Header */}
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-            <span className="text-xl font-bold text-primary-foreground">LS</span>
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/95 flex flex-col">
+      {/* Simple Header */}
+      <header className="w-full max-w-7xl mx-auto px-6 py-6">
+        <Link href="/" className="flex items-center space-x-3 w-fit">
+          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+            <Beaker className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Lab Sync</h1>
-          <p className="text-muted-foreground text-sm">Making Science Easier</p>
-        </div>
+          <span className="text-2xl font-bold text-foreground">Lab Sync</span>
+        </Link>
+      </header>
 
-        <div className="card-slack p-8 shadow-2xl">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-foreground mb-2">Create your account</h2>
-            <p className="text-muted-foreground">Join Lab Sync to manage your research</p>
-          </div>
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-md">
+          <div className="bg-card/50 backdrop-blur-sm border border-border rounded-xl p-8 shadow-xl">
+            <h2 className="text-2xl font-bold text-foreground mb-2 text-center">
+              Create Your Account
+            </h2>
+            <p className="text-muted-foreground text-center mb-6">
+              Join Lab Sync to manage your research
+            </p>
 
-          {/* Error Messages */}
-          {error && (
-            <div className="mb-6 p-4 bg-destructive/20 border border-destructive rounded-lg">
-              <p className="text-destructive text-sm">
-                {error === 'missing_fields' && 'Please fill in all required fields'}
-                {error === 'password_too_short' && 'Password must be at least 8 characters long'}
-                {error === 'invalid_email' && 'Please enter a valid email address'}
-                {error === 'server_error' && 'Something went wrong. Please try again.'}
-                {!['missing_fields', 'password_too_short', 'invalid_email', 'server_error'].includes(error) && 
-                 decodeURIComponent(error)}
-              </p>
-            </div>
-          )}
-
-          {/* Success Messages */}
-          {message && (
-            <div className="mb-6 p-4 bg-success/20 border border-success rounded-lg">
-              <p className="text-success text-sm">
-                {message === 'signup_success' && 'Account created successfully! Please check your email.'}
-                {message === 'check_email' && 'Please check your email to verify your account.'}
-                {!['signup_success', 'check_email'].includes(message) && 
-                 decodeURIComponent(message)}
-              </p>
-            </div>
-          )}
-
-          {/* MCP Server Action Form */}
-          <form action={signup} className="space-y-6">
-            {/* First Name Field */}
-            <div>
-              <Label htmlFor="firstName" className="block text-sm font-medium text-muted-foreground mb-2">
-                First Name
-              </Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  autoComplete="given-name"
-                  required
-                  placeholder="Enter your first name"
-                  className="input-slack pl-10"
-                />
+            {/* Error Messages */}
+            {error && (
+              <div className="mb-6 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-destructive text-sm">
+                  {error === 'missing_fields' && 'Please fill in all required fields'}
+                  {error === 'password_too_short' && 'Password must be at least 8 characters long'}
+                  {error === 'invalid_email' && 'Please enter a valid email address'}
+                  {error === 'server_error' && 'Something went wrong. Please try again.'}
+                  {!['missing_fields', 'password_too_short', 'invalid_email', 'server_error'].includes(error) && 
+                   decodeURIComponent(error)}
+                </p>
               </div>
-            </div>
+            )}
 
-            {/* Last Name Field */}
-            <div>
-              <Label htmlFor="lastName" className="block text-sm font-medium text-muted-foreground mb-2">
-                Last Name
-              </Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  autoComplete="family-name"
-                  required
-                  placeholder="Enter your last name"
-                  className="input-slack pl-10"
-                />
+            {/* Success Messages */}
+            {message && (
+              <div className="mb-6 p-3 bg-success/10 border border-success/20 rounded-lg">
+                <p className="text-success text-sm">
+                  {message === 'signup_success' && 'Account created successfully! Please check your email.'}
+                  {message === 'check_email' && 'Please check your email to verify your account.'}
+                  {!['signup_success', 'check_email'].includes(message) && 
+                   decodeURIComponent(message)}
+                </p>
               </div>
-            </div>
+            )}
 
-            {/* Email Field */}
-            <div>
-              <Label htmlFor="email" className="block text-sm font-medium text-muted-foreground mb-2">
-                Email address
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            {/* Sign Up Form */}
+            <form action={signup} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {/* First Name Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    name="firstName"
+                    type="text"
+                    autoComplete="given-name"
+                    required
+                    placeholder="John"
+                    className="h-11"
+                  />
+                </div>
+
+                {/* Last Name Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    autoComplete="family-name"
+                    required
+                    placeholder="Doe"
+                    className="h-11"
+                  />
+                </div>
+              </div>
+
+              {/* Email Field */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   autoComplete="email"
                   required
-                  placeholder="Enter your email"
-                  className="input-slack pl-10"
+                  placeholder="name@example.com"
+                  className="h-11"
                 />
               </div>
-            </div>
 
-            {/* Password Field */}
-            <div>
-              <Label htmlFor="password" className="block text-sm font-medium text-muted-foreground mb-2">
-                Password
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              {/* Password Field */}
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   name="password"
                   type="password"
                   autoComplete="new-password"
                   required
-                  placeholder="Create a password (min 8 characters)"
-                  className="input-slack pl-10"
+                  placeholder="Minimum 8 characters"
+                  className="h-11"
                   minLength={8}
                 />
               </div>
-            </div>
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="btn-slack-primary w-full py-2.5 font-medium"
-            >
-              Create Account
-            </Button>
-          </form>
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                className="w-full h-12 text-base font-medium"
+              >
+                Create Account
+              </Button>
 
-          {/* Footer Links */}
-          <div className="mt-6 text-center space-y-3">
-            <p className="text-muted-foreground text-sm">
-              Already have an account?{' '}
-              <Link href="/auth/signin" className="text-primary hover:text-primary/80 font-medium">
-                Sign in here
-              </Link>
-            </p>
-            
-            <p className="text-muted-foreground text-sm">
+              {/* Sign In Link */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-card px-2 text-muted-foreground">ALREADY HAVE AN ACCOUNT?</span>
+                </div>
+              </div>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Ready to continue your research?{' '}
+                <Link href="/auth/signin" className="text-primary hover:underline font-semibold">
+                  Sign in here
+                </Link>
+              </p>
+            </form>
+
+            {/* Terms */}
+            <p className="text-center text-xs text-muted-foreground mt-6">
               By creating an account, you agree to our{' '}
-              <Link href="/terms" className="text-primary hover:text-primary/80">
-                Terms of Service
+              <Link href="#" className="text-primary hover:underline">
+                Terms
               </Link>{' '}
               and{' '}
-              <Link href="/privacy" className="text-primary hover:text-primary/80">
+              <Link href="#" className="text-primary hover:underline">
                 Privacy Policy
               </Link>
             </p>
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* Minimal Footer */}
+      <footer className="w-full border-t border-border/50">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <p className="text-center text-sm text-muted-foreground">
+            © 2024 Lab Sync. Built for medical research excellence.
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }

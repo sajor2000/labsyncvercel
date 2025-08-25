@@ -1,6 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { LabBreadcrumb } from '@/components/dashboard/lab-breadcrumb'
 
 interface LabLayoutProps {
   children: React.ReactNode
@@ -17,17 +16,10 @@ export default async function LabLayout({ children, params }: LabLayoutProps) {
     redirect('/auth/signin')
   }
 
-  // Check if user has access to this lab and get lab details
+  // Check if user has access to this lab
   const { data: membership, error: memberError } = await supabase
     .from('lab_members')
-    .select(`
-      role,
-      labs!inner (
-        id,
-        name,
-        description
-      )
-    `)
+    .select('role')
     .eq('lab_id', labId)
     .eq('user_id', user.id)
     .eq('is_active', true)
@@ -37,17 +29,9 @@ export default async function LabLayout({ children, params }: LabLayoutProps) {
     redirect('/dashboard')
   }
 
-  const lab = Array.isArray(membership.labs) ? membership.labs[0] : membership.labs
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Lab Context Breadcrumb */}
-      <LabBreadcrumb lab={lab} />
-      
-      {/* Lab-specific content */}
-      <div className="space-y-6">
-        {children}
-      </div>
-    </div>
+    <>
+      {children}
+    </>
   )
 }

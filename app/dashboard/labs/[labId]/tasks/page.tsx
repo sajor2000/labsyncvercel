@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import TasksPageClient from './tasks-client'
+import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 
 // Force dynamic rendering for auth-dependent page
 export const dynamic = 'force-dynamic'
@@ -16,6 +17,13 @@ export default async function LabTasksPage({ params }: { params: Promise<{ labId
     if (authError || !user) {
       redirect('/auth/signin')
     }
+
+    // Get user profile for header
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single()
 
     // Verify user has access to this lab
     const { data: membership, error: memberError } = await supabase
@@ -76,7 +84,7 @@ export default async function LabTasksPage({ params }: { params: Promise<{ labId
         .from('projects')
         .select('id, title, bucket_id')
         .in('bucket_id', bucketIds)
-        .order('name', { ascending: true })
+        .order('title', { ascending: true })
 
       projects = projectsData || []
 
@@ -118,20 +126,31 @@ export default async function LabTasksPage({ params }: { params: Promise<{ labId
     }))
 
     return (
-      <TasksPageClient 
-        lab={lab}
-        buckets={buckets || []}
-        projects={projects}
-        initialTasks={tasks}
-        labMembers={transformedMembers as any}
-        userPermissions={{
-          canCreate: membership.can_create_tasks || false,
-          canAssign: membership.can_create_tasks || false, // Use create permission for assign
-          canEdit: membership.can_edit_all_tasks || false,
-          canDelete: membership.can_delete_tasks || false,
-          canView: true // All lab members can view tasks
-        }}
-      />
+      <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
+        <DashboardHeader 
+          user={{
+            email: user.email,
+            name: profile?.full_name || user.email?.split('@')[0]
+          }} 
+        />
+        
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <TasksPageClient 
+            lab={lab}
+            buckets={buckets || []}
+            projects={projects}
+            initialTasks={tasks}
+            labMembers={transformedMembers as any}
+            userPermissions={{
+              canCreate: membership.can_create_tasks || false,
+              canAssign: membership.can_create_tasks || false, // Use create permission for assign
+              canEdit: membership.can_edit_all_tasks || false,
+              canDelete: membership.can_delete_tasks || false,
+              canView: true // All lab members can view tasks
+            }}
+          />
+        </main>
+      </div>
     )
 
   } catch (error) {

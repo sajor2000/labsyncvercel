@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { FlaskConical, Building2, Users, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -81,17 +82,17 @@ export function CreateLabForm({ user }: CreateLabFormProps) {
   return (
     <div className="space-y-8">
       {/* Preview Card */}
-      <Card className="card-slack">
+      <Card className="bg-card/50 backdrop-blur-sm border-border/50">
         <CardHeader>
           <div className="flex items-start justify-between">
-            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
-              <FlaskConical className="h-5 w-5 text-violet-600" />
+            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+              <FlaskConical className="h-5 w-5 text-primary" />
             </div>
-            <div className="text-right">
-              <div className="text-xs text-muted-foreground">Preview</div>
-            </div>
+            <Badge variant="secondary" className="text-xs">
+              Preview
+            </Badge>
           </div>
-          <div>
+          <div className="mt-4">
             <CardTitle className="text-lg font-semibold text-foreground">
               {name || 'Lab Name'}
             </CardTitle>
@@ -102,39 +103,23 @@ export function CreateLabForm({ user }: CreateLabFormProps) {
         </CardHeader>
         
         <CardContent>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="space-y-1">
-              <div className="flex items-center justify-center">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="text-sm font-medium text-foreground">0</div>
-              <div className="text-xs text-muted-foreground">Studies</div>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <Building2 className="h-4 w-4" />
+              <span>0 studies</span>
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center justify-center">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="text-sm font-medium text-foreground">0</div>
-              <div className="text-xs text-muted-foreground">Buckets</div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center justify-center">
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="text-sm font-medium text-foreground">1</div>
-              <div className="text-xs text-muted-foreground">Members</div>
+            <div className="flex items-center gap-1.5">
+              <Users className="h-4 w-4" />
+              <span>1 member</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Form */}
-      <Card className="card-slack">
+      <Card className="bg-card/50 backdrop-blur-sm border-border/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Lab Details
-          </CardTitle>
+          <CardTitle>Create New Lab</CardTitle>
           <CardDescription>
             Provide basic information about your research laboratory
           </CardDescription>

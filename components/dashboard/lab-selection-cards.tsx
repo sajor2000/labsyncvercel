@@ -1,23 +1,18 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
-  FlaskConical, 
   Users, 
   FolderOpen, 
-  Calendar, 
   Plus, 
-  ArrowRight,
   Building2,
-  Settings,
-  UserPlus
+  UserPlus,
+  Beaker
 } from 'lucide-react'
 import { format } from 'date-fns'
-import Link from 'next/link'
 
 interface Lab {
   id: string
@@ -42,7 +37,7 @@ export function LabSelectionCards({ labs, user }: LabSelectionCardsProps) {
   const handleLabClick = async (labId: string) => {
     try {
       // Update user's last selected lab preference
-      const response = await fetch('/api/user/preferences', {
+      await fetch('/api/user/preferences', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -51,31 +46,12 @@ export function LabSelectionCards({ labs, user }: LabSelectionCardsProps) {
           last_selected_lab_id: labId,
         }),
       })
-
-      if (!response.ok) {
-        console.warn('Failed to update lab preference, but proceeding with navigation')
-      }
     } catch (error) {
       console.warn('Error updating lab preference:', error)
     }
 
     // Navigate to lab workspace
     router.push(`/dashboard/labs/${labId}`)
-  }
-
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'principal_investigator':
-        return 'bg-violet-100 text-violet-800 border-violet-200'
-      case 'co_investigator':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'lab_manager':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'data_analyst':
-        return 'bg-orange-100 text-orange-800 border-orange-200'
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
   }
 
   const formatRole = (role: string) => {
@@ -86,119 +62,100 @@ export function LabSelectionCards({ labs, user }: LabSelectionCardsProps) {
 
   if (labs.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="max-w-md mx-auto">
-          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-            <Building2 className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-xl font-semibold text-foreground mb-2">No Labs Yet</h3>
-          <p className="text-muted-foreground mb-6">
-            Get started by creating your first lab or joining an existing one.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button 
-              onClick={() => router.push('/dashboard/labs/new')}
-              className="w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Lab
-            </Button>
-            <Button 
-              onClick={() => router.push('/dashboard/join-lab')}
-              variant="outline" 
-              className="w-full sm:w-auto">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Join Lab
-            </Button>
-          </div>
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
+          <Beaker className="h-10 w-10 text-muted-foreground" />
+        </div>
+        <h3 className="text-2xl font-semibold text-foreground mb-2">Welcome to Lab Sync</h3>
+        <p className="text-muted-foreground mb-8 text-center max-w-md">
+          Get started by creating your first lab or joining an existing one.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Button 
+            onClick={() => router.push('/dashboard/labs/new')}
+            size="lg"
+            className="h-12">
+            <Plus className="h-5 w-5 mr-2" />
+            Create New Lab
+          </Button>
+          <Button 
+            onClick={() => router.push('/dashboard/join-lab')}
+            variant="outline" 
+            size="lg"
+            className="h-12">
+            <UserPlus className="h-5 w-5 mr-2" />
+            Join Existing Lab
+          </Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Your Labs</h2>
-          <p className="text-muted-foreground">Select a lab to continue working</p>
+          <h1 className="text-3xl font-bold text-foreground">Your Labs</h1>
+          <p className="text-muted-foreground mt-1">Select a lab to continue your research</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <Button 
             onClick={() => router.push('/dashboard/join-lab')}
-            variant="outline" 
-            size="sm">
+            variant="outline">
             <UserPlus className="h-4 w-4 mr-2" />
             Join Lab
           </Button>
           <Button 
-            onClick={() => router.push('/dashboard/labs/new')}
-            size="sm">
+            onClick={() => router.push('/dashboard/labs/new')}>
             <Plus className="h-4 w-4 mr-2" />
             Create Lab
           </Button>
         </div>
       </div>
 
-      {/* Lab Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Lab Cards - Simplified Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {labs.map((lab) => (
           <Card 
             key={lab.id} 
-            className="card-slack hover:border-primary/50 transition-all duration-200 cursor-pointer group"
+            className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-border/50 bg-card/50 backdrop-blur-sm"
             onClick={() => handleLabClick(lab.id)}
           >
-            <CardHeader className="space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
-                  <FlaskConical className="h-5 w-5 text-violet-600" />
-                </div>
-                <Badge className={`text-xs ${getRoleBadgeColor(lab.role)}`}>
+            <CardHeader className="pb-4">
+              <div className="flex items-start justify-between mb-2">
+                <CardTitle className="text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
+                  {lab.name}
+                </CardTitle>
+                <Badge variant="secondary" className="text-xs">
                   {formatRole(lab.role)}
                 </Badge>
               </div>
-              <div>
-                <CardTitle className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
-                  {lab.name}
-                </CardTitle>
-                <CardDescription className="text-sm text-muted-foreground line-clamp-2">
-                  {lab.description || 'No description provided'}
-                </CardDescription>
-              </div>
+              <CardDescription className="text-sm text-muted-foreground line-clamp-2">
+                {lab.description || 'Research laboratory'}
+              </CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-4">
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-center">
-                    <FolderOpen className="h-4 w-4 text-muted-foreground" />
+            <CardContent>
+              {/* Simple Stats */}
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <FolderOpen className="h-4 w-4" />
+                    <span>{lab.studyCount} studies</span>
                   </div>
-                  <div className="text-sm font-medium text-foreground">{lab.studyCount}</div>
-                  <div className="text-xs text-muted-foreground">Studies</div>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-center">
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span>{lab.memberCount} members</span>
                   </div>
-                  <div className="text-sm font-medium text-foreground">{lab.bucketCount}</div>
-                  <div className="text-xs text-muted-foreground">Buckets</div>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-center">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="text-sm font-medium text-foreground">{lab.memberCount}</div>
-                  <div className="text-xs text-muted-foreground">Members</div>
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="flex items-center justify-between pt-2 border-t">
-                <div className="text-xs text-muted-foreground">
+              {/* Created Date */}
+              <div className="mt-4 pt-4 border-t border-border/50">
+                <p className="text-xs text-muted-foreground">
                   Created {format(new Date(lab.created_at), 'MMM d, yyyy')}
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                </p>
               </div>
             </CardContent>
           </Card>

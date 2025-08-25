@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import MeetingsPageClient from './meetings-client'
+import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 
 // Force dynamic rendering for auth-dependent page
 export const dynamic = 'force-dynamic'
@@ -16,6 +17,13 @@ export default async function LabMeetingsPage({ params }: { params: Promise<{ la
     if (authError || !user) {
       redirect('/auth/signin')
     }
+
+    // Get user profile for header
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single()
 
     // Verify user has access to this lab
     const { data: membership, error: memberError } = await supabase
@@ -149,17 +157,28 @@ export default async function LabMeetingsPage({ params }: { params: Promise<{ la
     }))
 
     return (
-      <MeetingsPageClient 
-        lab={lab}
-        initialMeetings={(meetings || []) as any}
-        standupMeetings={standupMeetings}
-        actionItems={actionItems}
-        labMembers={transformedMembers as any}
-        userPermissions={{
-          canSchedule: membership.can_create_tasks || false,
-          canManage: membership.can_edit_all_tasks || false
-        }}
-      />
+      <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
+        <DashboardHeader 
+          user={{
+            email: user.email,
+            name: profile?.full_name || user.email?.split('@')[0]
+          }} 
+        />
+        
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <MeetingsPageClient 
+            lab={lab}
+            initialMeetings={(meetings || []) as any}
+            standupMeetings={standupMeetings}
+            actionItems={actionItems}
+            labMembers={transformedMembers as any}
+            userPermissions={{
+              canSchedule: membership.can_create_tasks || false,
+              canManage: membership.can_edit_all_tasks || false
+            }}
+          />
+        </main>
+      </div>
     )
 
   } catch (error) {

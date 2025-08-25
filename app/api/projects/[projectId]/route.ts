@@ -98,12 +98,20 @@ export async function PATCH(
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
     
-    // Update project
+    // Update project - Map title to name for database
     const body = await request.json()
+    const updateData = { ...body }
+    
+    // Map frontend field names to database field names
+    if ('title' in updateData) {
+      updateData.name = updateData.title
+      delete updateData.title
+    }
+    
     const { data: updated, error } = await supabase
       .from('projects')
       .update({
-        ...body,
+        ...updateData,
         updated_at: new Date().toISOString()
       })
       .eq('id', projectId)
@@ -114,7 +122,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
     }
     
-    return NextResponse.json({ project: updated })
+    // Map database field names back to frontend field names
+    const project = {
+      ...updated,
+      title: updated.name || updated.title
+    }
+    
+    return NextResponse.json({ project })
     
   } catch (error) {
     console.error('Project PATCH error:', error)

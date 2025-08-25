@@ -1,201 +1,114 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { ArrowRight, Calendar, Users, Mic, Brain, Mail, FlaskConical } from 'lucide-react'
+import { Beaker, Brain, Users } from 'lucide-react'
 import { LoginForm } from '@/components/auth/login-form'
 
 export default async function HomePage() {
   const supabase = await createClient()
-  
   const { data: { user } } = await supabase.auth.getUser()
   
-  // Redirect authenticated users to lab selection dashboard
   if (user) {
     redirect('/dashboard')
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <header className="py-6">
-          <nav className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <FlaskConical className="w-5 h-5 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground">Lab Sync</h1>
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/95 flex flex-col">
+      {/* Simple Header */}
+      <header className="w-full max-w-7xl mx-auto px-6 py-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+              <Beaker className="w-6 h-6 text-white" />
             </div>
-            <div className="space-x-4">
-              <Link 
-                href="/auth/signin"
-                className="text-muted-foreground hover:text-foreground font-medium transition-colors"
-              >
-                Sign In
-              </Link>
-              <Link 
-                href="/auth/signup"
-                className="btn-slack-primary"
-              >
-                Get Started
-              </Link>
-            </div>
-          </nav>
-        </header>
+            <span className="text-2xl font-bold text-foreground">Lab Sync</span>
+          </div>
+        </div>
+      </header>
 
-        {/* Hero Section with Embedded Login */}
-        <section className="py-20">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left side - Marketing content */}
+      {/* Hero with Integrated Login */}
+      <main className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-6xl">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left: Simple Value Prop */}
             <div className="text-center lg:text-left">
-              <h1 className="text-5xl font-bold text-foreground mb-6">
-                Streamline Your Medical Research Lab
+              <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
+                Manage Your Research Lab Efficiently
               </h1>
-              <p className="text-xl text-muted-foreground mb-8">
-                AI-powered meeting transcription, intelligent task extraction, and seamless team collaboration 
-                for modern medical research laboratories.
+              <p className="text-xl text-muted-foreground mb-12">
+                AI-powered tools for modern medical research teams
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Link 
-                  href="#features"
-                  className="btn-slack-secondary px-8 py-4 font-semibold"
-                >
-                  Learn More
-                </Link>
-              </div>
-            </div>
-            
-            {/* Right side - Login form */}
-            <div className="max-w-md mx-auto w-full">
-              <div className="card-slack p-8">
-                <h2 className="text-2xl font-bold text-foreground mb-6 text-center">
-                  Sign In to Lab Sync
-                </h2>
-                <LoginForm />
-                <div className="mt-6 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Don't have an account?{' '}
-                    <Link href="/auth/signup" className="text-primary hover:underline font-medium">
-                      Sign up here
-                    </Link>
-                  </p>
+              
+              {/* Three Key Benefits */}
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Brain className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-foreground">AI Meeting Intelligence</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Automatic transcription and task extraction from lab meetings
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Beaker className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-foreground">Smart Task Management</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Track experiments, deadlines, and research progress effortlessly
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Users className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-foreground">Team Collaboration</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Multi-lab support with role-based permissions and real-time updates
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
+            
+            {/* Right: Clean Login Form */}
+            <div className="w-full max-w-md mx-auto">
+              <div className="bg-card/50 backdrop-blur-sm border border-border rounded-xl p-8 shadow-xl">
+                <h2 className="text-2xl font-bold text-foreground mb-6 text-center">
+                  Welcome Back
+                </h2>
+                <LoginForm />
+              </div>
+            </div>
           </div>
-        </section>
+        </div>
+      </main>
 
-        {/* Features Section */}
-        <section id="features" className="py-20">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-foreground mb-4">
-              Everything You Need for Lab Management
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Powerful AI-driven tools designed specifically for medical research teams
+      {/* Minimal Footer */}
+      <footer className="w-full border-t border-border/50">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              © 2024 Lab Sync. Built for medical research excellence.
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="card-slack p-6">
-              <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center mb-4">
-                <Mic className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground mb-3">
-                AI Meeting Transcription
-              </h3>
-              <p className="text-muted-foreground">
-                Automatically transcribe lab meetings with OpenAI Whisper. Never miss important discussions again.
-              </p>
+            <div className="flex items-center space-x-6">
+              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Privacy
+              </a>
+              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Terms
+              </a>
+              <a href="mailto:support@labsync.io" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Contact
+              </a>
             </div>
-
-            <div className="card-slack p-6">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                <Brain className="w-6 h-6 text-green-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground mb-3">
-                Intelligent Task Extraction
-              </h3>
-              <p className="text-muted-foreground">
-                GPT-4o-mini automatically identifies action items, deadlines, and assigns tasks from meeting transcripts.
-              </p>
-            </div>
-
-            <div className="card-slack p-6">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-                <Mail className="w-6 h-6 text-purple-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground mb-3">
-                AI-Powered Emails
-              </h3>
-              <p className="text-muted-foreground">
-                Generate professional email notifications and reminders tailored for medical research contexts.
-              </p>
-            </div>
-
-            <div className="card-slack p-6">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4">
-                <Calendar className="w-6 h-6 text-orange-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground mb-3">
-                Google Calendar Integration
-              </h3>
-              <p className="text-muted-foreground">
-                Seamless bi-directional sync with Google Calendar for scheduling and meeting management.
-              </p>
-            </div>
-
-            <div className="card-slack p-6">
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
-                <Users className="w-6 h-6 text-red-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground mb-3">
-                Multi-Lab Support
-              </h3>
-              <p className="text-muted-foreground">
-                Team members can belong to multiple labs with different roles and granular permissions.
-              </p>
-            </div>
-
-            <div className="card-slack p-6">
-              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4">
-                <ArrowRight className="w-6 h-6 text-indigo-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground mb-3">
-                Real-time Collaboration
-              </h3>
-              <p className="text-muted-foreground">
-                Live updates and notifications keep your entire research team synchronized and informed.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="py-20 text-center">
-          <div className="btn-slack-primary rounded-2xl p-12">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Ready to Transform Your Lab Management?
-            </h2>
-            <p className="text-xl text-blue-100 mb-8">
-              Join medical research teams who are already using LabFlow to streamline their operations.
-            </p>
-            <Link 
-              href="/auth/signup"
-              className="bg-white text-primary px-8 py-4 rounded-lg hover:bg-gray-100 transition-colors font-semibold inline-flex items-center"
-            >
-              Get Started Today
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Link>
-          </div>
-        </section>
-      </div>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center text-muted-foreground">
-            <p>&copy; 2024 Lab Sync. Built for medical research excellence.</p>
           </div>
         </div>
       </footer>

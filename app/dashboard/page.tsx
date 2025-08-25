@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { LabSelectionCards } from '@/components/dashboard/lab-selection-cards'
+import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 
 // Force dynamic rendering for auth-dependent page
 export const dynamic = 'force-dynamic'
@@ -13,22 +14,20 @@ export default async function DashboardPage() {
     // Check auth - redirect to signin if not authenticated
     const { data, error } = await supabase.auth.getUser()
     if (error || !data?.user) {
-      console.log('❌ [Dashboard] No auth user, redirecting to signin')
       redirect('/auth/signin')
     }
 
     const user = data.user
-    console.log('✅ [Dashboard] Authenticated user, loading lab selection:', user.email)
 
     // Ensure user profile exists
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('id')
+      .select('id, full_name')
       .eq('id', user.id)
       .single()
 
     if (profileError && profileError.code === 'PGRST116') {
-      // Create profile if it doesn't exist (handle_new_user trigger should have done this)
+      // Create profile if it doesn't exist
       await supabase
         .from('user_profiles')
         .insert({
@@ -40,11 +39,10 @@ export default async function DashboardPage() {
                       : null),
           avatar_url: user.user_metadata?.avatar_url || null
         })
-      console.log('✅ [Dashboard] Created user profile')
     }
 
     // Get user's lab memberships with stats
-    const { data: userLabs, error: labError } = await supabase
+    const { data: userLabs } = await supabase
       .from('lab_members')
       .select(`
         id,
@@ -101,32 +99,23 @@ export default async function DashboardPage() {
       )
     }
 
-    console.log(`✅ [Dashboard] Loaded ${labsWithStats.length} labs for selection`)
-
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">LS</span>
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">Lab Sync</h1>
-                <p className="text-muted-foreground">Choose your workspace</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Lab Selection Cards */}
+      <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
+        <DashboardHeader 
+          user={{
+            email: user.email,
+            name: profile?.full_name || user.email?.split('@')[0]
+          }} 
+        />
+        
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <LabSelectionCards labs={labsWithStats} user={user} />
-        </div>
+        </main>
       </div>
     )
 
   } catch (error) {
-    console.error('❌ [Dashboard] Critical error:', error)
+    console.error('Dashboard error:', error)
     redirect('/auth/signin')
   }
 }

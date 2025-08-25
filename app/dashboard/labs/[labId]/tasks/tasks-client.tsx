@@ -2,15 +2,20 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { createClient } from "@/utils/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CheckCircle2, Clock, AlertTriangle, Plus, Search, ArrowLeft, User, LayoutGrid, List } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { CheckCircle2, Clock, AlertTriangle, Plus, Search, ArrowLeft, User, LayoutGrid, List, Edit2, Trash2, Calendar } from "lucide-react"
 import { KanbanBoard } from "@/components/dashboard/kanban-board"
 import { format } from "date-fns"
+import { toast } from "sonner"
 import Link from "next/link"
 
 interface Task {
@@ -28,7 +33,7 @@ interface Task {
 
 interface Project {
   id: string
-  name: string
+  title: string
   bucket_id: string
 }
 
@@ -105,12 +110,162 @@ export default function TasksPageClient({
   userPermissions 
 }: TasksPageClientProps) {
   const router = useRouter()
+  const supabase = createClient()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterProject, setFilterProject] = useState<string>("all")
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [filterAssignee, setFilterAssignee] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
+  
+  // Dialog states
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [loading, setLoading] = useState(false)
+  
+  // Form data
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    project_id: '',
+    status: 'todo',
+    priority: 'medium',
+    assigned_to: '',
+    due_date: ''
+  })
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      project_id: '',
+      status: 'todo',
+      priority: 'medium',
+      assigned_to: '',
+      due_date: ''
+    })
+  }
+
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formData.title.trim() || !formData.project_id) {
+      toast.error('Please fill in all required fields')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert({
+          title: formData.title.trim(),
+          description: formData.description.trim() || null,
+          project_id: formData.project_id,
+          status: formData.status,
+          priority: formData.priority,
+          assigned_to: formData.assigned_to || null,
+          due_date: formData.due_date || null
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setTasks(prev => [data, ...prev])
+      setIsCreateDialogOpen(false)
+      resetForm()
+      toast.success('Task created successfully!')
+      
+    } catch (error: any) {
+      console.error('Error creating task:', error)
+      toast.error('Failed to create task')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEditTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedTask || !formData.title.trim()) return
+
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({
+          title: formData.title.trim(),
+          description: formData.description.trim() || null,
+          project_id: formData.project_id,
+          status: formData.status,
+          priority: formData.priority,
+          assigned_to: formData.assigned_to || null,
+          due_date: formData.due_date || null
+        })
+        .eq('id', selectedTask.id)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setTasks(prev => prev.map(t => t.id === selectedTask.id ? data : t))
+      setIsEditDialogOpen(false)
+      setSelectedTask(null)
+      resetForm()
+      toast.success('Task updated successfully!')
+      
+    } catch (error: any) {
+      console.error('Error updating task:', error)
+      toast.error('Failed to update task')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteTask = async () => {
+    if (!selectedTask) return
+
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', selectedTask.id)
+
+      if (error) throw error
+
+      setTasks(prev => prev.filter(t => t.id !== selectedTask.id))
+      setIsDeleteDialogOpen(false)
+      setSelectedTask(null)
+      toast.success('Task deleted successfully!')
+      
+    } catch (error: any) {
+      console.error('Error deleting task:', error)
+      toast.error('Failed to delete task')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const openEditDialog = (task: Task) => {
+    setSelectedTask(task)
+    setFormData({
+      title: task.title,
+      description: task.description || '',
+      project_id: task.project_id,
+      status: task.status,
+      priority: task.priority,
+      assigned_to: task.assigned_to || '',
+      due_date: task.due_date || ''
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const openDeleteDialog = (task: Task) => {
+    setSelectedTask(task)
+    setIsDeleteDialogOpen(true)
+  }
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -124,7 +279,7 @@ export default function TasksPageClient({
   })
 
   const getProjectName = (projectId: string) => {
-    return projects.find(p => p.id === projectId)?.name || 'Unknown Project'
+    return projects.find(p => p.id === projectId)?.title || 'Unknown Project'
   }
 
   const getBucketForProject = (projectId: string) => {
@@ -134,7 +289,7 @@ export default function TasksPageClient({
 
   const getMemberName = (userId: string) => {
     const member = labMembers.find(m => m.user_id === userId)
-    if (!member || !member.user_profiles) return 'Unknown'
+    if (!member || !member.user_profiles) return 'Unassigned'
     
     const profile = member.user_profiles
     return profile.full_name || 
@@ -192,13 +347,145 @@ export default function TasksPageClient({
           </Tabs>
 
           {userPermissions.canCreate && (
-            <Button 
-              onClick={() => router.push(`/dashboard/labs/${lab.id}/tasks/new`)}
-              className="btn-slack-primary"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Task
-            </Button>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="btn-slack-primary">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Task
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Create New Task</DialogTitle>
+                  <DialogDescription>
+                    Add a new task to track work in your lab
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateTask} className="space-y-4">
+                  <div>
+                    <Label htmlFor="task-title">Task Title *</Label>
+                    <Input
+                      id="task-title"
+                      value={formData.title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="e.g., Review manuscript draft"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="task-description">Description</Label>
+                    <Textarea
+                      id="task-description"
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Provide details about this task..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="task-project">Project *</Label>
+                    <Select 
+                      value={formData.project_id} 
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, project_id: value }))}
+                    >
+                      <SelectTrigger id="task-project">
+                        <SelectValue placeholder="Select a project" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projects.map((project) => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="task-status">Status</Label>
+                      <Select 
+                        value={formData.status} 
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                      >
+                        <SelectTrigger id="task-status">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todo">To Do</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="review">Review</SelectItem>
+                          <SelectItem value="done">Done</SelectItem>
+                          <SelectItem value="blocked">Blocked</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="task-priority">Priority</Label>
+                      <Select 
+                        value={formData.priority} 
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))}
+                      >
+                        <SelectTrigger id="task-priority">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="task-assignee">Assign To</Label>
+                      <Select 
+                        value={formData.assigned_to} 
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_to: value }))}
+                      >
+                        <SelectTrigger id="task-assignee">
+                          <SelectValue placeholder="Select assignee" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Unassigned</SelectItem>
+                          {labMembers.map((member) => (
+                            <SelectItem key={member.user_id} value={member.user_id}>
+                              {getMemberName(member.user_id)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="task-due">Due Date</Label>
+                      <Input
+                        id="task-due"
+                        type="date"
+                        value={formData.due_date}
+                        onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? 'Creating...' : 'Create Task'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           )}
         </div>
       </div>
@@ -255,16 +542,16 @@ export default function TasksPageClient({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Projects</SelectItem>
-            {projects.map(project => (
+            {projects.map((project) => (
               <SelectItem key={project.id} value={project.id}>
-                {project.name}
+                {project.title}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-40">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
@@ -283,10 +570,9 @@ export default function TasksPageClient({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Assignees</SelectItem>
-            <SelectItem value="unassigned">Unassigned</SelectItem>
-            {labMembers.map(member => (
+            {labMembers.map((member) => (
               <SelectItem key={member.user_id} value={member.user_id}>
-                {member.user_profiles?.full_name || member.user_profiles?.email || 'Unknown'}
+                {getMemberName(member.user_id)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -294,57 +580,31 @@ export default function TasksPageClient({
       </div>
 
       {/* Tasks Display */}
-      {filteredTasks.length === 0 ? (
-        <Card className="card-slack p-12 text-center">
-          <CheckCircle2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-xl font-medium text-foreground mb-2">
-            {tasks.length === 0 ? 'No Tasks Yet' : 'No Matching Tasks'}
-          </h3>
-          <p className="text-muted-foreground mb-6">
-            {tasks.length === 0 
-              ? 'Create your first task to start tracking work in this lab'
-              : 'Try adjusting your search or filter criteria'
-            }
-          </p>
-          {userPermissions.canCreate && tasks.length === 0 && (
-            <Button 
-              onClick={() => router.push(`/dashboard/labs/${lab.id}/tasks/new`)}
-              className="btn-slack-primary"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create First Task
-            </Button>
-          )}
-        </Card>
-      ) : viewMode === "kanban" ? (
-        /* Kanban Board View */
-        <div className="bg-muted/30 rounded-lg p-4">
-          <KanbanBoard 
-            study_id={filterProject !== "all" ? filterProject : ""}
-            lab_id={lab.id}
-            onTaskClick={(task) => router.push(`/dashboard/labs/${lab.id}/tasks/${task.id}`)}
-            className="w-full"
-          />
-        </div>
-      ) : (
-        /* List View */
-        <div className="space-y-4">
-          {filteredTasks.map((task) => {
-            const StatusIcon = statusIcons[task.status as keyof typeof statusIcons] || Clock
-            const bucket = getBucketForProject(task.project_id)
-            
-            return (
-              <Card key={task.id} className="card-slack hover:border-primary/50 transition-colors">
-                <CardContent className="p-6">
+      {viewMode === "list" ? (
+        filteredTasks.length === 0 ? (
+          <Card className="card-slack p-12 text-center">
+            <CheckCircle2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-medium text-foreground mb-2">
+              {tasks.length === 0 ? 'No Tasks Yet' : 'No Matching Tasks'}
+            </h3>
+            <p className="text-muted-foreground mb-6">
+              {tasks.length === 0 
+                ? 'Create your first task to start tracking work'
+                : 'Try adjusting your search or filter criteria'
+              }
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {filteredTasks.map((task) => (
+              <Card key={task.id} className="card-slack">
+                <CardContent className="p-4">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <StatusIcon className="h-5 w-5 text-muted-foreground" />
-                        <h3 className="text-lg font-medium text-foreground truncate">
-                          {task.title}
-                        </h3>
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center space-x-3">
+                        <h3 className="font-medium text-foreground">{task.title}</h3>
                         <Badge 
-                          variant="outline"
+                          variant="outline" 
                           className={`text-xs text-white ${statusColors[task.status as keyof typeof statusColors] || 'bg-gray-500'}`}
                         >
                           {task.status.replace('_', ' ')}
@@ -358,62 +618,234 @@ export default function TasksPageClient({
                       </div>
                       
                       {task.description && (
-                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                          {task.description}
-                        </p>
+                        <p className="text-sm text-muted-foreground">{task.description}</p>
                       )}
                       
                       <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <div className="flex items-center space-x-1">
-                          <span>Project:</span>
-                          <span className="font-medium">{getProjectName(task.project_id)}</span>
-                        </div>
-                        {bucket && (
-                          <div className="flex items-center space-x-1">
-                            <div 
-                              className="w-2 h-2 rounded-full"
-                              style={{ backgroundColor: bucket.color || '#6b7280' }}
-                            />
-                            <span>{bucket.name}</span>
-                          </div>
-                        )}
-                        {task.assigned_to && (
-                          <div className="flex items-center space-x-1">
-                            <User className="h-3 w-3" />
-                            <span>{getMemberName(task.assigned_to)}</span>
-                          </div>
-                        )}
+                        <span>{getProjectName(task.project_id)}</span>
+                        <span>•</span>
+                        <span className="flex items-center">
+                          <User className="h-3 w-3 mr-1" />
+                          {getMemberName(task.assigned_to || '')}
+                        </span>
                         {task.due_date && (
-                          <div className="flex items-center space-x-1">
-                            <span>Due:</span>
-                            <span className={
-                              new Date(task.due_date) < new Date() && task.status !== 'done'
-                                ? 'text-red-400 font-medium'
-                                : ''
-                            }>
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center">
+                              <Calendar className="h-3 w-3 mr-1" />
                               {format(new Date(task.due_date), 'MMM d, yyyy')}
                             </span>
-                          </div>
+                          </>
                         )}
                       </div>
                     </div>
                     
-                    <div className="flex space-x-2 ml-4">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => router.push(`/dashboard/labs/${lab.id}/tasks/${task.id}`)}
-                      >
-                        View
-                      </Button>
-                    </div>
+                    {(userPermissions.canEdit || userPermissions.canDelete) && (
+                      <div className="flex space-x-2">
+                        {userPermissions.canEdit && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => openEditDialog(task)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {userPermissions.canDelete && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => openDeleteDialog(task)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
-            )
-          })}
-        </div>
+            ))}
+          </div>
+        )
+      ) : (
+        <KanbanBoard
+          tasks={filteredTasks}
+          projects={projects}
+          labMembers={labMembers}
+          onTaskUpdate={(taskId, updates) => {
+            // Handle task updates from kanban board
+            setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
+          }}
+        />
       )}
+
+      {/* Edit Task Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+            <DialogDescription>
+              Update the task details
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditTask} className="space-y-4">
+            <div>
+              <Label htmlFor="edit-task-title">Task Title *</Label>
+              <Input
+                id="edit-task-title"
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="e.g., Review manuscript draft"
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="edit-task-description">Description</Label>
+              <Textarea
+                id="edit-task-description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Provide details about this task..."
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-task-project">Project *</Label>
+              <Select 
+                value={formData.project_id} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, project_id: value }))}
+              >
+                <SelectTrigger id="edit-task-project">
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-task-status">Status</Label>
+                <Select 
+                  value={formData.status} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger id="edit-task-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todo">To Do</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="review">Review</SelectItem>
+                    <SelectItem value="done">Done</SelectItem>
+                    <SelectItem value="blocked">Blocked</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-task-priority">Priority</Label>
+                <Select 
+                  value={formData.priority} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))}
+                >
+                  <SelectTrigger id="edit-task-priority">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-task-assignee">Assign To</Label>
+                <Select 
+                  value={formData.assigned_to} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_to: value }))}
+                >
+                  <SelectTrigger id="edit-task-assignee">
+                    <SelectValue placeholder="Select assignee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Unassigned</SelectItem>
+                    {labMembers.map((member) => (
+                      <SelectItem key={member.user_id} value={member.user_id}>
+                        {getMemberName(member.user_id)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-task-due">Due Date</Label>
+                <Input
+                  id="edit-task-due"
+                  type="date"
+                  value={formData.due_date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Updating...' : 'Update Task'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Task Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Task</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this task? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedTask && (
+            <div className="py-4">
+              <p className="font-medium text-foreground">{selectedTask.title}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Project: {getProjectName(selectedTask.project_id)}
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteTask}
+              disabled={loading}
+            >
+              {loading ? 'Deleting...' : 'Delete Task'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

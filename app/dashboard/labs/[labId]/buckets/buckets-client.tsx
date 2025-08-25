@@ -53,6 +53,9 @@ export default function BucketsPageClient({
   const [buckets, setBuckets] = useState<Bucket[]>(initialBuckets)
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [selectedBucket, setSelectedBucket] = useState<Bucket | null>(null)
   const [loading, setLoading] = useState(false)
   
   const [formData, setFormData] = useState({
@@ -98,6 +101,79 @@ export default function BucketsPageClient({
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleEditBucket = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedBucket || !formData.name.trim()) return
+
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('buckets')
+        .update({
+          name: formData.name.trim(),
+          description: formData.description.trim() || null,
+          color: formData.color
+        })
+        .eq('id', selectedBucket.id)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setBuckets(prev => prev.map(b => b.id === selectedBucket.id ? data : b))
+      setFormData({ name: '', description: '', color: '#3b82f6' })
+      setIsEditDialogOpen(false)
+      setSelectedBucket(null)
+      toast.success('Bucket updated successfully!')
+      
+    } catch (error: any) {
+      console.error('Error updating bucket:', error)
+      toast.error('Failed to update bucket')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteBucket = async () => {
+    if (!selectedBucket) return
+
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('buckets')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', selectedBucket.id)
+
+      if (error) throw error
+
+      setBuckets(prev => prev.filter(b => b.id !== selectedBucket.id))
+      setIsDeleteDialogOpen(false)
+      setSelectedBucket(null)
+      toast.success('Bucket deleted successfully!')
+      
+    } catch (error: any) {
+      console.error('Error deleting bucket:', error)
+      toast.error('Failed to delete bucket')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const openEditDialog = (bucket: Bucket) => {
+    setSelectedBucket(bucket)
+    setFormData({
+      name: bucket.name,
+      description: bucket.description || '',
+      color: bucket.color || '#3b82f6'
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const openDeleteDialog = (bucket: Bucket) => {
+    setSelectedBucket(bucket)
+    setIsDeleteDialogOpen(true)
   }
 
   return (
@@ -248,6 +324,25 @@ export default function BucketsPageClient({
                     >
                       View Projects
                     </Button>
+                    {userPermissions.canEdit && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openEditDialog(bucket)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {userPermissions.canDelete && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openDeleteDialog(bucket)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -255,6 +350,86 @@ export default function BucketsPageClient({
           ))}
         </div>
       )}
+
+      {/* Edit Bucket Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Bucket</DialogTitle>
+            <DialogDescription>
+              Update the bucket details for {lab.name}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditBucket} className="space-y-4">
+            <div>
+              <Label htmlFor="edit-bucket-name">Bucket Name</Label>
+              <Input
+                id="edit-bucket-name"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Clinical Studies, Data Analysis..."
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-bucket-description">Description</Label>
+              <Textarea
+                id="edit-bucket-description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Describe the purpose and scope of this bucket"
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-bucket-color">Color</Label>
+              <Input
+                id="edit-bucket-color"
+                type="color"
+                value={formData.color}
+                onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Updating...' : 'Update Bucket'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Bucket Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Bucket</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{selectedBucket?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              All projects in this bucket will need to be reassigned to another bucket.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDeleteBucket}
+              disabled={loading}
+              variant="destructive"
+            >
+              {loading ? 'Deleting...' : 'Delete Bucket'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

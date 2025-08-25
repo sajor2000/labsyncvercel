@@ -1,12 +1,12 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import BucketsPageClient from './buckets-client'
 import { DashboardHeader } from '@/components/dashboard/dashboard-header'
+import CreateProjectForm from './create-project-form'
 
 // Force dynamic rendering for auth-dependent page
 export const dynamic = 'force-dynamic'
 
-export default async function LabBucketsPage({ params }: { params: Promise<{ labId: string }> }) {
+export default async function NewProjectPage({ params }: { params: Promise<{ labId: string }> }) {
   const { labId } = await params
   
   try {
@@ -25,16 +25,16 @@ export default async function LabBucketsPage({ params }: { params: Promise<{ lab
       .eq('id', user.id)
       .single()
 
-    // Verify user has access to this lab
+    // Verify user has access to this lab and can create projects
     const { data: membership, error: memberError } = await supabase
       .from('lab_members')
-      .select('id, role, can_create_projects, can_edit_all_projects, can_delete_projects')
+      .select('id, role, can_create_projects')
       .eq('lab_id', labId)
       .eq('user_id', user.id)
       .single()
 
-    if (memberError || !membership) {
-      redirect('/dashboard')
+    if (memberError || !membership || !membership.can_create_projects) {
+      redirect(`/dashboard/labs/${labId}/projects`)
     }
 
     // Get lab details
@@ -48,25 +48,17 @@ export default async function LabBucketsPage({ params }: { params: Promise<{ lab
       redirect('/dashboard')
     }
 
-    // Get lab's buckets (excluding soft-deleted ones)
+    // Get lab's buckets for project organization
     const { data: buckets, error: bucketsError } = await supabase
       .from('buckets')
-      .select(`
-        id,
-        name,
-        description,
-        color,
-        position,
-        created_at,
-        updated_at,
-        deleted_at
-      `)
+      .select('id, name, color')
       .eq('lab_id', labId)
       .is('deleted_at', null)
       .order('position', { ascending: true })
 
-    if (bucketsError) {
-      console.error('Error fetching buckets:', bucketsError)
+    if (bucketsError || !buckets || buckets.length === 0) {
+      // If no buckets exist, redirect to buckets page
+      redirect(`/dashboard/labs/${labId}/buckets`)
     }
 
     return (
@@ -78,22 +70,18 @@ export default async function LabBucketsPage({ params }: { params: Promise<{ lab
           }} 
         />
         
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <BucketsPageClient 
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <CreateProjectForm 
             lab={lab}
-            initialBuckets={(buckets || []) as any}
-            userPermissions={{
-              canCreate: membership.can_create_projects || false,
-              canEdit: membership.can_edit_all_projects || false,
-              canDelete: membership.can_delete_projects || false
-            }}
+            buckets={buckets}
+            userId={user.id}
           />
         </main>
       </div>
     )
 
   } catch (error) {
-    console.error('Lab buckets page error:', error)
+    console.error('New project page error:', error)
     redirect('/dashboard')
   }
 }
